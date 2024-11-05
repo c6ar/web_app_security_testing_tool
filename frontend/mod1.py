@@ -1,43 +1,18 @@
-import tkinter as tk
-import customtkinter as ctk
+import random
 
-class ResizableApp(ctk.CTk):
-    def __init__(self):
-        super().__init__()
 
-        self.title("Resizable Panes Example")
-        self.geometry("800x600")
+def test1():
+    return f"Start of output\nTest function testing...\n\n\n{10 * '-'}\nEnd of output.\n\n"
 
-        # Main PanedWindow container
-        self.paned_window = tk.PanedWindow(self, orient=tk.HORIZONTAL)
-        self.paned_window.pack(fill="both", expand=True)
 
-        # Left pane (vertical)
-        self.left_pane = ctk.CTkFrame(self.paned_window)
-        self.paned_window.add(self.left_pane, stretch="always")
+def test2(n):
+    return f"Output: {n}, {n ** 2}, {n ** 3}.\n"
 
-        # Right PanedWindow (vertical orientation)
-        self.right_paned_window = tk.PanedWindow(self.paned_window, orient=tk.VERTICAL)
-        self.paned_window.add(self.right_paned_window, stretch="always")
 
-        # Top right pane
-        self.top_right_pane = ctk.CTkFrame(self.right_paned_window)
-        self.right_paned_window.add(self.top_right_pane, stretch="always")
-
-        # Bottom right pane
-        self.bottom_right_pane = ctk.CTkFrame(self.right_paned_window)
-        self.right_paned_window.add(self.bottom_right_pane, stretch="always")
-
-        # Example content for the panes
-        self.left_label = ctk.CTkLabel(self.left_pane, text="Left Pane", anchor="center")
-        self.left_label.pack(fill="both", expand=True, padx=10, pady=10)
-
-        self.top_right_label = ctk.CTkLabel(self.top_right_pane, text="Top Right Pane", anchor="center")
-        self.top_right_label.pack(fill="both", expand=True, padx=10, pady=10)
-
-        self.bottom_right_label = ctk.CTkLabel(self.bottom_right_pane, text="Bottom Right Pane", anchor="center")
-        self.bottom_right_label.pack(fill="both", expand=True, padx=10, pady=10)
-
-if __name__ == "__main__":
-    app = ResizableApp()
-    app.mainloop()
+def generate_random_reqeust():
+    time = f"{random.randint(0, 23):02}:{random.randint(0, 59):02}"
+    entry_type = random.choice(["Info", "Warning", "Error"])
+    direction = random.choice(["Inbound", "Outbound"])
+    method = random.choice(["GET", "POST", "PUT", "DELETE"])
+    url = f"http://example.com/{random.randint(1000, 9999)}"
+    return time, entry_type, direction, method, url
