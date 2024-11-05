@@ -5,7 +5,8 @@ import pyperclip
 import os
 from pathlib import Path
 from mod1 import *
-
+import socket
+import subprocess
 color_bg = "#222"
 color_bg_br = "#333"
 color_acc = "#d68f13"
@@ -308,9 +309,17 @@ class GUIProxy(ctk.CTkFrame):
         self.scan_textbox = ctk.CTkTextbox(self, width=700, height=450)
 
     def scan(self):
-        output = test1()
-        self.scan_textbox.pack(side="right",padx=10,pady=5)
-        self.scan_textbox.insert("0.0", f"{output}")
+        path = r"C:\Users\kacpe\OneDrive\Dokumenty\GitHub\web_app_security_testing_tool1\backend"
+        command = f"start cmd /K mitmdump -s proxy.py "
+
+        try:
+            # Uruchamiamy nowy proces z otwartym terminalem w podanej lokalizacji
+            subprocess.Popen(command, cwd=path, shell=True)
+            print(f"Uruchomiono: {command}")
+        except Exception as e:
+            print(f"Error starting mitmdump: {e}")
+
+
 
 class GUIIntruder(ctk.CTkFrame):
     def __init__(self, master):
