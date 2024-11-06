@@ -308,16 +308,16 @@ class GUIProxy(ctk.CTkFrame):
         self.scan_button.pack(pady=5)
         self.scan_textbox = ctk.CTkTextbox(self, width=700, height=450)
 
-    def scan(self):
-        path = r"C:\Users\kacpe\OneDrive\Dokumenty\GitHub\web_app_security_testing_tool1\backend"
-        command = f"start cmd /K mitmdump -s proxy.py "
+    # def scan(self):
+    #     path = r"C:\Users\kacpe\OneDrive\Dokumenty\GitHub\web_app_security_testing_tool1\backend"
+    #     command = f"start cmd /K mitmdump -s proxy.py "
 
-        try:
-            # Uruchamiamy nowy proces z otwartym terminalem w podanej lokalizacji
-            subprocess.Popen(command, cwd=path, shell=True)
-            print(f"Uruchomiono: {command}")
-        except Exception as e:
-            print(f"Error starting mitmdump: {e}")
+    #     try:
+    #         # Uruchamiamy nowy proces z otwartym terminalem w podanej lokalizacji
+    #         subprocess.Popen(command, cwd=path, shell=True)
+    #         print(f"Uruchomiono: {command}")
+    #     except Exception as e:
+    #         print(f"Error starting mitmdump: {e}")
 
 
 
