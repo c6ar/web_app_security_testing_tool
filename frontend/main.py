@@ -105,8 +105,8 @@ class FileTree(ttk.Frame):
         # This dictionary maps the treeview items IDs with the
         # path of the file or folder.
         self.fsobjects: dict[str, Path] = {}
-        self.file_image = tk.PhotoImage(file="file.png")
-        self.folder_image = tk.PhotoImage(file="folder.png")
+        self.file_image = tk.PhotoImage(file="frontend/file.png")
+        self.folder_image = tk.PhotoImage(file="frontend/folder.png")
 
         self.popup_menu = tk.Menu(self.treeview, tearoff=0)
         self.popup_menu.add_command(label="Delete", command=self.delete_selected)
@@ -421,8 +421,8 @@ class GUIProxy(ctk.CTkFrame):
 
         self.placeholder_frame = ctk.CTkFrame(self.top_pane, fg_color="transparent")
         self.placeholder_frame.place(relx=0.5, rely=0.5, anchor=tk.CENTER)
-        self.intercept_off_image = ctk.CTkImage(light_image=Image.open("assets\\intercept_off.png"), dark_image=Image.open("assets\\intercept_off.png"), size=(107,181))
-        self.intercept_on_image = ctk.CTkImage(light_image=Image.open("assets\\intercept_on.png"), dark_image=Image.open("assets\\intercept_on.png"), size=(107,181))
+        self.intercept_off_image = ctk.CTkImage(light_image=Image.open("frontend\\assets\\intercept_off.png"), dark_image=Image.open("frontend\\assets\\intercept_off.png"), size=(107,181))
+        self.intercept_on_image = ctk.CTkImage(light_image=Image.open("frontend\\assets\\intercept_on.png"), dark_image=Image.open("frontend\\assets\\intercept_on.png"), size=(107,181))
         self.placeholder_image = ctk.CTkLabel(self.placeholder_frame, image=self.intercept_off_image, text="")
         self.placeholder_image.pack(pady=5)
         self.placeholder_label = ctk.CTkLabel(self.placeholder_frame, text="Intercept is off")
