@@ -451,7 +451,7 @@ class GUIProxy(ctk.CTkFrame):
     def toggle(self):
         default_fg_color = ThemeManager.theme["CTkButton"]["fg_color"]
         if self.intercepting:
-            self.toggle_button.configure(text="Intercept off", fg_color="#d1641b")
+            self.toggle_button.configure(text="Intercept off", fg_color="#d1641b")           
             for btn in self.left_buttons:
                 btn.configure(state=tk.DISABLED)
             self.intercepting = False
@@ -460,6 +460,20 @@ class GUIProxy(ctk.CTkFrame):
             for btn in self.left_buttons:
                 btn.configure(state=tk.NORMAL, fg_color=default_fg_color)
             self.intercepting = True
+
+            """
+            Rozwiązanie tymczasowe
+            """
+            path = r"backend"
+            command = f"start cmd /K mitmdump -s proxy.py "
+
+            try:
+                # Uruchamiamy nowy proces z otwartym terminalem w podanej lokalizacji
+                subprocess.Popen(command, cwd=path, shell=True)
+                print(f"Uruchomiono: {command}")
+            except Exception as e:
+                print(f"Error starting mitmdump: {e}")
+
         self.check_requests_list_empty()
 
     def add_random_request(self):

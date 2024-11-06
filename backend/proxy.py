@@ -24,7 +24,11 @@ class Request:
         )
 
 class WebRequestInterceptor:
-    telemetry_domains = ["mozilla.org", "chrome.com", "telemetry"]
+
+    """
+    Tymczasowe filtrowanie niechcianych domen
+    """
+    telemetry_domains = ["mozilla.org", "chrome.com", "telemetry", "firefox.com"]
 
     def request(self, flow: mitmproxy.http.HTTPFlow):
         request = flow.request
