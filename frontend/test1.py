@@ -1,6 +1,7 @@
 import tkinter as tk
 import customtkinter as ctk
 
+
 class ResizableApp(ctk.CTk):
     def __init__(self):
         super().__init__()
@@ -37,6 +38,7 @@ class ResizableApp(ctk.CTk):
 
         self.bottom_right_label = ctk.CTkLabel(self.bottom_right_pane, text="Bottom Right Pane", anchor="center")
         self.bottom_right_label.pack(fill="both", expand=True, padx=10, pady=10)
+
 
 if __name__ == "__main__":
     app = ResizableApp()

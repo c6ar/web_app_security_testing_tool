@@ -1,5 +1,11 @@
 import mitmproxy.http
+import socket
 from datetime import datetime
+
+
+HOST = '127.0.0.1'  
+PORT_SERVER = 65432    
+PORT_GUI = 65433    
 
 class Request:
     def __init__(self, time, type, direction, method, url, status_code, content):
@@ -25,15 +31,18 @@ class Request:
 
 class WebRequestInterceptor:
     telemetry_domains = ["mozilla.org", "chrome.com", "telemetry"]
+    def __init__(self):
+        self.forward_flag = False
+        self.drop_flag = False
 
     def request(self, flow: mitmproxy.http.HTTPFlow):
         request = flow.request
         time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-        # Sprawdź, czy URL zawiera jeden z filtrów domen telemetrycznych
+        
         if any(domain in request.url for domain in self.telemetry_domains):
-            return  # Ignorujemy żądanie
-
+            return  
+        
         req = Request(
             time=time,
             type=request.scheme.upper(),
@@ -43,56 +52,44 @@ class WebRequestInterceptor:
             status_code=None,  
             content=request.content
         )
-        flow.intercept()
         print(req)
+
         
-        confirmation = int(input(f"Chcesz wysłać żądanie na adres {request.url}? (1 - Tak, 0 - Nie): "))
-        
-        if confirmation == 1:
-            edit_request = int(input("Czy chcesz edytować treść żądania? (1 - Tak, 0 - Nie): "))
-            if edit_request:
-                print("Obecna treść:", req.content.decode('ascii', errors='replace'))
-                new_content = input("Wprowadź nową treść: \n")
-                flow.request.text = new_content  # Zmiana treści żądania
-            flow.resume()  # Wznowienie przepływu
-        else:
-            print("Anulowano żądanie")
-            flow.kill()  # Przerwanie żądania
-
-    def response(self, flow: mitmproxy.http.HTTPFlow):
-        response = flow.response
-        time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
-        # Sprawdź, czy URL żądania zawiera jeden z filtrów domen telemetrycznych
-        if any(domain in flow.request.url for domain in self.telemetry_domains):
-            return  # Ignorujemy odpowiedź
-
-        req = Request(
-            time=time,
-            type=flow.request.scheme.upper(),
-            direction="incoming",
-            method=flow.request.method,
-            url=flow.request.url,
-            status_code=response.status_code,
-            content=response.content
-        )
-
-        print(req)
+        self.send_request_to_gui(str(req))
         flow.intercept()
+        self.forward_request(flow)
 
-        # Poprawione: używamy `flow.request.url` zamiast `response.url`
-        confirmation = int(input(f"Chcesz wysłać odpowiedź z adresu {flow.request.url}? (1 - Tak, 0 - Nie): "))
-        if confirmation == 1:
-            edit_response = int(input("Czy chcesz edytować treść odpowiedzi? (1 - Tak, 0 - Nie): "))
-            if edit_response == 1:
-                print("Obecna treść:", req.content.decode('ascii', errors='replace'))
-                new_content = input("Wprowadź nową treść odpowiedzi: \n")
-                flow.response.text = new_content  # Zmiana treści odpowiedzi
-            flow.resume()  # Wznowienie przepływu
-        else:
-            print("Anulowano odpowiedź")
-            flow.kill()  # Przerwanie odpowiedzi
+    def send_request_to_gui(self, request_info):
+        """Wysyła żądanie do aplikacji GUI przez gniazdo"""
+        try:
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                s.connect((HOST, PORT_SERVER))
+                s.sendall(request_info.encode('utf-8'))
+        except Exception as e:
+            print(f"Błąd przy wysyłaniu żądania do GUI: {e}")
+    def forward_request(self, flow):
+        """
+        Funkcja do odbierania czy nacisnięcia przycisku Forward.
+        """
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            s.bind((HOST, PORT_GUI))
+            s.listen()
 
+          
+            conn, addr = s.accept()
+            with conn:
+                    # Odbieramy dane i interpretujemy je jako boolean (True/False)
+                    data = conn.recv(1024).decode('utf-8')
+                    self.forward_flag = (data == 'True')  # Sprawdzamy, czy dane to 'True'
+                    self.handle_flow_state(flow)
+                    self.forward_flag = False
+                    
+    def handle_flow_state(self,flow):
+        if self.forward_flag:
+            print(self.forward_flag)
+            flow.resume()
+        elif self.drop_flag:
+            flow.kill()
 
 addons = [
     WebRequestInterceptor()
