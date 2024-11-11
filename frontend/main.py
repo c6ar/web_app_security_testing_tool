@@ -4,7 +4,7 @@ import customtkinter as ctk
 import pyperclip
 import os
 from pathlib import Path
-
+import threading
 from PIL import Image
 from customtkinter import ThemeManager
 
@@ -15,7 +15,9 @@ color_bg = "#222"
 color_bg_br = "#333"
 color_acc = "#d68f13"
 color_acc2 = "#ffab17"
-
+HOST = '127.0.0.1'  # Ten sam adres IP, co w serwerze
+PORT_SERVER = 65432  # Do komunikacji proxy.py -> GUI
+PORT_GUI = 65433 # Do komunikacji GUIT -> proxy.py
 
 class NavButton(ctk.CTkFrame):
     def __init__(self, master, text, command, font):
@@ -367,15 +369,15 @@ class GUIProxy(ctk.CTkFrame):
 
         self.left_buttons = []
 
-        self.forward_btn = ctk.CTkButton(self.top_bar, text=f"Foward", state=tk.DISABLED)
+        self.forward_btn = ctk.CTkButton(self.top_bar, text=f"Forward", state=tk.DISABLED, command=self.send_forward)
         self.forward_btn.pack(side=tk.LEFT, padx=5, pady=15)
         self.left_buttons.append(self.forward_btn)
         self.drop_btn = ctk.CTkButton(self.top_bar, text=f"Drop", state=tk.DISABLED, command=self.drop_request)
         self.drop_btn.pack(side=tk.LEFT, padx=5, pady=15)
         self.left_buttons.append(self.drop_btn)
-        self.send_to_repeatr_btn = ctk.CTkButton(self.top_bar, text=f"Send to repeater", state=tk.DISABLED)
-        self.send_to_repeatr_btn.pack(side=tk.LEFT, padx=5, pady=15)
-        self.left_buttons.append(self.send_to_repeatr_btn)
+        self.send_to_repeater_btn = ctk.CTkButton(self.top_bar, text=f"Send to repeater", state=tk.DISABLED)
+        self.send_to_repeater_btn.pack(side=tk.LEFT, padx=5, pady=15)
+        self.left_buttons.append(self.send_to_repeater_btn)
         self.send_to_intruder_btn = ctk.CTkButton(self.top_bar, text=f"Send to intruder", state=tk.DISABLED)
         self.send_to_intruder_btn.pack(side=tk.LEFT, padx=5, pady=15)
         self.left_buttons.append(self.send_to_intruder_btn)
@@ -396,24 +398,14 @@ class GUIProxy(ctk.CTkFrame):
         self.top_pane = ctk.CTkFrame(self.paned_window)
         self.bottom_pane = ctk.CTkFrame(self.paned_window)
 
-        self.paned_window.add(self.top_pane,height=400)
+        self.paned_window.add(self.top_pane, height=400)
         self.paned_window.add(self.bottom_pane)
 
         """
         Lista requestów.        
         """
-        bg_color = self._apply_appearance_mode(ctk.ThemeManager.theme["CTkFrame"]["fg_color"])
-        text_color = self._apply_appearance_mode(ctk.ThemeManager.theme["CTkLabel"]["text_color"])
-        selected_color = self._apply_appearance_mode(ctk.ThemeManager.theme["CTkButton"]["fg_color"])
-
-        treestyle = ttk.Style()
-        treestyle.theme_use('default')
-        treestyle.configure("Treeview", background=bg_color, foreground=text_color, fieldbackground=bg_color,
-                            borderwidth=0)
-        treestyle.map('Treeview', background=[('selected', selected_color)], foreground=[('selected', 'white')])
-
         columns = ("Time", "Type", "Direction", "Method", "URL", "Status code", "Length")
-        self.requests_list = FancyTreeview(self.top_pane, columns=columns, show="headings", style="Transparent.Treeview")
+        self.requests_list = ttk.Treeview(self.top_pane, columns=columns, show="headings")
         self.requests_list.bind("<<TreeviewSelect>>", self.show_request)
         for col in columns:
             self.requests_list.heading(col, text=col)
@@ -422,34 +414,21 @@ class GUIProxy(ctk.CTkFrame):
 
         self.placeholder_frame = ctk.CTkFrame(self.top_pane, fg_color="transparent")
         self.placeholder_frame.place(relx=0.5, rely=0.5, anchor=tk.CENTER)
-        self.intercept_off_image = ctk.CTkImage(light_image=Image.open("frontend\\assets\\intercept_off.png"), dark_image=Image.open("frontend\\assets\\intercept_off.png"), size=(107,181))
-        self.intercept_on_image = ctk.CTkImage(light_image=Image.open("frontend\\assets\\intercept_on.png"), dark_image=Image.open("frontend\\assets\\intercept_on.png"), size=(107,181))
-        self.placeholder_image = ctk.CTkLabel(self.placeholder_frame, image=self.intercept_off_image, text="")
-        self.placeholder_image.pack(pady=5)
-        self.placeholder_label = ctk.CTkLabel(self.placeholder_frame, text="Intercept is off")
-        self.placeholder_label.pack(pady=5,expand=True)
-
         self.check_requests_list_empty()
 
         """
         Request.        
         """
-        self.request_content = TextOutput(self.bottom_pane,self)
-        self.request_content.pack(fill="both",expand=True)
+        self.request_content = ctk.CTkTextbox(self.bottom_pane)
+        self.request_content.pack(fill="both", expand=True)
 
-        # self.target_title = ctk.CTkLabel(self, text="Proxy tab content here")
-        # self.target_title.pack(pady=5)
-        # self.scan_button = ctk.CTkButton(self, text="Start Scan", command=self.scan)
-        # self.scan_button.pack(pady=5)
-        # self.scan_textbox = ctk.CTkTextbox(self, width=700, height=450)
-
-    # def scan(self):
-    #     output = test1()
-    #     self.scan_textbox.pack(side="right",padx=10,pady=5)
-    #     self.scan_textbox.insert("0.0", f"{output}")
+        # Uruchamiamy wątek do odbierania żądań
+        self.update_thread = threading.Thread(target=self.receive_requests)
+        self.update_thread.daemon = True
+        self.update_thread.start()
 
     def toggle(self):
-        default_fg_color = ThemeManager.theme["CTkButton"]["fg_color"]
+        default_fg_color = ctk.ThemeManager.theme["CTkButton"]["fg_color"]
         if self.intercepting:
             self.toggle_button.configure(text="Intercept off", fg_color="#d1641b")           
             for btn in self.left_buttons:
@@ -461,14 +440,11 @@ class GUIProxy(ctk.CTkFrame):
                 btn.configure(state=tk.NORMAL, fg_color=default_fg_color)
             self.intercepting = True
 
-            """
-            Rozwiązanie tymczasowe
-            """
+            # Uruchomienie serwera proxy
             path = r"backend"
-            command = f"start cmd /K mitmdump -s proxy.py "
+            command = f"start cmd /K mitmdump -s proxy.py --listen-port 8082"
 
             try:
-                # Uruchamiamy nowy proces z otwartym terminalem w podanej lokalizacji
                 subprocess.Popen(command, cwd=path, shell=True)
                 print(f"Uruchomiono: {command}")
             except Exception as e:
@@ -476,35 +452,57 @@ class GUIProxy(ctk.CTkFrame):
 
         self.check_requests_list_empty()
 
+    def receive_requests(self):
+        """
+        Funkcja do odbierania żądań z serwera.
+        """
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            s.bind((HOST, PORT_SERVER))
+            s.listen()
+
+            while True:
+                conn, addr = s.accept()
+                with conn:
+                    request_data = conn.recv(1024).decode('utf-8')
+                    if request_data:
+                        self.add_request(request_data)
+
+    def add_request(self, request_info):
+        """
+        Funkcja do dodawania żądań do listy w GUI.
+        """
+        self.requests_list.insert("", tk.END, values=request_info.split('\n'))
+    def send_forward(self):
+        """Wysyła potwierdzenai naciśniecia forward"""
+        flag = True
+        try:
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                s.connect((HOST, PORT_GUI))
+                s.sendall(str(flag).encode('utf-8')) 
+        except Exception as e:
+            print(f"Błąd przy wysyłaniu żądania do PROXY: {e}")
+    def check_requests_list_empty(self):
+        if self.intercepting:
+            if len(self.requests_list.get_children()) == 0:
+                self.placeholder_frame.lift()
+            else:
+                self.placeholder_frame.lower()
+
     def add_random_request(self):
-        self.requests_list.insert("", tk.END, values=generate_random_reqeust())
-        self.requests_list.selection_remove(self.requests_list.get_children())
-        self.requests_list.selection_add(self.requests_list.get_children()[-1])
+        # Dodawanie losowego żądania do listy
+        self.requests_list.insert("", tk.END, values=["Random", "GET", "Request", "/", "200", "1234"])
         self.check_requests_list_empty()
 
     def drop_request(self):
-        self.requests_list.delete_selected()
-        if len(self.requests_list.get_children()) > 0:
-            self.requests_list.selection_add(self.requests_list.get_children()[-1])
+        selected_item = self.requests_list.selection()
+        if selected_item:
+            self.requests_list.delete(selected_item)
         self.check_requests_list_empty()
-
-    def check_requests_list_empty(self):
-        if self.intercepting:
-            self.placeholder_label.configure(text="Intercept is on.")
-            self.placeholder_image.configure(image=self.intercept_on_image)
-        else:
-            self.placeholder_label.configure(text="Intercept is off.")
-            self.placeholder_image.configure(image=self.intercept_off_image)
-
-        if len(self.requests_list.get_children()) == 0:
-            self.placeholder_frame.lift()
-        else:
-            self.placeholder_frame.lower()
 
     def show_request(self, event):
         selected_item = self.requests_list.selection()[0]
         item = self.requests_list.item(selected_item)['values']
-        self.request_content.insert_text('\n'.join(item))
+        self.request_content.insert("0.0", '\n'.join(item))
 
 
 class GUIIntruder(ctk.CTkFrame):
