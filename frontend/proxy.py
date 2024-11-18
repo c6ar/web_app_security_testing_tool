@@ -1,3 +1,5 @@
+import time
+
 from head import *
 import tkinter as tk
 from tkinter import ttk
@@ -7,8 +9,30 @@ import pyperclip
 import socket
 import subprocess
 import threading
-from PIL import Image
+from PIL import Image, ImageTk
 from test_functions import *
+import json
+
+from selenium import webdriver
+from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.chrome.options import Options
+import chromedriver_autoinstaller
+import threading
+
+default_fg_color = ThemeManager.theme["CTkButton"]["fg_color"]
+accent_fg_color = "#d1641b"
+
+
+class ActionButton(ctk.CTkButton):
+    def __init__(self, parent, *args, **kwargs):
+        super().__init__(parent, *args, **kwargs)
+        if "font" not in kwargs:
+            kwargs["font"] = ctk.CTkFont(family="Calibri", size=14)
+        text_width = kwargs["font"].measure(kwargs["text"])
+        button_width = text_width + 20 + 25
+        if button_width < 100:
+            button_width = 90
+        self.configure(width=button_width)
 
 
 class RequestList(ttk.Treeview):
@@ -108,30 +132,50 @@ class GUIProxy(ctk.CTkFrame):
         self.top_bar = ctk.CTkFrame(self, height=50)
         self.top_bar.pack(side=tk.TOP, fill=tk.X)
 
-        self.toggle_button = ctk.CTkButton(self.top_bar, text="Intercept off", command=self.toggle, fg_color="#d1641b")
-        self.toggle_button.pack(side=tk.LEFT, padx=15, pady=5)
+        self.icon_toggle_on = ctk.CTkImage(
+            light_image=Image.open(f"{ASSET_DIR}/icon_toggle_on.png"), dark_image=Image.open(f"{ASSET_DIR}/icon_toggle_on.png"), size=(20,20))
+        self.icon_toggle_off = ctk.CTkImage(
+            light_image=Image.open(f"{ASSET_DIR}/icon_toggle_off.png"), dark_image=Image.open(f"{ASSET_DIR}/icon_toggle_off.png"), size=(20,20))
+        self.toggle_intercept_button = ActionButton(
+            self.top_bar, text="Intercept off", image=self.icon_toggle_off, command=self.toggle_intercept, fg_color="#d1641b", compound="left")
+        self.toggle_intercept_button.pack(side=tk.LEFT, padx=15, pady=5)
 
-        self.left_buttons = []
-
-        self.forward_button = ctk.CTkButton(self.top_bar, text=f"Forward", state=tk.DISABLED)
+        self.icon_foward = ctk.CTkImage(
+            light_image=Image.open(f"{ASSET_DIR}/icon_arrow_up.png"),
+            dark_image=Image.open(f"{ASSET_DIR}/icon_arrow_up.png"), size=(20, 20))
+        self.forward_button = ActionButton(self.top_bar, text=f"Forward", image=self.icon_foward, state=tk.DISABLED, compound="left")
         self.forward_button.pack(side=tk.LEFT, padx=5, pady=15)
-        self.left_buttons.append(self.forward_button)
-        self.drop_btn = ctk.CTkButton(self.top_bar, text=f"Drop", state=tk.DISABLED, command=self.drop_request)
-        self.drop_btn.pack(side=tk.LEFT, padx=5, pady=15)
-        self.left_buttons.append(self.drop_btn)
-        self.send_to_repeater_btn = ctk.CTkButton(self.top_bar, text=f"Send to repeater", state=tk.DISABLED)
-        self.send_to_repeater_btn.pack(side=tk.LEFT, padx=5, pady=15)
-        self.left_buttons.append(self.send_to_repeater_btn)
-        self.send_to_intruder_btn = ctk.CTkButton(self.top_bar, text=f"Send to intruder", state=tk.DISABLED)
-        self.send_to_intruder_btn.pack(side=tk.LEFT, padx=5, pady=15)
-        self.left_buttons.append(self.send_to_intruder_btn)
-        self.add_random_entry = ctk.CTkButton(self.top_bar, text=f"Add random entry", command=self.add_random_request)
+
+        self.icon_drop = ctk.CTkImage(
+            light_image=Image.open(f"{ASSET_DIR}/icon_arrow_down.png"),
+            dark_image=Image.open(f"{ASSET_DIR}/icon_arrow_down.png"), size=(20, 20))
+        self.drop_button = ActionButton(
+            self.top_bar, text=f"Drop", image=self.icon_drop, state=tk.DISABLED, command=self.drop_request, compound="left")
+        self.drop_button.pack(side=tk.LEFT, padx=5, pady=15)
+
+        self.send_to_repeater_button = ActionButton(self.top_bar, text=f"Send to repeater", state=tk.DISABLED)
+        self.send_to_repeater_button.pack(side=tk.LEFT, padx=5, pady=15)
+
+        self.send_to_intruder_button = ActionButton(self.top_bar, text=f"Send to intruder", state=tk.DISABLED)
+        self.send_to_intruder_button.pack(side=tk.LEFT, padx=5, pady=15)
+
+        self.icon_random = ctk.CTkImage(
+            light_image=Image.open(f"{ASSET_DIR}/icon_random.png"),
+            dark_image=Image.open(f"{ASSET_DIR}/icon_random.png"), size=(20, 20))
+        self.add_random_entry = ActionButton(
+            self.top_bar, text=f"Add random entry", image=self.icon_random, command=self.add_random_request, compound="left")
         self.add_random_entry.pack(side=tk.LEFT, padx=5, pady=15)
 
-        self.browser_btn = ctk.CTkButton(self.top_bar, text="Open browser")
-        self.browser_btn.pack(side=tk.RIGHT, padx=5, pady=15)
-        self.settings_btn = ctk.CTkButton(self.top_bar, text="Proxy settings")
-        self.settings_btn.pack(side=tk.RIGHT, padx=5, pady=15)
+        self.icon_browser = ctk.CTkImage(
+            light_image=Image.open(f"{ASSET_DIR}/icon_browser.png"), dark_image=Image.open(f"{ASSET_DIR}/icon_browser.png"), size=(20,20))
+        self.browser_button = ActionButton(
+            self.top_bar, text="Open browser", image=self.icon_browser, command=self.root.start_browser_thread, compound="left")
+        self.browser_button.pack(side=tk.RIGHT, padx=5, pady=15)
+
+        self.icon_settings = ctk.CTkImage(
+            light_image=Image.open(f"{ASSET_DIR}/icon_settings.png"), dark_image=Image.open(f"{ASSET_DIR}/icon_settings.png"), size=(20,20))
+        self.settings_button = ActionButton(self.top_bar, text="Proxy settings", image=self.icon_settings, compound="left")
+        self.settings_button.pack(side=tk.RIGHT, padx=5, pady=15)
 
         self.paned_window = tk.PanedWindow(self, orient=tk.VERTICAL)
         self.paned_window.pack(fill=tk.BOTH, expand=1)
@@ -185,23 +229,26 @@ class GUIProxy(ctk.CTkFrame):
 
         self.requests = []
 
+        while self.root.browser_opened:
+            print("Text")
+            print(self.requests)
+
         self.update_thread = threading.Thread(target=self.receive_requests)
         self.update_thread.daemon = True
         self.update_thread.start()
 
-    def toggle(self):
-        default_fg_color = ThemeManager.theme["CTkButton"]["fg_color"]
+    def toggle_intercept(self):
         if self.intercepting:
-            self.toggle_button.configure(text="Intercept off", fg_color="#d1641b")
-            for btn in self.left_buttons:
-                btn.configure(state=tk.DISABLED)
+            self.toggle_intercept_button.configure(text="Intercept off", image=self.icon_toggle_off, fg_color=accent_fg_color)
             self.intercepting = False
+            self.placeholder_label.configure(text="Intercept is off.")
+            self.placeholder_image.configure(image=self.intercept_off_image)
             print("Turning intercept off.")
         else:
-            self.toggle_button.configure(text="Intercept on", fg_color=default_fg_color)
-            for btn in self.left_buttons:
-                btn.configure(state=tk.NORMAL, fg_color=default_fg_color)
+            self.toggle_intercept_button.configure(text="Intercept on", image=self.icon_toggle_on, fg_color=default_fg_color)
             self.intercepting = True
+            self.placeholder_label.configure(text="Intercept is on.")
+            self.placeholder_image.configure(image=self.intercept_on_image)
             print("Turning intercept on.")
 
             path = r"backend"
@@ -215,6 +262,20 @@ class GUIProxy(ctk.CTkFrame):
                 print(f"Error starting mitmdump: {e}")
 
         self.check_requests_list_empty()
+
+    def browser_button_update(self):
+        if self.root.browser_opened:
+            self.browser_button.configure(text="Go to browser")
+        else:
+            self.browser_button.configure(text="Open browser")
+
+    def requests_update(self):
+        """
+        Funkcja testowa do pobierania logoów z otwartej przeglądarki.
+        """
+        if self.root.requests is not None:
+            for req in self.root.requests:
+                print(json.dumps(json.loads(req["message"]), indent=5))
 
     def receive_requests(self):
         """
@@ -258,17 +319,18 @@ class GUIProxy(ctk.CTkFrame):
         """
         Funkcja do sprawdzenia czy lista w GUI jest pusta.
         """
-        if self.intercepting:
-            self.placeholder_label.configure(text="Intercept is on.")
-            self.placeholder_image.configure(image=self.intercept_on_image)
-        else:
-            self.placeholder_label.configure(text="Intercept is off.")
-            self.placeholder_image.configure(image=self.intercept_off_image)
-
         if len(self.requests_list.get_children()) == 0:
             self.placeholder_frame.lift()
+            self.forward_button.configure(state=tk.DISABLED)
+            self.drop_button.configure(state=tk.DISABLED)
+            self.send_to_intruder_button.configure(state=tk.DISABLED)
+            self.send_to_repeater_button.configure(state=tk.DISABLED)
         else:
             self.placeholder_frame.lower()
+            self.forward_button.configure(state=tk.NORMAL)
+            self.drop_button.configure(state=tk.NORMAL)
+            self.send_to_intruder_button.configure(state=tk.NORMAL)
+            self.send_to_repeater_button.configure(state=tk.NORMAL)
 
     def show_request(self, event):
         """

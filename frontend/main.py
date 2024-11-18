@@ -6,13 +6,17 @@ from intruder import *
 from repeater import *
 from logs import *
 
+ctk.set_appearance_mode("system")
+ctk.set_default_color_theme("dark-blue")
+
 
 class GUI(ctk.CTk):
     def __init__(self):
         super().__init__()
 
         self.title("Security Testing App")
-        self.geometry("1880x900+10+20")
+        # self.geometry("1880x900+10+20")
+        self.geometry("1200x600+10+20")
         self.configure(fg_color=color_bg, bg_color=color_bg)
 
         self.mainnav = ctk.CTkFrame(self, bg_color=color_bg, fg_color=color_bg)
@@ -37,7 +41,10 @@ class GUI(ctk.CTk):
         self.content_wrapper = ctk.CTkFrame(self, fg_color=color_bg_br, bg_color=color_bg_br)
         self.content_wrapper.pack(side="top", fill="both", expand=True)
 
+        self.browser_opened = False
+        self.browser = None
         self.intercepting = False
+        self.requests = None
 
         self.dashboard_frame = GUIDash(self.content_wrapper, self)
         self.target_frame = GUITarget(self.content_wrapper, self)
@@ -46,7 +53,7 @@ class GUI(ctk.CTk):
         self.repeater_frame = GUIRepeater(self.content_wrapper, self)
         self.logs_frame = GUILogs(self.content_wrapper, self)
 
-        self.show_target()
+        self.show_proxy()
 
     def show_dashboard(self):
         self.clear_content_frame()
@@ -88,6 +95,48 @@ class GUI(ctk.CTk):
                 button.set_selected(True)
             else:
                 button.set_selected(False)
+
+    def open_browser(self):
+        options = Options()
+        options.add_argument("--enable-logging")
+        options.add_argument("--log-level=0")
+        options.add_experimental_option("excludeSwitches", ["enable-logging"])
+        options.set_capability("goog:loggingPrefs", {"performance": "ALL"})
+
+        driver = webdriver.Chrome(service=Service(), options=options)
+        self.browser = driver
+        driver.get("http://www.example.com")
+
+        try:
+            while self.browser_opened:
+                self.requests = driver.get_log('performance')
+                self.proxy_frame.requests_update()
+                if len(driver.window_handles) == 0:
+                    self.browser_opened = False
+        finally:
+            self.proxy_frame.browser_button_update()
+            print("Closing Browser Window")
+            driver.quit()
+            self.browser = None
+
+    def start_browser_thread(self):
+        if self.browser is None:
+            print("Opening Browser Window")
+            self.browser_opened = True
+            browser_thread = threading.Thread(target=self.open_browser)
+            browser_thread.start()
+            self.proxy_frame.browser_button_update()
+        else:
+            try:
+                self.browser.switch_to.window(self.browser.current_window_handle)
+                self.proxy_frame.browser_button_update()
+            except Exception as e:
+                print(f"Exception occured: {e}")
+                self.browser = None
+                self.browser_opened = False
+                time.sleep(1)
+                self.start_browser_thread()
+
 
 
 app = GUI()
