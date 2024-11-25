@@ -45,6 +45,7 @@ class GUI(ctk.CTk):
         self.browser = None
         self.intercepting = False
         self.requests = None
+        self.proxy_process = None
 
         self.dashboard_frame = GUIDash(self.content_wrapper, self)
         self.target_frame = GUITarget(self.content_wrapper, self)
@@ -110,7 +111,7 @@ class GUI(ctk.CTk):
         try:
             while self.browser_opened:
                 self.requests = driver.get_log('performance')
-                self.proxy_frame.requests_update()
+                self.proxy_frame.Cs_update()
                 if len(driver.window_handles) == 0:
                     self.browser_opened = False
         finally:
@@ -137,7 +138,23 @@ class GUI(ctk.CTk):
                 time.sleep(1)
                 self.start_browser_thread()
 
+    def stop_proxy(self):
+        """Zatrzymanie procesu proxy"""
+        if self.proxy_frame.process:
+            try:
+                # Użycie terminate() do zakończenia procesu
+                self.proxy_frame.process.terminate()  # Wysyła sygnał zakończenia
+                self.proxy_frame.process.wait()  # Czeka na zakończenie procesu
+                print("Proces proxy został zatrzymany.")
+            except Exception as e:
+                print(f"Błąd przy zatrzymywaniu procesu: {e}")
+
+    def on_close(self):
+        """Zamykanie aplikacji"""
+        self.stop_proxy()
+        app.destroy()  # Zamknięcie głównego okna aplikacji
 
 
 app = GUI()
+app.protocol("WM_DELETE_WINDOW", app.on_close)
 app.mainloop()

@@ -1,4 +1,6 @@
+import os
 import time
+from operator import truediv
 
 from head import *
 import tkinter as tk
@@ -103,11 +105,10 @@ class RequestContent(ctk.CTkScrollableFrame):
         """
         Inserting text
         """
-        print(text)
         self.text_widget.configure(state='normal')
         self.text_widget.delete("0.0", "end")
         self.text_widget.insert("1.0", text)
-        self.text_widget.configure(state='disabled')
+        # lukasz self.text_widget.configure(state='disabled')
         self.update_line_numbers()
 
     def update_line_numbers(self):
@@ -118,6 +119,12 @@ class RequestContent(ctk.CTkScrollableFrame):
         line_numbers_string = "\n".join(str(i) for i in range(1, line_count + 1))
         self.line_numbers.configure(text=line_numbers_string)
 
+    def get_text(self):
+        """
+        Retrieve the current text content from the text_widget.
+        """
+        return self.text_widget.get("1.0", "end").strip()  # Use "1.0" to "end" to get all text
+
 
 class GUIProxy(ctk.CTkFrame):
     """
@@ -125,6 +132,8 @@ class GUIProxy(ctk.CTkFrame):
     """
     def __init__(self, master, root):
         super().__init__(master)
+        self.process = None
+
         self.configure(fg_color="transparent")
         self.root = root
         self.intercepting = root.intercepting
@@ -143,14 +152,14 @@ class GUIProxy(ctk.CTkFrame):
         self.icon_foward = ctk.CTkImage(
             light_image=Image.open(f"{ASSET_DIR}/icon_arrow_up.png"),
             dark_image=Image.open(f"{ASSET_DIR}/icon_arrow_up.png"), size=(20, 20))
-        self.forward_button = ActionButton(self.top_bar, text=f"Forward", image=self.icon_foward, state=tk.DISABLED, compound="left")
+        self.forward_button = ActionButton(self.top_bar, command=self.send_forward, text=f"Forward", image=self.icon_foward, state=tk.NORMAL, compound="left")
         self.forward_button.pack(side=tk.LEFT, padx=5, pady=15)
 
         self.icon_drop = ctk.CTkImage(
             light_image=Image.open(f"{ASSET_DIR}/icon_arrow_down.png"),
             dark_image=Image.open(f"{ASSET_DIR}/icon_arrow_down.png"), size=(20, 20))
         self.drop_button = ActionButton(
-            self.top_bar, text=f"Drop", image=self.icon_drop, state=tk.DISABLED, command=self.drop_request, compound="left")
+            self.top_bar, text=f"Drop", image=self.icon_drop, state=tk.NORMAL, command=self.drop_request, compound="left")
         self.drop_button.pack(side=tk.LEFT, padx=5, pady=15)
 
         self.send_to_repeater_button = ActionButton(self.top_bar, text=f"Send to repeater", state=tk.DISABLED)
@@ -213,7 +222,8 @@ class GUIProxy(ctk.CTkFrame):
         self.placeholder_label = ctk.CTkLabel(self.placeholder_frame, text="Intercept is off")
         self.placeholder_label.pack(pady=5,expand=True)
 
-        self.check_requests_list_empty()
+        #lukasz
+        #self.check_requests_list_empty()
 
         self.request_wrapper = ctk.CTkFrame(self.bottom_pane)
         self.request_wrapper.pack(fill="both",expand=True)
@@ -237,6 +247,8 @@ class GUIProxy(ctk.CTkFrame):
         self.update_thread.daemon = True
         self.update_thread.start()
 
+
+
     def toggle_intercept(self):
         if self.intercepting:
             self.toggle_intercept_button.configure(text="Intercept off", image=self.icon_toggle_off, fg_color=accent_fg_color)
@@ -251,17 +263,39 @@ class GUIProxy(ctk.CTkFrame):
             self.placeholder_image.configure(image=self.intercept_on_image)
             print("Turning intercept on.")
 
-            path = r"backend"
-            command = f"start cmd /K mitmdump -s proxy.py "
-            command = f"start cmd /K mitmdump -s proxy.py --listen-port 8082"
+            if not self.process:  # jeżeli proxy nie włączone
+                current_dir = os.path.dirname(os.path.abspath(__file__))
+                backend_dir = os.path.join(current_dir, "..", "backend")
+                proxy_script = os.path.join(backend_dir, "proxy.py")
+                command = ["mitmdump", "-s", proxy_script, "--listen-port", "8082"]
 
-            try:
-                subprocess.Popen(command, cwd=path, shell=True)
-                print(f"Uruchomiono: {command}")
-            except Exception as e:
-                print(f"Error starting mitmdump: {e}")
 
-        self.check_requests_list_empty()
+                threading.Thread(target=self.run_mitmdump, args=(command, backend_dir)).start()
+            self.intercepting = True
+        #lukasz
+        #self.check_requests_list_empty()
+
+    def run_mitmdump(self, command, cwd):
+        try:
+            self.process = subprocess.Popen(
+                command,
+                cwd=cwd,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+            )
+            print("Mitmdump uruchomiony.")
+            stdout, stderr = self.process.communicate()
+
+            # Przetwarzanie wyjścia
+            if stdout:
+                print(f"Mitmdump stdout:\n{stdout.decode('utf-8', errors='ignore')}")
+            if stderr:
+                print(f"Mitmdump stderr:\n{stderr.decode('utf-8', errors='ignore')}")
+
+        except Exception as e:
+            print(f"Błąd podczas uruchamiania mitmdump: {e}")
+        finally:
+            self.process = None
 
     def browser_button_update(self):
         if self.root.browser_opened:
@@ -291,6 +325,34 @@ class GUIProxy(ctk.CTkFrame):
                     if request_data:
                         self.add_request(request_data)
 
+    def send_scope(self):
+        """Wysyła scope do proxy"""
+        try:
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                s.connect((HOST, PORT_INTERCEPT))
+                s.sendall(str(self.scope).encode('utf-8'))
+        except Exception as e:
+            print(f"Błąd przy wysyłaniu żądania do PROXY: {e}")
+
+    def send_forward(self):
+        """Wysyła potwierdzenai naciśniecia forward z contentem textpoxa requesta"""
+        http_message = self.request_content.get_text()
+        message = "True\n" + http_message
+        try:
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                s.connect((HOST, PORT_GUI))
+                s.sendall(message.encode('utf-8'))
+        except Exception as e:
+            print(f"Błąd przy wysyłaniu żądania do PROXY: {e}")
+
+    #lukasz
+    # def check_requests_list_empty(self):
+    #     if self.intercepting:
+    #         if len(self.requests_list.get_children()) == 0:
+    #             self.placeholder_frame.lift()
+    #         else:
+    #             self.placeholder_frame.lower()
+
     def add_request(self, request_info):
         """
         Funkcja do dodawania żądań do listy w GUI.
@@ -304,16 +366,26 @@ class GUIProxy(ctk.CTkFrame):
         self.requests_list.insert("", tk.END, values=generate_random_reqeust())
         self.requests_list.selection_remove(self.requests_list.get_children())
         self.requests_list.selection_add(self.requests_list.get_children()[-1])
-        self.check_requests_list_empty()
+        #self.check_requests_list_empty()
 
     def drop_request(self):
         """
         Funkcja do usuwania żądania do listy w GUI.
         """
+
+        http_message = self.request_content.get_text()
+        message = "False" + http_message
+        try:
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                s.connect((HOST, PORT_GUI))
+                s.sendall(message.encode('utf-8'))
+        except Exception as e:
+            print(f"Błąd przy wysyłaniu żądania do PROXY: {e}")
         self.requests_list.drop_selected()
-        if len(self.requests_list.get_children()) > 0:
-            self.requests_list.selection_add(self.requests_list.get_children()[-1])
-        self.check_requests_list_empty()
+        #lukasz
+        # if len(self.requests_list.get_children()) > 0:
+        #     self.requests_list.selection_add(self.requests_list.get_children()[-1])
+        # self.check_requests_list_empty()
 
     def check_requests_list_empty(self):
         """

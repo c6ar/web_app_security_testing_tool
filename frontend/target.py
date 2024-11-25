@@ -30,7 +30,7 @@ class FileTree(ttk.Frame):
         # This dictionary maps the treeview items IDs with the
         # path of the file or folder.
         self.fsobjects: dict[str, Path] = {}
-        self.file_image = tk.PhotoImage(file=f"{ASSET_DIR}/file.png")
+        self.file_image = tk.PhotoImage(file=f"{ASSET_DIR}\\file.png")
         self.folder_image = tk.PhotoImage(file=f"{ASSET_DIR}/folder.png")
 
         self.popup_menu = tk.Menu(self.treeview, tearoff=0)
