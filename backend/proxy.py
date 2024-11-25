@@ -1,61 +1,36 @@
+import urllib.parse
 import mitmproxy.http
+
 import socket
-from datetime import datetime
+
+from pyexpat.errors import messages
+
+import dataParse as dp
 
 
 HOST = '127.0.0.1'  
 PORT_SERVER = 65432    
 PORT_GUI = 65433    
 
-class Request:
-    def __init__(self, time, type, direction, method, url, status_code, content):
-        self.time = time
-        self.type = type
-        self.direction = direction
-        self.method = method
-        self.url = url
-        self.status_code = status_code
-        self.content = content
-
-    def __str__(self):
-        return (
-            f"Request Information:\n"
-            f"  Time: {self.time}\n"
-            f"  Type: {self.type}\n"
-            f"  Direction: {self.direction}\n"
-            f"  Method: {self.method}\n"
-            f"  URL: {self.url}\n"
-            f"  Status Code: {self.status_code}\n"
-            f"  Content: {self.content.decode('ascii', errors='replace')}"
-        )
 
 class WebRequestInterceptor:
-    telemetry_domains = ["mozilla.org", "chrome.com", "telemetry"]
     def __init__(self):
+        self.telemetry_domains = ["overthewire.org"]
         self.forward_flag = False
-        self.drop_flag = False
 
     def request(self, flow: mitmproxy.http.HTTPFlow):
+        """
+        Droga każdego requesta (filtr, drop/forward)
+        """
         request = flow.request
-        time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-        
-        if any(domain in request.url for domain in self.telemetry_domains):
-            return  
-        
-        req = Request(
-            time=time,
-            type=request.scheme.upper(),
-            direction="outgoing",
-            method=request.method,
-            url=request.url,
-            status_code=None,  
-            content=request.content
-        )
-        print(req)
+#TODO proxy włączone cały czas, przycisk intercept wyłącza filtrowanie z telemetry domains
+        if any(domain not in request.url for domain in self.telemetry_domains):
+            return
 
-        
-        self.send_request_to_gui(str(req))
+        req = dp.convert_to_http_message(flow.request.data)
+
+        self.send_request_to_gui(req)
         flow.intercept()
         self.forward_request(flow)
 
@@ -67,6 +42,7 @@ class WebRequestInterceptor:
                 s.sendall(request_info.encode('utf-8'))
         except Exception as e:
             print(f"Błąd przy wysyłaniu żądania do GUI: {e}")
+
     def forward_request(self, flow):
         """
         Funkcja do odbierania czy nacisnięcia przycisku Forward.
@@ -78,18 +54,26 @@ class WebRequestInterceptor:
           
             conn, addr = s.accept()
             with conn:
-                    # Odbieramy dane i interpretujemy je jako boolean (True/False)
                     data = conn.recv(1024).decode('utf-8')
-                    self.forward_flag = (data == 'True')  # Sprawdzamy, czy dane to 'True'
-                    self.handle_flow_state(flow)
+                    self.forward_flag = (data.splitlines()[0] == "True")
+                    if self.forward_flag:
+                        raw_http_message = data.splitlines()[1:]
+                        flow.request = dp.parse_http_message("\n".join(raw_http_message))#mitmproxy.http.Request.make(http_message, url)
+                        flow.resume()
+                    else:
+#TODO zmiana request data na podstawioną stronę (request dropped)
+                        flow.kill()
                     self.forward_flag = False
-                    
-    def handle_flow_state(self,flow):
-        if self.forward_flag:
-            print(self.forward_flag)
-            flow.resume()
-        elif self.drop_flag:
-            flow.kill()
+
+    def change_request_data(self, flow, request_data):
+        flow.request.method = request_data['method']
+        flow.request.http_version = request_data['http_version']
+        flow.request.path = request_data['path']
+        flow.request.headers.clear()
+        for key, value in request_data['headers']:
+            flow.request.headers[key] = value
+        flow.request.text = request_data['content'].decode('utf-8')
+
 
 addons = [
     WebRequestInterceptor()
