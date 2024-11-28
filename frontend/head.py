@@ -15,34 +15,45 @@ ASSET_DIR = f"{Path.cwd()}\\assets"
 
 
 class NavButton(ctk.CTkFrame):
-    def __init__(self, master, text, command, font):
+    def __init__(self, master, text, command, font, background=color_bg, background_selected=color_bg_br):
         super().__init__(master)
+
+        self.bg = background
+        self.bg_sel = background_selected
 
         text_width = font.measure(text)
         button_width = text_width + 25
 
+        self.configure(
+            bg_color="transparent",
+            fg_color="transparent"
+        )
+
         self.main_button = ctk.CTkButton(self)
         self.main_button.configure(
+            border_width=0,
             width=button_width,
-            corner_radius=0,
-            fg_color=color_bg,
-            bg_color=color_bg,
+            corner_radius=10,
+            bg_color=self.bg,
+            fg_color=self.bg,
             hover_color=color_acc,
             text=text,
             command=command,
-            font=font)
-        self.main_button.pack()
-
-        self.bottom_border = ctk.CTkFrame(self, height=3, width=self.main_button.winfo_reqwidth(), fg_color=color_bg)
-        self.bottom_border.pack(side="bottom", fill="x")
-
+            font=font,
+            background_corner_colors=(self.bg,self.bg,self.bg,self.bg)
+        )
+        self.main_button.pack(padx=3)
         self.selected = False
 
     def set_selected(self, value):
         self.selected = value
         if self.selected:
-            self.main_button.configure(fg_color=color_bg_br)
-            self.bottom_border.configure(fg_color=color_acc)
+            self.main_button.configure(
+                fg_color=self.bg_sel,
+                background_corner_colors=(self.bg,self.bg,self.bg_sel,self.bg_sel)
+            )
         else:
-            self.main_button.configure(fg_color=color_bg)
-            self.bottom_border.configure(fg_color=color_bg)
+            self.main_button.configure(
+                fg_color=self.bg,
+                background_corner_colors=(self.bg,self.bg,self.bg,self.bg)
+            )

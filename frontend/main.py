@@ -1,10 +1,9 @@
 from head import *
-from dashboard import *
 from proxy import *
-from target import *
 from intruder import *
 from repeater import *
 from logs import *
+
 
 ctk.set_appearance_mode("system")
 ctk.set_default_color_theme("dark-blue")
@@ -15,16 +14,15 @@ class GUI(ctk.CTk):
         super().__init__()
 
         self.title("Security Testing App")
-        # self.geometry("1880x900+10+20")
-        self.geometry("1200x600+10+20")
+        self.initial_width = 1200
+        self.initial_height = 900
+        self.geometry(f"{self.initial_width}x{self.initial_height}+10+20")
         self.configure(fg_color=color_bg, bg_color=color_bg)
 
         self.mainnav = ctk.CTkFrame(self, bg_color=color_bg, fg_color=color_bg)
-        self.mainnav.pack(side="top", fill="x", padx=0, pady=0)
+        self.mainnav.pack(side="top", fill="x", padx=10, pady=(10,0))
 
         buttons_set = {
-            "Dashboard": self.show_dashboard,
-            "Target": self.show_target,
             "Proxy": self.show_proxy,
             "Intruder": self.show_intruder,
             "Repeater": self.show_repeater,
@@ -38,6 +36,9 @@ class GUI(ctk.CTk):
                                               font=ctk.CTkFont(family="Calibri", size=15, weight="bold"))
             self.navbuttons[name].pack(side="left")
 
+        self.about_button = NavButton(self.mainnav, text="About", command=self.about, font=ctk.CTkFont(family="Calibri", size=15, weight="bold"))
+        self.about_button.pack(side="right")
+
         self.content_wrapper = ctk.CTkFrame(self, fg_color=color_bg_br, bg_color=color_bg_br)
         self.content_wrapper.pack(side="top", fill="both", expand=True)
 
@@ -46,8 +47,6 @@ class GUI(ctk.CTk):
         self.intercepting = False
         self.requests = None
 
-        self.dashboard_frame = GUIDash(self.content_wrapper, self)
-        self.target_frame = GUITarget(self.content_wrapper, self)
         self.proxy_frame = GUIProxy(self.content_wrapper, self)
         self.intruder_frame = GUIIntruder(self.content_wrapper, self)
         self.repeater_frame = GUIRepeater(self.content_wrapper, self)
@@ -55,15 +54,8 @@ class GUI(ctk.CTk):
 
         self.show_proxy()
 
-    def show_dashboard(self):
-        self.clear_content_frame()
-        self.dashboard_frame.pack(side="top", fill="both", expand=True)
-        self.select_button(self.navbuttons["Dashboard"])
-
-    def show_target(self):
-        self.clear_content_frame()
-        self.target_frame.pack(side="top", fill="both", expand=True)
-        self.select_button(self.navbuttons["Target"])
+    def about(self):
+        print("About clicked.")
 
     def show_proxy(self):
         self.clear_content_frame()
@@ -136,7 +128,6 @@ class GUI(ctk.CTk):
                 self.browser_opened = False
                 time.sleep(1)
                 self.start_browser_thread()
-
 
 
 app = GUI()
