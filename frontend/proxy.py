@@ -21,6 +21,10 @@ import threading
 from PIL import Image, ImageTk
 from test_functions import *
 import json
+from selenium import webdriver
+from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.chrome.options import Options
+import chromedriver_autoinstaller
 import threading
 from mitmproxy.http import Headers, Request
 

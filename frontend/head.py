@@ -11,6 +11,9 @@ color_acc2 = ctk.ThemeManager.theme["CTkButton"]["hover_color"][1]
 color_acc3 = "#d1641b"
 color_acc4 = "#924511"
 
+HOST = '127.0.0.1'  # Ten sam adres IP, co w serwerze
+PORT_SERVER = 65432  # Do komunikacji proxy.py -> GUI
+PORT_GUI = 65433  # Do komunikacji GUIT -> proxy.py
 
 CURRENT_DIR = f"{Path.cwd()}"
 ASSET_DIR = f"{Path.cwd()}\\assets"
