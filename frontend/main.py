@@ -1,3 +1,9 @@
+import time
+from selenium import webdriver
+from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.chrome.options import Options
+import chromedriver_autoinstaller
+
 from head import *
 from proxy import *
 from intruder import *
@@ -5,7 +11,7 @@ from repeater import *
 from logs import *
 
 
-ctk.set_appearance_mode("system")
+ctk.set_appearance_mode("dark")
 ctk.set_default_color_theme("dark-blue")
 
 
@@ -13,7 +19,7 @@ class GUI(ctk.CTk):
     def __init__(self):
         super().__init__()
 
-        self.title("Security Testing App")
+        self.title("SecuTest | Security Testing App")
         self.initial_width = 1200
         self.initial_height = 900
         self.geometry(f"{self.initial_width}x{self.initial_height}+10+20")
@@ -32,11 +38,11 @@ class GUI(ctk.CTk):
         self.navbuttons = {}
 
         for name, command in buttons_set.items():
-            self.navbuttons[name] = NavButton(self.mainnav, text=name, command=command,
+            self.navbuttons[name] = NavButton(self.mainnav, text=name.upper(), command=command,
                                               font=ctk.CTkFont(family="Calibri", size=15, weight="bold"))
             self.navbuttons[name].pack(side="left")
 
-        self.about_button = NavButton(self.mainnav, text="About", command=self.about, font=ctk.CTkFont(family="Calibri", size=15, weight="bold"))
+        self.about_button = NavButton(self.mainnav, text="ABOUT", command=self.about, font=ctk.CTkFont(family="Calibri", size=15, weight="bold"))
         self.about_button.pack(side="right")
 
         self.content_wrapper = ctk.CTkFrame(self, fg_color=color_bg_br, bg_color=color_bg_br)
