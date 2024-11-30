@@ -3,6 +3,7 @@ from pathlib import Path
 from PIL import Image, ImageTk
 from backend.global_setup import  *
 
+from PIL import Image, ImageTk
 color_bg = "#222"
 color_bg_br = "#333"
 ctk.set_default_color_theme("dark-blue")
