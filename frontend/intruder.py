@@ -222,13 +222,13 @@ class NumberedFrame(ctk.CTkFrame):
         # print(f"Debug:\n cursor pos: {cursor}\n selection: {selection}\n selection indices: {selection_indices}")
 
         if selection is None:
-            new_var = f"§var{self.positions_var_gen_id}§"
-            var_name = new_var[1:-1]
+            var_name = f"var{self.positions_var_gen_id}"
+            var_string = f"§{var_name}§"
             self.positions_var_gen_id += 1
 
             if not self.is_overlapping(cursor, cursor + "+1c"):
                 self.positions_text._textbox.tag_configure(var_name, background="#8b115f", foreground="#b9d918")
-                self.positions_text.insert(cursor, new_var)
+                self.positions_text.insert(cursor, var_string)
 
                 next_cursor = self.get_cursor_position()
                 self.positions_text.tag_add(var_name, cursor, next_cursor)
@@ -237,14 +237,20 @@ class NumberedFrame(ctk.CTkFrame):
             else:
                 print("Error: Cursor is inside or overlapping with an existing tag.")
         else:
-            new_var = f"§{re.sub(r'[^a-zA-Z0-9_]', '', selection)}§"
-            var_name = new_var[1:-1]
+            var_name = re.sub(r'\s+', '_', selection)
+            var_name = re.sub(r'[^a-zA-Z0-9_]', '', var_name)
+            for tag in self.positions_text._textbox.tag_names():
+                if tag == var_name:
+                    print(self.positions_text._textbox.tag_names())
+                    print("Cannot add variable. There currently is variable by this name!")
+                    return
+            var_string = f"§{var_name}§"
             x, y = selection_indices
 
             if x.split('.')[0] == y.split('.')[0]:
                 if not self.is_overlapping(x, y):
                     self.positions_text.delete(x, y)
-                    self.positions_text.insert(x, new_var)
+                    self.positions_text.insert(x, var_string)
                     y = self.get_cursor_position()
                     self.positions_text._textbox.tag_configure(var_name, background="#8b115f", foreground="#b9d918")
                     self.positions_text.tag_add(var_name, x, y)
@@ -274,8 +280,10 @@ class NumberedFrame(ctk.CTkFrame):
                                                                                                                 "<",
                                                                                                                 tag_end):
                         # Cursor is inside an existing tag, remove the tag
-                        print(tag)
                         self.positions_text._textbox.tag_remove(tag, tag_start, tag_end)
+                        self.positions_text._textbox.tag_delete(tag)
+                        self.positions_text.delete(tag_start, tag_start + "+1c")
+                        self.positions_text.delete(tag_end + "-2c", tag_end + "-1c")
                         self.payloads_frames[tag].pack_forget()
                         del self.payloads_frames[tag]
                         return
@@ -287,8 +295,10 @@ class NumberedFrame(ctk.CTkFrame):
                 for i in range(0, len(tag_ranges), 2):
                     tag_start = self.positions_text._textbox.index(tag_ranges[i])
                     tag_end = self.positions_text._textbox.index(tag_ranges[i + 1])
-                    print(tag)
                     self.positions_text._textbox.tag_remove(tag, tag_start, tag_end)
+                    self.positions_text._textbox.tag_delete(tag)
+                    self.positions_text.delete(tag_start, tag_start + "+1c")
+                    self.positions_text.delete(tag_end + "-2c", tag_end + "-1c")
                     self.payloads_frames[tag].pack_forget()
                     del self.payloads_frames[tag]
         else:
@@ -314,8 +324,10 @@ class NumberedFrame(ctk.CTkFrame):
                                                                                                                       "<=",
                                                                                                                       tag_end)):
                         # Tag is overlapping or within the selection, remove the tag
-                        print(tag)
                         self.positions_text._textbox.tag_remove(tag, tag_start, tag_end)
+                        self.positions_text._textbox.tag_delete(tag)
+                        self.positions_text.delete(tag_start, tag_start + "+1c")
+                        self.positions_text.delete(tag_end + "-2c", tag_end + "-1c")
                         self.payloads_frames[tag].pack_forget()
                         del self.payloads_frames[tag]
 
