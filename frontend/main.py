@@ -5,9 +5,7 @@ from selenium.webdriver.chrome.options import Options
 import chromedriver_autoinstaller
 
 from head import *
-from dashboard import *
 from proxy import *
-from target import *
 from intruder import *
 from repeater import *
 from logs import *
@@ -153,7 +151,6 @@ class GUI(ctk.CTk):
         """Zamykanie aplikacji"""
         self.stop_proxy()
         app.destroy()  # Zamknięcie głównego okna aplikacji
-
 
 app = GUI()
 app.protocol("WM_DELETE_WINDOW", app.on_close)
