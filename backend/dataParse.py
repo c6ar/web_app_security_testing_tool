@@ -1,37 +1,7 @@
-import re
-from traceback import print_tb
-
-
 from mitmproxy.http import Headers, Request
 from urllib.parse import urlparse
-from datetime import datetime
 
-def convert_to_http_message(request_data):
-    """
-    backend/proxy -> frontend/proxy
-    Converts RequestData object to an HTTP message string.
-    """
 
-    # Start with the request line
-    method = request_data.method.decode('utf-8')
-    path = request_data.path.decode('utf-8')
-    version = request_data.http_version.decode('utf-8')
-    http_message = f"{method} {path} {version}\r\n"
-
-    # Add headers
-
-    for key, value in request_data.headers.items():
-        http_message += f"{key}: {value}\r\n"
-
-    # Add content if present
-    if request_data.content:
-        content_length = len(request_data.content)
-        http_message += f"Content-Length: {content_length}\r\n\r\n"
-        http_message += request_data.content.decode('utf-8')
-    else:
-        http_message += "\r\n"  # End of headers
-
-    return http_message
 
 def parse_http_message(raw_request):
     """

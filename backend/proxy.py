@@ -1,78 +1,192 @@
-import urllib.parse
+import pickle
+from time import sleep
+
 import mitmproxy.http
-
 import socket
+from mitmproxy import http
+from flask import request
 
-from pyexpat.errors import messages
+from mitmproxy.http import Request
+from global_setup import *
+from mitmproxy import http
+import asyncio
+import threading
 
-import dataParse as dp
 
+#TODO usuwanie requesta ze scope?
 
-HOST = '127.0.0.1'  
-PORT_SERVER = 65432    
-PORT_GUI = 65433    
+#TODO przycisk intercept podmienia  scope filter
 
 
 class WebRequestInterceptor:
     def __init__(self):
-        self.telemetry_domains = ["overthewire.org"]
-        self.forward_flag = False
+        self.scope = []
+        self.loop = asyncio.new_event_loop()  # Tworzymy pętlę asyncio dla tego obiektu
+        self.start_async_servers()  # Uruchamiamy serwery asynchroniczne w tle
+        self.current_flow = None
 
     def request(self, flow: mitmproxy.http.HTTPFlow):
         """
-        Droga każdego requesta (filtr, drop/forward)
+        Made for mitmproxy, triggered when new HTTPFlow is created.
+        Acts as a bridge between mitmproxy and the rest of the program.
         """
+        print(self.scope)
         request = flow.request
-
-#TODO proxy włączone cały czas, przycisk intercept wyłącza filtrowanie z telemetry domains
-        if any(domain not in request.url for domain in self.telemetry_domains):
-            return
-
-        req = dp.convert_to_http_message(flow.request.data)
-
-        self.send_request_to_gui(req)
+        self.current_flow = flow
         flow.intercept()
-        self.forward_request(flow)
 
-    def send_request_to_gui(self, request_info):
-        """Wysyła żądanie do aplikacji GUI przez gniazdo"""
+        if "mozilla.org" in request.host:
+            """
+            Filters out telemetry 
+            """
+            flow.request = Request.make(
+                method="POST",
+                url="https://google.com",
+                content="",
+                headers={"Accept": "*/*"}
+            )
+            flow.resume()
+        elif request.host not in self.scope:
+            if flow.intercepted:
+                flow.resume()
+            #self.send_flow_to_http_trafic_tab(flow)
+        else:
+            self.send_request2_to_scope_tab(request)
+            self.recieve_reques_from_scope_forward_button(flow)
+
+    def response(self, flow: mitmproxy.http.HTTPFlow ):
+        if flow.response:
+            self.send_flow_to_http_trafic_tab(flow)
+
+    def start_async_servers(self):
+        """
+        Starts the asyncio servers in a separate thread to handle scope updates and flow killing asynchronously.
+        """
+        def run_servers():
+            asyncio.set_event_loop(self.loop)
+            tasks = [
+                self.add_host_to_scope(),
+                self.listen_for_kill_flow(),
+            ]
+            self.loop.run_until_complete(asyncio.gather(*tasks))
+
+        thread = threading.Thread(target=run_servers, daemon=True)
+        thread.start()
+
+    async def add_host_to_scope(self):
+        """
+        Asynchronously receives and adds hostname to scope.
+        """
+        server = await asyncio.start_server(
+            self.handle_scope_update, HOST, FRONT_BACK_SCOPEUPDATE_PORT
+        )
+        async with server:
+            await server.serve_forever()
+
+    async def listen_for_kill_flow(self):
+        """
+        Asynchronously listens for flow kill requests.
+        """
+        server = await asyncio.start_server(
+            self.handle_kill_request, HOST, FRONT_BACK_DROPREQUEST_PORT
+        )
+        async with server:
+            await server.serve_forever()
+
+    async def handle_scope_update(self, reader, writer):
+        """
+        Handles incoming scope updates.
+        """
+        data = await reader.read(4096)
+        if data:
+            deserialized_request = pickle.loads(data)
+            self.scope.append(deserialized_request.host)
+            print("Host added to scope:", deserialized_request.host)
+        writer.close()
+        await writer.wait_closed()
+
+    async def handle_kill_request(self, reader, writer):
+        """
+        Handles incoming requests to kill a flow.
+        """
+        data = await reader.read(4096)
+        if data:
+            bad_request = Request.make(
+                method="POST",
+                url="https://google.com",
+                content="",
+                headers={"Accept": "*/*"}
+            )
+
+            self.current_flow.request.data = bad_request.data
+            self.current_flow.resume()
+            print(f"Received request to kill flow")
+            # This is a placeholder; you'll need to replace this with actual flow handling
+        writer.close()
+        await writer.wait_closed()
+
+    def send_flow_to_http_trafic_tab(self, flow):
+        """
+        Serializes flow and sends it to GUI HTTP traffic tab.
+        """
+        try:
+            serialized_flow = pickle.dumps(flow)
+        except Exception as e:
+            print(f"Error while serialization before sending to http traffic tab: {e}")
         try:
             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-                s.connect((HOST, PORT_SERVER))
-                s.sendall(request_info.encode('utf-8'))
+                s.connect((HOST, BACK_FRONT_HISTORYREQUESTS_PORT))
+                s.sendall(serialized_flow)
         except Exception as e:
-            print(f"Błąd przy wysyłaniu żądania do GUI: {e}")
+            print(f"Error while sending request to http tab: {e}")
 
-    def forward_request(self, flow):
+    def send_request2_to_scope_tab(self, request):
         """
-        Funkcja do odbierania czy nacisnięcia przycisku Forward.
+        Serializes request and sends it to GUI scope tab.
+        """
+        try:
+            serialized_request2 = pickle.dumps(request)
+        except Exception as e:
+            print(f"Error while serialization before sending to scope tab: {e}")
+        try:
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                s.connect((HOST, BACK_FRONT_SCOPEREQUESTS_PORT))
+                s.sendall(serialized_request2)
+        except Exception as e:
+            print(f"Error while sending request to scope tab: {e}")
+
+    def recieve_reques_from_scope_forward_button(self, flow):
+        """
+        Receives request from GUI when forward button in scope is pressed.
         """
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-            s.bind((HOST, PORT_GUI))
+            s.bind((HOST, FRONT_BACK_FORWARDBUTTON_PORT))
             s.listen()
 
-          
             conn, addr = s.accept()
             with conn:
-                    data = conn.recv(1024).decode('utf-8')
-                    self.forward_flag = (data.splitlines()[0] == "True")
-                    if self.forward_flag:
-                        raw_http_message = data.splitlines()[1:]
-                        flow.request = dp.parse_http_message("\n".join(raw_http_message))#mitmproxy.http.Request.make(http_message, url)
+                serialized_reqeust = conn.recv(4096)
+                if serialized_reqeust:
+                    deserialize_reqeust = pickle.loads(serialized_reqeust)
+                    flow.request.data = deserialize_reqeust.data
+                    if flow.intercepted:
                         flow.resume()
-                    else:
-#TODO zmiana request data na podstawioną stronę (request dropped)
-                        flow.kill()
-                    self.forward_flag = False
 
-    def change_request_data(self, flow, request_data):
-        flow.request.method = request_data['method']
-        flow.request.http_version = request_data['http_version']
-        flow.request.path = request_data['path']
-        flow.request.headers.clear()
-        for key, value in request_data['headers']:
-            flow.request.headers[key] = value
-        flow.request.text = request_data['content'].decode('utf-8')
+    def kill_flow(self):
+        """
+        Kills flow when drop button in scope tab is pressed.
+        """
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            s.bind((HOST, FRONT_BACK_DROPREQUEST_PORT))
+            s.listen()
+
+            while True:
+                conn, addr = s.accept()
+                with conn:
+                    flag = conn.recv(4096)
+                    if flag:
+                        print("kill")
+                        self.current_flow.kill()
 
 
 addons = [
