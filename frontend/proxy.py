@@ -420,6 +420,7 @@ class GUIProxy(ctk.CTkFrame):
             self.sf_placeholder_label.configure(text="Intercept is off.")
             self.sf_placeholder_image.configure(image=self.intercept_off_image)
             print("Turning intercept off.")
+            self.change_intercept_state()
         else:
             self.toggle_intercept_button.configure(text="Intercept on", image=self.icon_toggle_on,
                                                    fg_color=color_acc, hover_color=color_acc2)
@@ -427,16 +428,18 @@ class GUIProxy(ctk.CTkFrame):
             self.sf_placeholder_label.configure(text="Intercept is on.")
             self.sf_placeholder_image.configure(image=self.intercept_on_image)
             print("Turning intercept on.")
+            self.change_intercept_state()
 
-            if not self.process:  # jeżeli proxy nie włączone
-                current_dir = os.path.dirname(os.path.abspath(__file__))
-                backend_dir = os.path.join(current_dir, "..", "backend")
-                proxy_script = os.path.join(backend_dir, "proxy.py")
-                command = ["mitmdump", "-s", proxy_script, "--listen-port", "8082"]
+    def change_intercept_state(self):
+        flag = "Change state"
+        try:
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                s.connect((HOST, FRONT_BACK_INTERCEPTBUTTON_PORT))
+                serialized_flag = flag.encode("utf-8")
+                s.sendall(serialized_flag)
+        except Exception as e:
+            print(f"Error while sending change intercept state flag: {e}")
 
-
-                threading.Thread(target=self.run_mitmdump, args=(command, backend_dir)).start()
-            self.intercepting = True
         #lukasz
         #self.check_requests_list_empty()
 
@@ -503,7 +506,6 @@ class GUIProxy(ctk.CTkFrame):
                         self.add_reqeust_to_list_http_traffic(request2.return_http_message())
                         self.show_history_response_content(response)
 
-
     def receive_and_add_to_scope(self):
         """
            Receives request from flow.request and adds it to scope tab.
@@ -527,7 +529,7 @@ class GUIProxy(ctk.CTkFrame):
                             print(f"Error while deserialization recived in scope: {e}")
 
                         request2 = Request2.from_request(deserialized_request)
-                        request2.
+                        # request2.
 
     def send_reqeust_from_scope(self):
         """
@@ -543,6 +545,7 @@ class GUIProxy(ctk.CTkFrame):
                 s.sendall(serialized_reqeust)
         except Exception as e:
             print(f"Error while sending after Forward button: {e}")
+
     #TODO zaktualizować zeby reqeusty z back były brane pod uwage
 
     #lukasz
@@ -557,7 +560,8 @@ class GUIProxy(ctk.CTkFrame):
         """
         Adds request to HTTP traffic list in GUI.
         """
-        self.hhf_requests_list.insert("", tk.END, values=request_info[0].split('\n'))
+        #TODO zmiana przesyłanych wartości tak by można było stworzyć http message do textboxa,
+        self.hhf_requests_list.insert("", tk.END, values=request_info.split('\n'))
 
     def add_random_request(self):
         """
@@ -578,7 +582,6 @@ class GUIProxy(ctk.CTkFrame):
         try:
             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
                 s.connect((HOST, FRONT_BACK_DROPREQUEST_PORT))
-                # Send serialized object
                 serialized_flag = flag.encode("utf-8")
                 s.sendall(serialized_flag)
         except Exception as e:
@@ -634,7 +637,6 @@ class GUIProxy(ctk.CTkFrame):
             # response_title
             # response.length
 
-
     def send_request_to_filter(self):
         """
         Updates filtering in backend logic, sends hostname
@@ -668,8 +670,6 @@ class GUIProxy(ctk.CTkFrame):
         #         print(f"Błąd przy wysyłaniu żądania do PROXY: {e}")
         # else:
 
-
-
     def check_requests_list_empty(self):
         """
         Checks if lists in Gui are empty
@@ -699,7 +699,11 @@ class GUIProxy(ctk.CTkFrame):
             self.hh_request_textbox.insert_text("Select a request to display its contents.")
 
     def show_history_response_content(self, response):
-       self.hh_response_textbox.insert_text(response)
+        """
+        Shows HTTP response body in Http history in text box
+        """
+
+        self.hh_response_textbox.insert_text(response.content)
 
     def show_scope_request_content(self, event):
         """
@@ -712,6 +716,3 @@ class GUIProxy(ctk.CTkFrame):
         else:
            self.sf_request_content.insert_text("Select a request to display its contents.")
 
-
-
-#TODO dodanie response w http history tab
