@@ -1,3 +1,4 @@
+import ctypes
 import time
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
@@ -10,8 +11,7 @@ from intruder import *
 from repeater import *
 from logs import *
 
-
-ctk.set_appearance_mode("dark")
+ctk.set_appearance_mode("system")
 ctk.set_default_color_theme("dark-blue")
 
 
@@ -19,12 +19,12 @@ class GUI(ctk.CTk):
     def __init__(self):
         super().__init__()
 
-        self.title("SecuTest | Security Testing App")
+        self.title("WASTT | Web App Security Testing Tool")
         self.initial_width = 1200
         self.initial_height = 900
         self.geometry(f"{self.initial_width}x{self.initial_height}+10+20")
         self.configure(fg_color=color_bg, bg_color=color_bg)
-
+        self.iconbitmap(f"{ASSET_DIR}\\wast_4x.ico")
         self.mainnav = ctk.CTkFrame(self, bg_color=color_bg, fg_color=color_bg)
         self.mainnav.pack(side="top", fill="x", padx=10, pady=(10,0))
 
@@ -151,7 +151,6 @@ class GUI(ctk.CTk):
         """Zamykanie aplikacji"""
         self.stop_proxy()
         app.destroy()  # Zamknięcie głównego okna aplikacji
-
 
 app = GUI()
 app.protocol("WM_DELETE_WINDOW", app.on_close)

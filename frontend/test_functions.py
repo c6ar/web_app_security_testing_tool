@@ -10,9 +10,8 @@ def test2(n):
 
 
 def generate_random_reqeust():
-    time = f"{random.randint(0, 23):02}:{random.randint(0, 59):02}"
-    entry_type = random.choice(["Info", "Warning", "Error"])
-    direction = random.choice(["Inbound", "Outbound"])
+    url = f"http://{random.choice(['example', 'test', 'check', 'domain'])}.{random.choice(['org', 'com', 'pl', 'eu'])}/"
+    path = f"/{random.choice(['entry', 'page', '', 'test', 'subpage'])}"
     method = random.choice(["GET", "POST", "PUT", "DELETE"])
-    url = f"http://example.com/{random.randint(1000, 9999)}"
-    return time, entry_type, direction, method, url
+    content = "Lorem\nipsum\nhere"
+    return url, path, method, content
