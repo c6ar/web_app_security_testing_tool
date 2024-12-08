@@ -1,8 +1,5 @@
 import os
 import pickle
-
-
-
 from backend.Request import *
 import dill
 import time
@@ -179,16 +176,10 @@ class GUIProxy(ctk.CTkFrame):
         self.toggle_intercept_button = ActionButton(
             self.sf_top_bar, text="Intercept off", image=self.icon_toggle_off, command=self.toggle_intercept,
             fg_color=color_acc3, hover_color=color_acc4, compound="left", corner_radius=32)
-        self.toggle_intercept_button.pack(side=tk.LEFT, padx=(10, 15), pady=15)
 
         self.icon_foward = ctk.CTkImage(
             light_image=Image.open(f"{ASSET_DIR}\\icon_arrow_up.png"),
             dark_image=Image.open(f"{ASSET_DIR}\\icon_arrow_up.png"), size=(20, 20))
-
-        #moved to line 277
-        # self.forward_button = ActionButton(self.sf_top_bar, text=f"Forward", image=self.icon_foward, state=tk.NORMAL,
-        #                                    compound="left", corner_radius=32, command=self.send_forward)
-        # self.forward_button.pack(side=tk.LEFT, padx=5, pady=15)
 
         self.icon_drop = ctk.CTkImage(
             light_image=Image.open(f"{ASSET_DIR}\\icon_arrow_down.png"),
@@ -196,15 +187,12 @@ class GUIProxy(ctk.CTkFrame):
         self.drop_button = ActionButton(
             self.sf_top_bar, text=f"Drop", image=self.icon_drop, state=tk.NORMAL, command=self.drop_request,
             compound="left", corner_radius=32)
-        self.drop_button.pack(side=tk.LEFT, padx=5, pady=15)
 
         self.send_to_repeater_button = ActionButton(self.sf_top_bar, text=f"Send to repeater", state=tk.DISABLED,
                                                     corner_radius=32)
-        self.send_to_repeater_button.pack(side=tk.LEFT, padx=5, pady=15)
 
         self.send_to_intruder_button = ActionButton(self.sf_top_bar, text=f"Send to intruder", state=tk.DISABLED,
                                                     corner_radius=32)
-        self.send_to_intruder_button.pack(side=tk.LEFT, padx=5, pady=15)
 
         self.icon_random = ctk.CTkImage(
             light_image=Image.open(f"{ASSET_DIR}\\icon_random.png"),
@@ -212,7 +200,6 @@ class GUIProxy(ctk.CTkFrame):
         self.add_random_entry = ActionButton(
             self.sf_top_bar, text=f"Add random entry", image=self.icon_random, command=self.add_random_request,
             compound="left", corner_radius=32)
-        self.add_random_entry.pack(side=tk.LEFT, padx=5, pady=15)
 
         self.icon_browser = ctk.CTkImage(
             light_image=Image.open(f"{ASSET_DIR}\\icon_browser.png"),
@@ -220,14 +207,12 @@ class GUIProxy(ctk.CTkFrame):
         self.browser_button = ActionButton(
             self.sf_top_bar, text="Open browser", image=self.icon_browser, command=self.root.start_browser_thread,
             compound="left", corner_radius=32)
-        self.browser_button.pack(side=tk.RIGHT, padx=(5, 10), pady=15)
 
         self.icon_settings = ctk.CTkImage(
             light_image=Image.open(f"{ASSET_DIR}\\icon_settings.png"),
             dark_image=Image.open(f"{ASSET_DIR}\\icon_settings.png"), size=(20, 20))
         self.settings_button = ActionButton(self.sf_top_bar, text="Proxy settings", image=self.icon_settings,
                                             compound="left", corner_radius=32)
-        self.settings_button.pack(side=tk.RIGHT, padx=5, pady=15)
 
         self.sf_paned_window = tk.PanedWindow(self.scope_frame, orient=tk.VERTICAL, sashwidth=10,
                                               background=color_bg_br)
@@ -239,12 +224,14 @@ class GUIProxy(ctk.CTkFrame):
         self.sf_top_pane = ctk.CTkFrame(self.sf_paned_window, corner_radius=10)
         self.sf_paned_window.add(self.sf_top_pane, height=350)
 
-        columns = ("Time", "Type", "Direction", "Method", "URL", "Status code", "Length")
-        self.sf_requests_list = RequestList(self.sf_top_pane, columns=columns, show="headings", style="Treeview", selectmode="browse")
-        self.sf_requests_list.bind("<<TreeviewSelect>>",self.show_scope_request_content)
+        columns = ("Host", "URL", "Method", "Content")
+        self.sf_requests_list = RequestList(self.sf_top_pane, columns=columns, show="headings", style="Treeview",
+                                            selectmode="browse")
+        self.sf_requests_list.bind("<<TreeviewSelect>>", self.show_scope_request_content)
         for col in columns:
             self.sf_requests_list.heading(col, text=col)
             self.sf_requests_list.column(col, width=100)
+        self.sf_requests_list.column("Content", width=0, stretch=tk.NO)
         self.sf_requests_list.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
 
         self.sf_intercept_placeholder = ctk.CTkFrame(self.sf_top_pane, fg_color="transparent")
@@ -271,25 +258,26 @@ class GUIProxy(ctk.CTkFrame):
         self.sf_request_wrapper.grid_rowconfigure(0, weight=1)
 
         self.sf_request_wrapper_header = ctk.CTkLabel(self.sf_request_wrapper, text="Request",
-                                                   font=ctk.CTkFont(family="Calibri", size=24, weight="bold"),
-                                                   anchor="w",
-                                                   padx=10, pady=10, height=20, fg_color=color_bg)
+                                                      font=ctk.CTkFont(family="Calibri", size=24, weight="bold"),
+                                                      anchor="w",
+                                                      padx=10, pady=10, height=20, fg_color=color_bg)
         self.sf_request_wrapper_header.pack(fill=tk.X)
 
-        self.sf_request_content = RequestTextBox(self.sf_request_wrapper, self, "Select request to display its contents.")
+        self.sf_request_content = RequestTextBox(self.sf_request_wrapper, self,
+                                                 "Select request to display its contents.")
         self.sf_request_content.pack(pady=10, padx=10, fill="both", expand=True)
 
-        #moved from line  180, command=self.send_forward needs sf_request_contend which is created above
         self.forward_button = ActionButton(self.sf_top_bar, text=f"Forward", image=self.icon_foward, state=tk.DISABLED,
                                            compound="left", corner_radius=32, command=self.send_reqeust_from_scope)
+
+        self.toggle_intercept_button.pack(side=tk.LEFT, padx=(10, 15), pady=15)
+        self.drop_button.pack(side=tk.LEFT, padx=5, pady=15)
         self.forward_button.pack(side=tk.LEFT, padx=5, pady=15)
-        self.check_requests_list_empty()
-
-        #TODO co to jest
-
-        # while self.root.browser_opened:
-        #     print("Text")
-        #     print(self.requests)
+        self.send_to_repeater_button.pack(side=tk.LEFT, padx=5, pady=15)
+        self.send_to_intruder_button.pack(side=tk.LEFT, padx=5, pady=15)
+        self.add_random_entry.pack(side=tk.LEFT, padx=5, pady=15)
+        self.browser_button.pack(side=tk.RIGHT, padx=(5, 10), pady=15)
+        self.settings_button.pack(side=tk.RIGHT, padx=5, pady=15)
 
         """
          > HTTP History Frame starts here.
@@ -298,18 +286,28 @@ class GUIProxy(ctk.CTkFrame):
 
         self.hhf_top_bar = ctk.CTkFrame(self.http_history_frame, height=50, corner_radius=10)
         self.hhf_top_bar.pack(side=tk.TOP, fill=tk.X, pady=(0, 5), padx=5)
+
         self.icon_delete = ctk.CTkImage(
             light_image=Image.open(f"{ASSET_DIR}\\icon_delete.png"),
             dark_image=Image.open(f"{ASSET_DIR}\\icon_delete.png"), size=(20, 20))
-        self.hhf_delete_requests_button = ActionButton(
-            self.hhf_top_bar, text="Delete all requests", image=self.icon_delete, command=self.delete_all_requests_in_http_traffic,
+        self.icon_send = ctk.CTkImage(
+            light_image=Image.open(f"{ASSET_DIR}\\icon_arrow_up.png"),
+            dark_image=Image.open(f"{ASSET_DIR}\\icon_arrow_up.png"), size=(20, 20))
+
+        self.hhf_toggle_intercept_button = ActionButton(
+            self.hhf_top_bar, text="Intercept off", image=self.icon_toggle_off, command=self.toggle_intercept,
             fg_color=color_acc3, hover_color=color_acc4, compound="left", corner_radius=32)
-        self.hhf_delete_requests_button.pack(side=tk.LEFT, padx=(10, 15), pady=15)
-        #TODO zmienic ikone
         self.hhf_send_requests_to_scope_button = ActionButton(
-            self.hhf_top_bar, text="Send to scope", image=self.icon_delete, command=self.send_request_to_filter,
+            self.hhf_top_bar, text="Send to scope", image=self.icon_send, command=self.send_request_to_filter,
+            fg_color=color_acc, hover_color=color_acc2, compound="left", corner_radius=32)
+        self.hhf_delete_requests_button = ActionButton(
+            self.hhf_top_bar, text="Delete all requests", image=self.icon_delete,
+            command=self.delete_all_requests_in_http_traffic,
             fg_color=color_acc3, hover_color=color_acc4, compound="left", corner_radius=32)
-        self.hhf_send_requests_to_scope_button.pack(side=tk.LEFT, padx=(10, 15), pady=15)
+
+        self.hhf_toggle_intercept_button.pack(side=tk.LEFT, padx=(10, 15), pady=15)
+        self.hhf_send_requests_to_scope_button.pack(side=tk.LEFT, padx=5, pady=15)
+        self.hhf_delete_requests_button.pack(side=tk.LEFT, padx=5, pady=15)
 
         self.hhf_paned_window = tk.PanedWindow(self.http_history_frame, orient=tk.VERTICAL, sashwidth=10,
                                                background=color_bg_br)
@@ -321,12 +319,14 @@ class GUIProxy(ctk.CTkFrame):
         self.hhf_top_pane = ctk.CTkFrame(self.hhf_paned_window, corner_radius=10)
         self.hhf_paned_window.add(self.hhf_top_pane, height=350)
 
-        hhf_columns = ("Time", "Type", "Direction", "Method", "URL", "Other columns")
+        hhf_columns = ("Host", "URL", "Method", "Request", "Status code", "Title", "Length", "Response")
         self.hhf_requests_list = RequestList(self.hhf_top_pane, columns=hhf_columns, show="headings", style="Treeview")
         self.hhf_requests_list.bind("<<TreeviewSelect>>", self.show_history_request_content)
         for col in hhf_columns:
             self.hhf_requests_list.heading(col, text=col)
             self.hhf_requests_list.column(col, width=100)
+        self.hhf_requests_list.column("Request", width=0, stretch=tk.NO)
+        self.hhf_requests_list.column("Response", width=0, stretch=tk.NO)
         self.hhf_requests_list.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
 
         """
@@ -390,6 +390,7 @@ class GUIProxy(ctk.CTkFrame):
         self.deserialized_flow = None
         self.show_scope_tab()
 
+        self.check_requests_list_empty()
 
         """
         Run mitmproxy at start
@@ -419,6 +420,8 @@ class GUIProxy(ctk.CTkFrame):
         if self.root.intercepting:
             self.toggle_intercept_button.configure(text="Intercept off", image=self.icon_toggle_off,
                                                    fg_color=color_acc3, hover_color=color_acc4)
+            self.hhf_toggle_intercept_button.configure(text="Intercept off", image=self.icon_toggle_off,
+                                                       fg_color=color_acc3, hover_color=color_acc4)
             self.root.intercepting = False
             self.sf_placeholder_label.configure(text="Intercept is off.")
             self.sf_placeholder_image.configure(image=self.intercept_off_image)
@@ -426,6 +429,8 @@ class GUIProxy(ctk.CTkFrame):
         else:
             self.toggle_intercept_button.configure(text="Intercept on", image=self.icon_toggle_on,
                                                    fg_color=color_acc, hover_color=color_acc2)
+            self.hhf_toggle_intercept_button.configure(text="Intercept on", image=self.icon_toggle_on,
+                                                       fg_color=color_acc, hover_color=color_acc2)
             self.root.intercepting = True
             self.sf_placeholder_label.configure(text="Intercept is on.")
             self.sf_placeholder_image.configure(image=self.intercept_on_image)
@@ -437,11 +442,9 @@ class GUIProxy(ctk.CTkFrame):
                 proxy_script = os.path.join(backend_dir, "proxy.py")
                 command = ["mitmdump", "-s", proxy_script, "--listen-port", "8082"]
 
-
                 threading.Thread(target=self.run_mitmdump, args=(command, backend_dir)).start()
             self.intercepting = True
-        #lukasz
-        #self.check_requests_list_empty()
+        self.check_requests_list_empty()
 
     def run_mitmdump(self, command, cwd):
         try:
@@ -473,9 +476,10 @@ class GUIProxy(ctk.CTkFrame):
         """
         Funkcja testowa do pobierania logów z otwartej przeglądarki.
         """
-        if self.root.requests is not None:
-            for req in self.root.requests:
-                print(json.dumps(json.loads(req["message"]), indent=5))
+        # if self.root.requests is not None:
+        #     for req in self.root.requests:
+        #         print(json.dumps(json.loads(req["message"]), indent=5))
+        pass
 
     def receive_and_add_to_http_traffic(self):
         """
@@ -499,8 +503,8 @@ class GUIProxy(ctk.CTkFrame):
                         except Exception as e:
                             print(f"Error whlie deserialization request to http traffic: {e}")
 
-                        request2 = Request2.from_request(deserialized_request)
-                        self.add_reqeust_to_list_http_traffic(request2.return_http_message())
+                        request = Request2.from_request(deserialized_request)
+                        self.add_reqeust_to_list_http_traffic(request)
 
     def receive_and_add_to_scope(self):
         """
@@ -526,7 +530,6 @@ class GUIProxy(ctk.CTkFrame):
 
                         request2 = Request2.from_request(deserialized_request)
 
-
     def send_reqeust_from_scope(self):
         """
         Sends request made from scope tab textbox, request is forwarded to web browser.
@@ -541,22 +544,23 @@ class GUIProxy(ctk.CTkFrame):
                 s.sendall(serialized_reqeust)
         except Exception as e:
             print(f"Error while sending after Forward button: {e}")
-    #TODO zaktualizować zeby reqeusty z back były brane pod uwage
+        self.check_requests_list_empty()
 
-    #lukasz
-    # def check_requests_list_empty(self):
-    #     if self.intercepting:
-    #         if len(self.requests_list.get_children()) == 0:
-    #             self.placeholder_frame.lift()
-    #         else:
-    #             self.placeholder_frame.lower()
-
-    def add_reqeust_to_list_http_traffic(self, request_info):
+    def add_reqeust_to_list_http_traffic(self, request):
         """
         Adds request to HTTP traffic list in GUI.
         """
-
-        self.hhf_requests_list.insert("", tk.END, values=request_info.split('\n'))
+        hostname = f"{request.host}:{request.port}"
+        url = f"{request.path}"
+        method = f"{request.method}"
+        request = f"{request.content}"
+        code = ""
+        title = ""
+        response = ""
+        length = f"{len(response)}"
+        values = [hostname, url, method, request, code, title, length, response]
+        self.hhf_requests_list.insert("", tk.END, values=values)
+        self.check_requests_list_empty()
 
     def add_random_request(self):
         """
@@ -592,7 +596,7 @@ class GUIProxy(ctk.CTkFrame):
             Deletes from GUI list.
         """
         pass
-        # self.hhf_requests_list.delete_all()
+        self.hhf_requests_list.delete_all()
         #
         # http_message = self.sf_request_content.get_text()
         # message = "False" + http_message
@@ -606,12 +610,11 @@ class GUIProxy(ctk.CTkFrame):
 
         #TODO zaktualizoważ zeby requesty z back były brane pod uwage 2
 
-        #lukasz
-        # if len(self.requests_list.get_children()) > 0:
-        #     self.requests_list.selection_add(self.requests_list.get_children()[-1])
-        # self.check_requests_list_empty()
+        if len(self.hhf_requests_list.get_children()) > 0:
+            self.hhf_requests_list.selection_add(self.hhf_requests_list.get_children()[-1])
+        self.check_requests_list_empty()
 
-    def add_request_to_scope_tab(self, request = None):
+    def add_request_to_scope_tab(self, request=None):
         """
         Adds request to scope list in GUI tab.
         """
@@ -621,13 +624,13 @@ class GUIProxy(ctk.CTkFrame):
         else:
             self.sf_requests_list.insert("", tk.END, values=request.split('\n'))
 
+        self.check_requests_list_empty()
 
     def send_request_to_filter(self):
         """
         Updates filtering in backend logic, sends hostname
         Adds request to scope tab list
         """
-
         request2 = Request2.from_http_message(self.hh_request_textbox.get_text())
         request = request2.to_request()
         serialized_reqeust = pickle.dumps(request)
@@ -641,7 +644,6 @@ class GUIProxy(ctk.CTkFrame):
         except Exception as e:
             print(f"Error while sendind request to filter: {e}")
 
-
         # if request is not None:
         #
         #     request2 = Request2.from_http_message(request_info)
@@ -654,8 +656,6 @@ class GUIProxy(ctk.CTkFrame):
         #     except Exception as e:
         #         print(f"Błąd przy wysyłaniu żądania do PROXY: {e}")
         # else:
-
-
 
     def check_requests_list_empty(self):
         """
@@ -674,14 +674,22 @@ class GUIProxy(ctk.CTkFrame):
             self.send_to_intruder_button.configure(state=tk.NORMAL)
             self.send_to_repeater_button.configure(state=tk.NORMAL)
 
+        if len(self.hhf_requests_list.get_children()) == 0:
+            self.hhf_send_requests_to_scope_button.configure(state=tk.DISABLED)
+        else:
+            self.hhf_send_requests_to_scope_button.configure(state=tk.NORMAL)
+
     def show_history_request_content(self, event):
         """
         Shows HTTP message of a request in textbox in history tab.
         """
         if len(self.hhf_requests_list.get_children()) > 0:
             selected_item = self.hhf_requests_list.selection()[0]
-            item = self.hhf_requests_list.item(selected_item)['values']
-            self.hh_request_textbox.insert_text('\n'.join(item))
+            print(self.hhf_requests_list.item(selected_item))
+            request = self.hhf_requests_list.item(selected_item)['values'][3]
+            response = self.hhf_requests_list.item(selected_item)['values'][7]
+            self.hh_request_textbox.insert_text(request)
+            self.hh_response_textbox.insert_text(response)
         else:
             self.hh_request_textbox.insert_text("Select a request to display its contents.")
 
@@ -690,12 +698,10 @@ class GUIProxy(ctk.CTkFrame):
         Shows HTTP message of a request in textbox in scope tab.
         """
         if len(self.sf_requests_list.get_children()) > 0:
-           selected_item = self.sf_requests_list.selection()[0]
-           item = self.sf_requests_list.item(selected_item)['values']
-           self.sf_request_content.insert_text('\n'.join(item))
+            sel_item_id = self.sf_requests_list.selection()[0]
+            content = self.sf_requests_list.item(sel_item_id)['values'][3]
+            self.sf_request_content.insert_text(content)
         else:
-           self.sf_request_content.insert_text("Select a request to display its contents.")
-
-
+            self.sf_request_content.insert_text("Select a request to display its contents.")
 
 #TODO dodanie response w http history tab
