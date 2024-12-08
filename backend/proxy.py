@@ -1,6 +1,4 @@
 import pickle
-from time import sleep
-
 import mitmproxy.http
 import socket
 from mitmproxy.http import Request
@@ -28,6 +26,7 @@ class WebRequestInterceptor:
         request = flow.request
         self.current_flow = flow
         flow.intercept()
+
         if "mozilla.org" in request.host:
             """
             Filters out telemetry 
@@ -151,7 +150,7 @@ class WebRequestInterceptor:
         try:
             serialized_flow = pickle.dumps(flow_tab)
         except Exception as e:
-            print(f"Error przy pakowaniem przed wyslaniem do http: {e}")
+            print(f"\nError while serialization before sending to http traffic tab: {e}")
             serialized_flow = pickle.dumps(flow.request)
         try:
             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:

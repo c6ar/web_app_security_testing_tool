@@ -195,7 +195,7 @@ class GUIProxy(ctk.CTkFrame):
             compound="left", corner_radius=32)
         self.drop_button.pack(side=tk.LEFT, padx=5, pady=15)
 
-        self.send_to_repeater_button = ActionButton(self.sf_top_bar, text=f"Send to repeater", state=tk.DISABLED, command = self.send_to_repeater,
+        self.send_to_repeater_button = ActionButton(self.sf_top_bar, text=f"Send to repeater", state=tk.DISABLED,
                                                     corner_radius=32)
         self.send_to_repeater_button.pack(side=tk.LEFT, padx=5, pady=15)
 
@@ -530,7 +530,6 @@ class GUIProxy(ctk.CTkFrame):
                             print(f"Error while deserialization recived in scope: {e}")
 
                         request2 = Request2.from_request(deserialized_request)
-                        # request2.
 
     def send_reqeust_from_scope(self):
         """
@@ -637,6 +636,7 @@ class GUIProxy(ctk.CTkFrame):
             # response.status_code
             # response_title
             # response.length
+
 
     def send_request_to_filter(self):
         """
