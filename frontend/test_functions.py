@@ -13,5 +13,5 @@ def generate_random_reqeust():
     url = f"http://{random.choice(['example', 'test', 'check', 'domain'])}.{random.choice(['org', 'com', 'pl', 'eu'])}/"
     path = f"/{random.choice(['entry', 'page', '', 'test', 'subpage'])}"
     method = random.choice(["GET", "POST", "PUT", "DELETE"])
-    content = "Lorem\nipsum\nhere"
+    content = "Some\nlorem\nipsum\nrequest\ncontent\nhere"
     return url, path, method, content

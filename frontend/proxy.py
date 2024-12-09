@@ -112,8 +112,9 @@ class RequestTextBox(ctk.CTkTextbox):
     def __init__(self, master, root, text=""):
         super().__init__(master)
         self.root = root
-        monoscape_font = ctk.CTkFont(family="Courier New", size=14, weight="normal")
-        self.configure(wrap="none", font=monoscape_font, state="normal", padx=5, pady=5)
+        self.monoscape_font = ctk.CTkFont(family="Courier New", size=14, weight="normal")
+        self.monoscape_font_italic = ctk.CTkFont(family="Courier New", size=14, weight="normal", slant="italic")
+        self.configure(wrap="none", font=self.monoscape_font, state="normal", padx=5, pady=5)
 
         self.insert_text(text)
 
@@ -293,9 +294,6 @@ class GUIProxy(ctk.CTkFrame):
             light_image=Image.open(f"{ASSET_DIR}\\icon_arrow_up.png"),
             dark_image=Image.open(f"{ASSET_DIR}\\icon_arrow_up.png"), size=(20, 20))
 
-        self.hhf_toggle_intercept_button = ActionButton(
-            self.hhf_top_bar, text="Intercept off", image=self.icon_toggle_off, command=self.toggle_intercept,
-            fg_color=color_acc3, hover_color=color_acc4, compound="left", corner_radius=32)
         self.hhf_send_requests_to_scope_button = ActionButton(
             self.hhf_top_bar, text="Send to scope", image=self.icon_send, command=self.send_request_to_filter,
             fg_color=color_acc, hover_color=color_acc2, compound="left", corner_radius=32)
@@ -304,8 +302,7 @@ class GUIProxy(ctk.CTkFrame):
             command=self.delete_all_requests_in_http_traffic,
             fg_color=color_acc3, hover_color=color_acc4, compound="left", corner_radius=32)
 
-        self.hhf_toggle_intercept_button.pack(side=tk.LEFT, padx=(10, 15), pady=15)
-        self.hhf_send_requests_to_scope_button.pack(side=tk.LEFT, padx=5, pady=15)
+        self.hhf_send_requests_to_scope_button.pack(side=tk.LEFT, padx=(10, 5), pady=15)
         self.hhf_delete_requests_button.pack(side=tk.LEFT, padx=5, pady=15)
 
         self.hhf_paned_window = tk.PanedWindow(self.http_history_frame, orient=tk.VERTICAL, sashwidth=10,
@@ -372,7 +369,8 @@ class GUIProxy(ctk.CTkFrame):
         self.hh_response_header.pack(fill=tk.X)
 
         self.hh_response_textbox = RequestTextBox(self.hh_response_frame, self,
-                                                  "Select request to display its response's contents.")
+                                                  "Select request to display its response contents.")
+        self.hh_response_textbox.configure(state=tk.DISABLED)
         self.hh_response_textbox.pack(pady=10, padx=10, fill="both", expand=True)
 
         """
@@ -380,12 +378,12 @@ class GUIProxy(ctk.CTkFrame):
         """
         self.requests = []
 
-        self.update_thread = threading.Thread(target=self.receive_and_add_to_scope)
-        self.update_thread.daemon = True
-        self.update_thread.start()
-        self.update_thread = threading.Thread(target=self.receive_and_add_to_http_traffic)
-        self.update_thread.daemon = True
-        self.update_thread.start()
+        self.update_thread_scope = threading.Thread(target=self.receive_and_add_to_scope)
+        self.update_thread_scope.daemon = True
+        self.update_thread_scope.start()
+        self.update_thread_traffic = threading.Thread(target=self.receive_and_add_to_http_traffic)
+        self.update_thread_traffic.daemon = True
+        self.update_thread_traffic.start()
         self.deserialized_flow = None
         self.show_scope_tab()
 
@@ -394,7 +392,7 @@ class GUIProxy(ctk.CTkFrame):
         """
         Run mitmproxy at start
         """
-        if not self.process:  # jeżeli proxy nie włączone
+        if not self.process:
             current_dir = os.path.dirname(os.path.abspath(__file__))
             backend_dir = os.path.join(current_dir, "..", "backend")
             proxy_script = os.path.join(backend_dir, "proxy.py")
@@ -419,31 +417,30 @@ class GUIProxy(ctk.CTkFrame):
         if self.root.intercepting:
             self.toggle_intercept_button.configure(text="Intercept off", image=self.icon_toggle_off,
                                                    fg_color=color_acc3, hover_color=color_acc4)
-            self.hhf_toggle_intercept_button.configure(text="Intercept off", image=self.icon_toggle_off,
-                                                       fg_color=color_acc3, hover_color=color_acc4)
             self.root.intercepting = False
             self.sf_placeholder_label.configure(text="Intercept is off.")
             self.sf_placeholder_image.configure(image=self.intercept_off_image)
             print("Turning intercept off.")
+            self.change_intercept_state()
         else:
             self.toggle_intercept_button.configure(text="Intercept on", image=self.icon_toggle_on,
                                                    fg_color=color_acc, hover_color=color_acc2)
-            self.hhf_toggle_intercept_button.configure(text="Intercept on", image=self.icon_toggle_on,
-                                                       fg_color=color_acc, hover_color=color_acc2)
             self.root.intercepting = True
             self.sf_placeholder_label.configure(text="Intercept is on.")
             self.sf_placeholder_image.configure(image=self.intercept_on_image)
             print("Turning intercept on.")
-
-            if not self.process:  # jeżeli proxy nie włączone
-                current_dir = os.path.dirname(os.path.abspath(__file__))
-                backend_dir = os.path.join(current_dir, "..", "backend")
-                proxy_script = os.path.join(backend_dir, "proxy.py")
-                command = ["mitmdump", "-s", proxy_script, "--listen-port", "8082"]
-
-                threading.Thread(target=self.run_mitmdump, args=(command, backend_dir)).start()
-            self.intercepting = True
+            self.change_intercept_state()
         self.check_requests_list_empty()
+
+    def change_intercept_state(self):
+        flag = "Change state"
+        try:
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                s.connect((HOST, FRONT_BACK_INTERCEPTBUTTON_PORT))
+                serialized_flag = flag.encode("utf-8")
+                s.sendall(serialized_flag)
+        except Exception as e:
+            print(f"Error while sending change intercept state flag: {e}")
 
     def run_mitmdump(self, command, cwd):
         try:
@@ -471,208 +468,6 @@ class GUIProxy(ctk.CTkFrame):
         else:
             self.browser_button.configure(text="Open browser")
 
-    def requests_update(self):
-        """
-        Funkcja testowa do pobierania logów z otwartej przeglądarki.
-        """
-        # if self.root.requests is not None:
-        #     for req in self.root.requests:
-        #         print(json.dumps(json.loads(req["message"]), indent=5))
-        pass
-
-    def receive_and_add_to_http_traffic(self):
-        """
-            Receives tab = [flow.request, flow.response] from backend.proxy.WebRequestInterceptor.send_flow_to_http_trafic_tab
-            and adds it to HTTP traffic tab.
-        """
-
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-            s.bind((HOST, BACK_FRONT_HISTORYREQUESTS_PORT))
-            s.listen()
-
-            while True:
-                conn, addr = s.accept()
-
-                with conn:
-                    serialized_flow = conn.recv(4096)
-                    if serialized_flow:
-                        try:
-                            flow_tab =  pickle.loads(serialized_flow)
-
-                            if isinstance(flow_tab, list) and len(flow_tab) == 2:
-                                request2 = Request2.from_request(flow_tab[0])
-                                self.add_reqeust_to_list_http_traffic(request2.return_http_message())
-                                self.show_history_response_content(flow_tab[1])
-                            else:
-                                self.add_reqeust_to_list_http_traffic(request2.return_http_message())
-                                print("REQUEST ONLY")
-                        except Exception as e:
-                            if str(e) != "pickle data was truncated": #cannot pickle "cryptography.hazmat.bindings._rust.x509.Certificate"
-                                print(f"Error while deserialization request to http traffic: {e}")
-
-    def receive_and_add_to_scope(self):
-        """
-           Receives request from flow.request and adds it to scope tab.
-        """
-
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-            s.bind((HOST, BACK_FRONT_SCOPEREQUESTS_PORT))
-            s.listen()
-
-            while True:
-                conn, addr = s.accept()
-
-                with conn:
-                    serialized_reqeust = conn.recv(4096)
-                    if serialized_reqeust:
-                        try:
-                            deserialized_request = pickle.loads(serialized_reqeust)
-                            request2 = Request2.from_request(deserialized_request)
-                            self.add_request_to_scope_tab(request2.return_http_message())
-                        except Exception as e:
-                            print(f"Error while deserialization recived in scope: {e}")
-
-                        request2 = Request2.from_request(deserialized_request)
-
-    def send_reqeust_from_scope(self):
-        """
-        Sends request made from scope tab textbox, request is forwarded to web browser.
-        """
-        request2 = Request2.from_http_message(self.sf_request_content.get_text())
-        request = request2.to_request()
-        serialized_reqeust = pickle.dumps(request)
-
-        try:
-            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-                s.connect((HOST, FRONT_BACK_FORWARDBUTTON_PORT))
-                s.sendall(serialized_reqeust)
-        except Exception as e:
-            print(f"Error while sending after Forward button: {e}")
-        self.check_requests_list_empty()
-
-    #lukasz
-    # def check_requests_list_empty(self):
-    #     if self.intercepting:
-    #         if len(self.requests_list.get_children()) == 0:
-    #             self.placeholder_frame.lift()
-    #         else:
-    #             self.placeholder_frame.lower()
-
-    def add_reqeust_to_list_http_traffic(self, request_info):
-        """
-        Adds request to HTTP traffic list in GUI.
-        """
-        #TODO zmiana przesyłanych wartości tak by można było stworzyć http message do textboxa,
-        self.hhf_requests_list.insert("", tk.END, values=request_info.split('\n'))
-
-    def add_random_request(self):
-        """
-        Adds random request in scope tab
-        """
-        self.sf_requests_list.insert("", tk.END, values=generate_random_reqeust())
-        self.hhf_requests_list.insert("", tk.END, values=generate_random_reqeust())
-        self.sf_requests_list.selection_remove(self.sf_requests_list.get_children())
-        self.sf_requests_list.selection_add(self.sf_requests_list.get_children()[-1])
-        self.check_requests_list_empty()
-
-    def drop_request(self):
-        """
-        Removes and request from list in GUI, request is dropped, proxy sends "request dropped info" .
-        """
-        flag = "True"
-        #TODO dodać info o request dropped (popup/strona w przeglądarce, najlepiej tak by serwera nie trzeba było stawiać xd
-        try:
-            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-                s.connect((HOST, FRONT_BACK_DROPREQUEST_PORT))
-                serialized_flag = flag.encode("utf-8")
-                s.sendall(serialized_flag)
-        except Exception as e:
-            print(f"Error while sending flag to kill process: {e}")
-        self.sf_requests_list.drop_selected()
-        if len(self.sf_requests_list.get_children()) > 0:
-            self.sf_requests_list.selection_add(self.sf_requests_list.get_children()[-1])
-        self.check_requests_list_empty()
-
-    def delete_all_requests_in_http_traffic(self):
-        """
-            Deletes from GUI list.
-        """
-        pass
-        # self.hhf_requests_list.delete_all()
-        #
-        # http_message = self.sf_request_content.get_text()
-        # message = "False" + http_message
-        # try:
-        #     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        #         s.connect((HOST, PORT_GUI))
-        #         s.sendall(message.encode('utf-8'))
-        # except Exception as e:
-        #     print(f"Błąd przy wysyłaniu żądania do PROXY: {e}")
-        # self.sf_requests_list.drop_selected()
-
-        #TODO zaktualizoważ zeby requesty z back były brane pod uwage 2
-
-        #lukasz
-        # if len(self.requests_list.get_children()) > 0:
-        #     self.requests_list.selection_add(self.requests_list.get_children()[-1])
-        # self.check_requests_list_empty()
-
-    def add_request_to_scope_tab(self, request = None):
-        """
-        Adds request to scope list in GUI tab.
-        """
-        if request is None:
-            request_info = self.hh_request_textbox.get_text()
-            self.sf_requests_list.insert("", tk.END, values=request_info.split('\n'))
-        else:
-            self.sf_requests_list.insert("", tk.END, values=request.split('\n'))
-
-            #TODO listy
-            # request2
-            # request.host
-            # request.path
-            # request.method
-            #
-            #
-            # response2
-            # response.status_code
-            # response_title
-            # response.length
-
-
-    def send_request_to_filter(self):
-        """
-        Updates filtering in backend logic, sends hostname
-        Adds request to scope tab list
-        """
-
-        request2 = Request2.from_http_message(self.hh_request_textbox.get_text())
-        request = request2.to_request()
-        serialized_reqeust = pickle.dumps(request)
-
-        self.add_request_to_scope_tab()
-
-        try:
-            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-                s.connect((HOST, FRONT_BACK_SCOPEUPDATE_PORT))
-                s.sendall(serialized_reqeust)
-        except Exception as e:
-            print(f"Error while sendind request to filter: {e}")
-
-
-        # if request is not None:
-        #
-        #     request2 = Request2.from_http_message(request_info)
-        #     self.sf_requests_list.insert("", tk.END, values=request_info.split('\n'))
-        #     serialized_reqeust2 = pickle.dumps(request2)
-        #     try:
-        #         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        #             s.connect((HOST, PORT_INTERCEPT))
-        #             s.sendall(serialized_reqeust2)
-        #     except Exception as e:
-        #         print(f"Błąd przy wysyłaniu żądania do PROXY: {e}")
-        # else:
-
     def check_requests_list_empty(self):
         """
         Checks if lists in Gui are empty
@@ -692,36 +487,278 @@ class GUIProxy(ctk.CTkFrame):
 
         if len(self.hhf_requests_list.get_children()) == 0:
             self.hhf_send_requests_to_scope_button.configure(state=tk.DISABLED)
+            self.hhf_delete_requests_button.configure(state=tk.DISABLED)
         else:
             self.hhf_send_requests_to_scope_button.configure(state=tk.NORMAL)
+            self.hhf_delete_requests_button.configure(state=tk.NORMAL)
 
     def show_history_request_content(self, event):
         """
         Shows HTTP message of a request in textbox in history tab.
         """
-        if len(self.hhf_requests_list.get_children()) > 0:
+        if len(self.hhf_requests_list.selection()) > 0:
             selected_item = self.hhf_requests_list.selection()[0]
-            item = self.hhf_requests_list.item(selected_item)['values']
-            self.hh_request_textbox.insert_text('\n'.join(item))
-        else:
-            self.hh_request_textbox.insert_text("Select a request to display its contents.")
+            request_string = self.hhf_requests_list.item(selected_item)['values'][3]
+            if len(self.hhf_requests_list.item(selected_item)['values']) == 8:
+                response_string = self.hhf_requests_list.item(selected_item)['values'][7]
+            elif len(self.hhf_requests_list.item(selected_item)['values']) == 5:
+                response_string = self.hhf_requests_list.item(selected_item)['values'][5]
+            else:
+                response_string = "Request got no response."
+            self.hh_request_textbox.configure(state=tk.NORMAL, font=self.hh_request_textbox.monoscape_font)
+            self.hh_request_textbox.insert_text(request_string)
+            self.hh_response_textbox.configure(state=tk.NORMAL, font=self.hh_request_textbox.monoscape_font)
+            self.hh_response_textbox.insert_text(response_string)
+            self.hh_response_textbox.configure(state=tk.DISABLED)
 
-    def show_history_response_content(self, response):
-        """
-        Shows HTTP response body in Http history in text box
-        """
-        self.hh_response_textbox.insert_text(response.content)
+        else:
+            self.hh_request_textbox.configure(state=tk.NORMAL)
+            self.hh_request_textbox.insert_text("Select a request to display its contents.")
+            self.hh_request_textbox.configure(state=tk.DISABLED, font=self.hh_request_textbox.monoscape_font_italic)
+            self.hh_response_textbox.configure(state=tk.NORMAL)
+            self.hh_response_textbox.insert_text("Select a request to display contents of its response.")
+            self.hh_response_textbox.configure(state=tk.DISABLED, font=self.hh_request_textbox.monoscape_font_italic)
 
     def show_scope_request_content(self, event):
         """
         Shows HTTP message of a request in textbox in scope tab.
         """
-        if len(self.sf_requests_list.get_children()) > 0:
-           selected_item = self.sf_requests_list.selection()[0]
-           item = self.sf_requests_list.item(selected_item)['values']
-           self.sf_request_content.insert_text('\n'.join(item))
+        if len(self.sf_requests_list.selection()) > 0:
+            selected_item = self.sf_requests_list.selection()[0]
+            request_string = self.sf_requests_list.item(selected_item)['values'][3]
+            self.sf_request_content.configure(state=tk.NORMAL, font=self.hh_request_textbox.monoscape_font)
+            self.sf_request_content.insert_text(request_string)
         else:
-           self.sf_request_content.insert_text("Select a request to display its contents.")
+            self.sf_request_content.configure(state=tk.NORMAL)
+            self.sf_request_content.insert_text("Select a request to display its contents.")
+            self.sf_request_content.configure(state=tk.DISABLED, font=self.hh_request_textbox.monoscape_font_italic)
+
+    def requests_update(self):
+        """
+        Funkcja testowa do pobierania logów z otwartej przeglądarki.
+        """
+        # if self.root.requests is not None:
+        #     for req in self.root.requests:
+        #         print(json.dumps(json.loads(req["message"]), indent=5))
+        pass
+
+    def receive_and_add_to_http_traffic(self):
+        """
+            Receives tab = [flow.request, flow.response] from backend.proxy.WebRequestInterceptor.send_flow_to_http_trafic_tab
+            and adds it to HTTP traffic tab.
+        """
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            s.bind((HOST, BACK_FRONT_HISTORYREQUESTS_PORT))
+            s.listen()
+            while True:
+                conn, addr = s.accept()
+                with conn:
+                    serialized_flow = conn.recv(4096)
+                    if serialized_flow:
+                        try:
+                            flow_tab = pickle.loads(serialized_flow)
+                            if isinstance(flow_tab, list) and len(flow_tab) == 2:
+                                request2 = Request2.from_request(flow_tab[0])
+                                response = flow_tab[1]
+                                print(f"REQUEST AND RESPONSE\n\tRequest:\n\t\t{request2}\tResponse:\n\t\t{response}")
+                                self.add_reqeust_to_http_traffic_tab(request2, response)
+                                # self.show_history_response_content(flow_tab[1])
+                            else:
+                                print(f"REQUEST ONLY\n\tRequest:\n\t\t{request2}")
+                                self.add_reqeust_to_http_traffic_tab(request2)
+                            self.check_requests_list_empty()
+                        except Exception as e:
+                            if str(e) != "pickle data was truncated":  #cannot pickle "cryptography.hazmat.bindings._rust.x509.Certificate"
+                                print(f"Error while deserialization request to http traffic: {e}")
+
+    def receive_and_add_to_scope(self):
+        """
+           Receives request from flow.request and adds it to scope tab.
+        """
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            s.bind((HOST, BACK_FRONT_SCOPEREQUESTS_PORT))
+            s.listen()
+
+            while True:
+                conn, addr = s.accept()
+
+                with conn:
+                    serialized_reqeust = conn.recv(4096)
+                    if serialized_reqeust:
+                        try:
+                            deserialized_request = pickle.loads(serialized_reqeust)
+                            request2 = Request2.from_request(deserialized_request)
+                            self.add_request_to_scope_tab(request2)
+                        except Exception as e:
+                            print(f"Error while deserialization recieved in scope: {e}")
+
+                        request2 = Request2.from_request(deserialized_request)
+
+                        self.check_requests_list_empty()
+
+    def send_reqeust_from_scope(self):
+        """
+        Sends request made from scope tab textbox, request is forwarded to web browser.
+        """
+        request2 = Request2.from_http_message(self.sf_request_content.get_text())
+        request = request2.to_request()
+        serialized_reqeust = pickle.dumps(request)
+
+        try:
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                s.connect((HOST, FRONT_BACK_FORWARDBUTTON_PORT))
+                s.sendall(serialized_reqeust)
+        except Exception as e:
+            print(f"Error while sending after Forward button: {e}")
+
+        self.sf_requests_list.drop_selected()
+        self.check_requests_list_empty()
+
+    def add_reqeust_to_http_traffic_tab(self, req, resp=None):
+        """
+        Adds request to HTTP traffic list in GUI.
+        """
+        host = req.host
+        url = req.path
+        method = req.method
+        request_content = req.return_http_message()
+        if resp is None:
+            code = ""
+            title = ""
+            length = 0
+            response_content = ""
+        else:
+            code = resp.status_code
+            title = ""
+            response_content = resp.content.decode('utf-8')
+            length = len(response_content)
+        values = (host, url, method, request_content, code, title, length, response_content)
+
+        self.hhf_requests_list.insert("", tk.END, values=values)
+
+    def add_random_request(self):
+        """
+        Adds random request in scope tab
+        """
+        self.sf_requests_list.insert("", tk.END, values=generate_random_reqeust())
+        self.hhf_requests_list.insert("", tk.END, values=generate_random_reqeust())
+        self.sf_requests_list.selection_remove(self.sf_requests_list.get_children())
+        self.sf_requests_list.selection_add(self.sf_requests_list.get_children()[-1])
+        self.check_requests_list_empty()
+
+    def drop_request(self):
+        """
+        Removes and request from list in GUI, request is dropped, proxy sends "request dropped info" .
+        """
+        flag = "True"
+        try:
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                s.connect((HOST, FRONT_BACK_DROPREQUEST_PORT))
+                serialized_flag = flag.encode("utf-8")
+                s.sendall(serialized_flag)
+        except Exception as e:
+            print(f"Error while sending flag to kill process: {e}")
+
+        self.sf_requests_list.drop_selected()
+
+        try:
+            if self.root.browser is not None:
+                self.root.browser.set_page_load_timeout(1)
+                try:
+                    self.root.browser.get("http://www.example.com")
+                except:
+                    pass
+                script = """ alert('Request has been dropped'); """
+                self.root.browser.execute_script(script)
+                self.root.browser.execute_script("window.open('http://www.newpage.com', '_blank');")
+                self.root.browser.switch_to.window(self.root.browser.window_handles[-1])
+                self.root.browser.switch_to.window(self.root.browser.window_handles[0])
+                self.root.browser.close()
+                self.root.browser.switch_to.window(self.root.browser.window_handles[-1])
+                self.root.browser.set_page_load_timeout(1)
+        except Exception as e:
+            print(f"Error while closing the tab: {e}")
+
+        if len(self.sf_requests_list.get_children()) > 0:
+            self.sf_requests_list.selection_add(self.sf_requests_list.get_children()[-1])
+
+        self.check_requests_list_empty()
+
+    def delete_all_requests_in_http_traffic(self):
+        """
+            Deletes from GUI list.
+        """
+        # http_message = self.sf_request_content.get_text()
+        # message = "False" + http_message
+        # try:
+        #     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        #         s.connect((HOST, PORT_GUI))
+        #         s.sendall(message.encode('utf-8'))
+        # except Exception as e:
+        #     print(f"Błąd przy wysyłaniu żądania do PROXY: {e}")
+        # self.sf_requests_list.drop_selected()
+        self.hhf_requests_list.delete_all()
+        self.check_requests_list_empty()
+
+    def add_request_to_scope_tab(self, req=None):
+        """
+        Adds request to scope list in GUI tab.
+        """
+        if req is None:
+            if len(self.hhf_requests_list.get_children()) > 0:
+                selected_item = self.hhf_requests_list.selection()[0]
+                host = self.hhf_requests_list.item(selected_item)['values'][0]
+                url = self.hhf_requests_list.item(selected_item)['values'][1]
+                method = self.hhf_requests_list.item(selected_item)['values'][2]
+                request_content = self.hh_request_textbox.get_text()
+                values = (host, url, method, request_content)
+
+                self.sf_requests_list.insert("", tk.END, values=values)
+        else:
+            host = req.host
+            url = req.path
+            method = req.method
+            request_content = req.return_http_message()
+            values = (host, url, method, request_content)
+
+            self.sf_requests_list.insert("", tk.END, values=values)
+
+    def send_request_to_filter(self):
+        """
+        Updates filtering in backend logic, sends hostname
+        Adds request to scope tab list
+        """
+        request2 = Request2.from_http_message(self.hh_request_textbox.get_text())
+        request = request2.to_request()
+        serialized_reqeust = pickle.dumps(request)
+
+        self.add_request_to_scope_tab()
+        self.check_requests_list_empty()
+
+        try:
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                s.connect((HOST, FRONT_BACK_SCOPEUPDATE_PORT))
+                s.sendall(serialized_reqeust)
+        except Exception as e:
+            print(f"Error while sendind request to filter: {e}")
+
+        # if request is not None:
+        #
+        #     request2 = Request2.from_http_message(request_info)
+        #     self.sf_requests_list.insert("", tk.END, values=request_info.split('\n'))
+        #     serialized_reqeust2 = pickle.dumps(request2)
+        #     try:
+        #         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        #             s.connect((HOST, PORT_INTERCEPT))
+        #             s.sendall(serialized_reqeust2)
+        #     except Exception as e:
+        #         print(f"Błąd przy wysyłaniu żądania do PROXY: {e}")
+        # else:
 
     def send_to_repeater(self):
         pass
+
+    # TODO Smoothing out browser drop request
+    # TODO Smoothing out browser interactions - closing app closes the browser.
+    # TODO Synching of threads(?)
+    # TODO Setting of proxy(?)

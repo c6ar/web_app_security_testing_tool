@@ -99,17 +99,18 @@ class GUI(ctk.CTk):
         options = Options()
         options.add_argument("--enable-logging")
         options.add_argument("--log-level=0")
+        options.add_argument(f"--proxy-server=localhost:8082")
         options.add_experimental_option("excludeSwitches", ["enable-logging"])
         options.set_capability("goog:loggingPrefs", {"performance": "ALL"})
 
         driver = webdriver.Chrome(service=Service(), options=options)
         self.browser = driver
-        driver.get("http://www.example.com")
+        self.browser.get("http://www.example.com")
+
 
         try:
             while self.browser_opened:
-                self.requests = driver.get_log('performance')
-                self.proxy_frame.requests_update()
+                # self.requests = driver.get_log('performance')
                 if len(driver.window_handles) == 0:
                     self.browser_opened = False
         finally:
