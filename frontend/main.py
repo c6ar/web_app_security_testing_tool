@@ -62,6 +62,7 @@ class GUI(ctk.CTk):
         self.show_proxy()
 
     def about(self):
+        # TODO Implement about pop-up, including: app logo and title, short desc. + authors and UKEN copyright
         print("About clicked.")
 
     def show_proxy(self):
@@ -106,7 +107,7 @@ class GUI(ctk.CTk):
         options.set_capability("goog:loggingPrefs", {"performance": "ALL"})
 
         self.browser = webdriver.Chrome(options=options)
-        self.browser.get("about://newtab")
+        self.browser.get("http://www.example.com")
 
         try:
             while self.browser_opened:
@@ -152,6 +153,7 @@ class GUI(ctk.CTk):
                 print(f"Błąd przy zatrzymywaniu procesu: {e}")
 
     def on_close(self):
+        # TODO Synching of threads(?) - closing app seems clunky.
         """Zamykanie aplikacji"""
         self.stop_proxy()
         if self.browser is not None:

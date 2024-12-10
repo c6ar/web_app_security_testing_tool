@@ -79,6 +79,9 @@ class RequestList(ttk.Treeview):
         for item in self.selection():
             self.delete(item)
 
+        if len(self.get_children()) > 0 and len(self.selection()) == 0:
+            self.selection_add(self.get_children()[-1])
+
     def delete_all(self):
         for item in self.get_children():
             self.delete(item)
@@ -187,10 +190,10 @@ class GUIProxy(ctk.CTkFrame):
             compound="left", corner_radius=32)
 
         self.send_to_repeater_button = ActionButton(self.sf_top_bar, text=f"Send to repeater", state=tk.DISABLED,
-                                                    corner_radius=32)
+                                                    corner_radius=32, command=self.send_to_repeater)
 
         self.send_to_intruder_button = ActionButton(self.sf_top_bar, text=f"Send to intruder", state=tk.DISABLED,
-                                                    corner_radius=32)
+                                                    corner_radius=32, command=self.send_to_intruder)
 
         self.icon_random = ctk.CTkImage(
             light_image=Image.open(f"{ASSET_DIR}\\icon_random.png"),
@@ -299,6 +302,9 @@ class GUIProxy(ctk.CTkFrame):
         self.hhf_send_requests_to_scope_button = ActionButton(
             self.hhf_top_bar, text="Send to scope", image=self.icon_send, command=self.send_request_to_filter,
             fg_color=color_acc, hover_color=color_acc2, compound="left", corner_radius=32)
+        self.hhf_send_requests_to_repeater_button = ActionButton(
+            self.hhf_top_bar, text="Send to repeater", image=self.icon_send, command=self.send_to_repeater_from_traffic,
+            fg_color=color_acc, hover_color=color_acc2, compound="left", corner_radius=32)
         self.hhf_delete_requests_button = ActionButton(
             self.hhf_top_bar, text="Delete all requests", image=self.icon_delete,
             command=self.delete_all_requests_in_http_traffic,
@@ -308,6 +314,7 @@ class GUIProxy(ctk.CTkFrame):
             compound="left", corner_radius=32)
 
         self.hhf_send_requests_to_scope_button.pack(side=tk.LEFT, padx=(10, 5), pady=15)
+        self.hhf_send_requests_to_repeater_button.pack(side=tk.LEFT, padx=5, pady=15)
         self.hhf_delete_requests_button.pack(side=tk.LEFT, padx=5, pady=15)
         self.hhf_browser_button.pack(side=tk.RIGHT, padx=(10, 5), pady=15)
 
@@ -495,9 +502,11 @@ class GUIProxy(ctk.CTkFrame):
 
         if len(self.hhf_requests_list.get_children()) == 0:
             self.hhf_send_requests_to_scope_button.configure(state=tk.DISABLED)
+            self.hhf_send_requests_to_repeater_button.configure(state=tk.DISABLED)
             self.hhf_delete_requests_button.configure(state=tk.DISABLED)
         else:
             self.hhf_send_requests_to_scope_button.configure(state=tk.NORMAL)
+            self.hhf_send_requests_to_repeater_button.configure(state=tk.NORMAL)
             self.hhf_delete_requests_button.configure(state=tk.NORMAL)
 
     def show_history_request_content(self, event):
@@ -696,7 +705,8 @@ class GUIProxy(ctk.CTkFrame):
         try:
             if self.root.browser is not None:
                 if len(self.root.browser.window_handles) > 0:
-                    self.root.browser.execute_script("alert('WASTT: Request has been dropped by user. Please close this page.');")
+                    self.root.browser.execute_script(
+                        "alert('WASTT: Request has been dropped by user. Please close this page.');")
         except Exception as e:
             print(f"Error while letting know about dropped request: {e}")
 
@@ -717,6 +727,7 @@ class GUIProxy(ctk.CTkFrame):
             Updates filtering in backend logic, sends hostname
             Adds request to scope tab list
         """
+        # TODO Splitting sending to filter and intercept into two tabs.
         request2 = Request2.from_http_message(self.hh_request_textbox.get_text())
         request = request2.to_request()
         serialized_reqeust = pickle.dumps(request)
@@ -731,23 +742,52 @@ class GUIProxy(ctk.CTkFrame):
         except Exception as e:
             print(f"Error while sendind request to filter: {e}")
 
-        # if request is not None:
-        #
-        #     request2 = Request2.from_http_message(request_info)
-        #     self.sf_requests_list.insert("", tk.END, values=request_info.split('\n'))
-        #     serialized_reqeust2 = pickle.dumps(request2)
-        #     try:
-        #         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        #             s.connect((HOST, PORT_INTERCEPT))
-        #             s.sendall(serialized_reqeust2)
-        #     except Exception as e:
-        #         print(f"Błąd przy wysyłaniu żądania do PROXY: {e}")
-        # else:
-
     def send_to_repeater(self):
+        # TODO Confirm if this can be deleted
+        # flag = "True"
+        # try:
+        #     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        #         s.connect((HOST, FRONT_BACK_SENDTOREPEATER_PORT))
+        #         serialized_flag = flag.encode("utf-8")
+        #         s.sendall(serialized_flag)
+        # except Exception as e:
+        #     print(f"Error Proxy/Send to repeater: While sending flag to kill process: {e}")
+
+        request_content = self.sf_request_content.get_text()
+        request_lines = request_content.split("\n")
+        if not any(line.startswith("Host:") for line in request_lines):
+            selected_item = self.sf_requests_list.selection()[0]
+            host_string = self.sf_requests_list.item(selected_item)['values'][0]
+            request_lines.insert(1, f"Host: {host_string}")
+            request_content = "\n".join(request_lines)
+
+        # print(f"Debug Proxy/Send to repeater:\n{request_content}")
+        self.root.repeater_frame.add_request_to_repeater_tab(request_content)
+
+        self.sf_requests_list.drop_selected()
+        if len(self.sf_requests_list.get_children()) > 0:
+            self.sf_requests_list.selection_add(self.sf_requests_list.get_children()[-1])
+        self.check_requests_list_empty()
+
+    def send_to_repeater_from_traffic(self):
+        request_content = self.hh_request_textbox.get_text()
+        request_lines = request_content.split("\n")
+        if not any(line.startswith("Host:") for line in request_lines):
+            selected_item = self.hhf_requests_list.selection()[0]
+            host_string = self.hhf_requests_list.item(selected_item)['values'][0]
+            request_lines.insert(1, f"Host: {host_string}")
+            request_content = "\n".join(request_lines)
+
+        # print(f"Debug Proxy/Send to repeater:\n{request_content}")
+        self.root.repeater_frame.add_request_to_repeater_tab(request_content)
+
+    # TODO Merge send_to_repeater and send_to_repeater_from_traffic into one method that takes textbox and requestlist as params.
+
+    def send_to_intruder(self):
         pass
 
     def open_settings_window(self):
+        # TODO Actual implmentation of config logic in the app, probably moving to main.py or separate file.
         self.settings_window = ctk.CTkToplevel(self.root)
         self.settings_window.title("Proxy Settings")
         self.settings_window.attributes("-topmost", True)
@@ -760,10 +800,12 @@ class GUIProxy(ctk.CTkFrame):
             entry.pack()
             self.settings_entries[key] = entry
 
-        save_button = ctk.CTkButton(self.settings_window, text="Save", command=self.save_settings, fg_color=color_acc3, hover_color=color_acc4, corner_radius=32)
+        save_button = ctk.CTkButton(self.settings_window, text="Save", command=self.save_settings, fg_color=color_acc3,
+                                    hover_color=color_acc4, corner_radius=32)
         save_button.pack(side=tk.LEFT, padx=10, pady=10)
 
-        cancel_button = ctk.CTkButton(self.settings_window, text="Cancel", command=self.settings_window.destroy, corner_radius=32)
+        cancel_button = ctk.CTkButton(self.settings_window, text="Cancel", command=self.settings_window.destroy,
+                                      corner_radius=32)
         cancel_button.pack(side=tk.RIGHT, padx=10, pady=10)
 
         self.settings_window.lift()
@@ -819,7 +861,3 @@ class GUIProxy(ctk.CTkFrame):
                 self.load_config()
         except Exception as e:
             print(f"Error during saving a config: {e}")
-
-
-    # TODO Synching of threads(?)
-    # TODO Actual implmentation of config logic in the app

@@ -1,11 +1,15 @@
 import pickle
 import mitmproxy.http
 import socket
-from mitmproxy.http import Request
-from global_setup import *
+from mitmproxy import ctx
+
+# from mitmproxy.connection import ServerConnection
+from mitmproxy.http import Request, Response, HTTPFlow
 import asyncio
 import threading
 from utils.get_domain import extract_domain
+from mitmproxy import ctx
+from global_setup import *
 
 
 class WebRequestInterceptor:
@@ -16,6 +20,8 @@ class WebRequestInterceptor:
         self.current_flow = None
         self.intercept_state = False
         self.backup= []
+        self.repeater_flow = None
+        self.repeater_backup_flow = None
 
 
     def request(self, flow: mitmproxy.http.HTTPFlow):
@@ -26,6 +32,8 @@ class WebRequestInterceptor:
         request = flow.request
         self.current_flow = flow
         flow.intercept()
+        #self.repeater_flow = flow.copy()
+        self.repeater_backup_flow = flow.copy()
 
         if "mozilla.org" in request.host:
             """
@@ -48,6 +56,7 @@ class WebRequestInterceptor:
     def response(self, flow: mitmproxy.http.HTTPFlow):
         if flow.response:
             self.send_flow_to_http_trafic_tab(flow)
+            self.repeater_flow = flow.copy()
 
     def start_async_servers(self):
         """
@@ -59,6 +68,8 @@ class WebRequestInterceptor:
                 self.add_host_to_scope(),
                 self.listen_for_kill_flow(),
                 self.listen_for_intercept_button(),
+                # self.listen_for_repeater_http_message(),
+                self.listen_for_repeater_flag(),
             ]
             self.loop.run_until_complete(asyncio.gather(*tasks))
 
@@ -138,6 +149,65 @@ class WebRequestInterceptor:
         writer.close()
         await writer.wait_closed()
 
+    async def listen_for_repeater_flag(self):
+        """
+        Asynchronously listens for requests from repeater and creates a new flow.
+        """
+        server = await asyncio.start_server(
+            self.handle_repeater_flag, HOST, FRONT_BACK_SENDTOREPEATER_PORT
+        )
+        async with server:
+            await server.serve_forever()
+
+    async def handle_repeater_flag(self, reader, writer):
+        """
+        Handles "send to repeater" button press, copies flow and sends it to repeater tab.
+        """
+        data = await reader.read(4096)
+        if data:
+            try:
+                self.send_flow_to_repeater()
+
+                writer.write(b"Request received and flow copied.")
+                await writer.drain()
+
+            except Exception as e:
+                print(f"Error while sending flow to repeater: {e}")
+                writer.write(b"Error processing request.")
+                await writer.drain()
+
+        writer.close()
+        await writer.wait_closed()
+
+
+    # async def listen_for_repeater_http_message(self):
+    #     """
+    #     Asynchronously listens for requests from repeater and creates a new flow.
+    #     """
+    #     server = await asyncio.start_server(
+    #         self.handle_repeater_http_message, HOST, REPEATER_BACK_SENDHTTPMESSAGE_PORT
+    #     )
+    #     async with server:
+    #         await server.serve_forever()
+    #
+    # async def handle_repeater_http_message(self, reader, writer):
+    #     """
+    #     Handles incoming http messaghe from the repeater and processes it.
+    #     """
+    #     encoded_http_message = await reader.read(4096)
+    #     if encoded_http_message:
+    #         try:
+    #             http_message = encoded_http_message.decode('utf-8')
+    #             print("REQUEST: ")
+    #             print(http_message)
+    #         except Exception as e:
+    #             print(f"Error while decoding in http message from repater: {e}")
+    #
+    #
+    #
+    #     writer.close()
+    #     await writer.wait_closed()
+
     def send_flow_to_http_trafic_tab(self, flow):
         """
         Serializes tab = [flow.reqeust, flow.response] and sends to
@@ -190,6 +260,34 @@ class WebRequestInterceptor:
                     flow.request.data = deserialize_reqeust.data
                     if flow.intercepted:
                         flow.resume()
+
+    def send_flow_to_repeater(self):
+        try:
+            serialized_flow = pickle.dumps(self.repeater_flow)
+        except Exception as e:
+            print(f"\nError while serialization before sending to repeater tab: {e}")
+        try:
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                s.connect((HOST, BACK_REPEATER_FLOWSEND_PORT))
+                s.sendall(serialized_flow)
+        except Exception as e:
+            print(f"\nError while sending flow to repeater tab: {e}")
+
+    def send_response_to_repeater(self, response):
+        """
+        Sends response to repeater
+        """
+        try:
+            serialized_response = pickle.dumps(response)
+        except Exception as e:
+            print(f"Error while serialization response before sending to repeater: {e} ")
+        try:
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                s.connect((HOST, BACK_REPEATER_RESPONSESEND_PORT))
+                s.sendall(serialized_response)
+        except Exception as e:
+            print(f"\nError while sending response to repeater tab: {e}")
+
 
 addons = [
     WebRequestInterceptor()

@@ -7,8 +7,7 @@ from functools import partial
 import re
 
 
-class NumberedNav(ctk.CTkFrame):
-
+class IntruderNav(ctk.CTkFrame):
     def __init__(self, master, frames):
         super().__init__(master)
         self.configure(fg_color="transparent")
@@ -30,7 +29,7 @@ class NumberedNav(ctk.CTkFrame):
                                     background=color_bg_br)
         self.add_button.pack(side="right", padx=(10, 0))
         self.pack(side="top", fill="x", padx=15, pady=(10, 0))
-        self.frames.append(NumberedFrame(master, 0, self))
+        self.frames.append(IntruderFrame(master, 0, self))
         self.show_frame(0)
 
     def show_frame(self, n):
@@ -52,14 +51,12 @@ class NumberedNav(ctk.CTkFrame):
                                      command=partial(self.show_frame, new_id),
                                      font=ctk.CTkFont(family="Calibri", size=14, weight="normal"),
                                      background=color_bg_br,
-                                     background_selected=color_bg,
-                                     # close=True,
-                                     # close_command=partial(self.delete_frame, new_id)
+                                     background_selected=color_bg
                                      )
         self.buttons.append(new_frame_button)
         new_frame_button.pack(side="left", padx=(10, 0))
 
-        new_frame = NumberedFrame(self.master, new_id, self)
+        new_frame = IntruderFrame(self.master, new_id, self)
         self.frames.append(new_frame)
 
     def delete_frame(self, n):
@@ -77,14 +74,11 @@ class NumberedNav(ctk.CTkFrame):
     def update_numbering(self):
         for i, button in enumerate(self.buttons):
             button.main_button.configure(text=str(i + 1), command=partial(self.show_frame, i))
-            if hasattr(button, 'close_button'):
-                # print(f"Debug Intruder: Updated button {i + 1} to be closing index {i}.")
-                button.close_button.configure(command=partial(self.delete_frame, i))
             self.frames[i].update_number(i)
 
 
-class NumberedFrame(ctk.CTkFrame):
-    def __init__(self, master, id_number, numnav):
+class IntruderFrame(ctk.CTkFrame):
+    def __init__(self, master, id_number, nav):
         super().__init__(master)
         self.configure(
             fg_color=color_bg,
@@ -92,8 +86,7 @@ class NumberedFrame(ctk.CTkFrame):
             background_corner_colors=(color_bg_br, color_bg_br, color_bg_br, color_bg_br)
         )
         self.id = id_number
-
-        self.numnav = numnav
+        self.nav = nav
 
         self.payloads = None
 
@@ -124,7 +117,7 @@ class NumberedFrame(ctk.CTkFrame):
                 text="Delete the card",
                 width=30,
                 image=icon_delete,
-                command=partial(numnav.delete_frame, self.id),
+                command=partial(self.nav.delete_frame, self.id),
                 compound="left",
                 corner_radius=32
             )
@@ -169,7 +162,7 @@ class NumberedFrame(ctk.CTkFrame):
         self.id = id_number
         if self.id != 0:
             self.delete_frame_button.configure(
-                command=partial(self.numnav.delete_frame, self.id)
+                command=partial(self.nav.delete_frame, self.id)
             )
 
     def start_attack(self, payloads):
@@ -385,4 +378,4 @@ class GUIIntruder(ctk.CTkFrame):
         self.configure(fg_color="transparent")
         self.root = root
         self.frames = []
-        self.numnav = NumberedNav(self, self.frames)
+        self.nav = IntruderNav(self, self.frames)

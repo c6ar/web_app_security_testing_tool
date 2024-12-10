@@ -2,9 +2,10 @@ import customtkinter as ctk
 import tkinter as tk
 from pathlib import Path
 from PIL import Image, ImageTk
-from backend.global_setup import  *
+from backend.global_setup import *
 
-from PIL import Image, ImageTk
+# TODO Renaming this file into common.py - to have all the modules shared across tabs in GUI.
+# TODO Global variables to be moved to common.conf file once settings implemented
 color_bg = "#222"
 color_bg_br = "#333"
 ctk.set_default_color_theme("dark-blue")
@@ -19,7 +20,7 @@ ASSET_DIR = f"{Path.cwd()}\\assets"
 
 
 class NavButton(ctk.CTkFrame):
-    def __init__(self, master, text, command, font, background=color_bg, background_selected=color_bg_br, close=False, close_command=None):
+    def __init__(self, master, text, command, font, background=color_bg, background_selected=color_bg_br):
         super().__init__(master)
 
         self.bg = background
@@ -49,34 +50,8 @@ class NavButton(ctk.CTkFrame):
             command=command,
             font=font
         )
-        if close:
-            self.configure(
-                width=button_width - 10
-            )
-            self.main_button.configure(
-                width=button_width - 25
-            )
+
         self.main_button.pack(side="left", padx=3)
-
-        if close:
-            icon_delete = ctk.CTkImage(
-                light_image=Image.open(f"{ASSET_DIR}\\icon_close.png"),
-                dark_image=Image.open(f"{ASSET_DIR}\\icon_close.png"), size=(10, 10))
-            self.close_button = ctk.CTkButton(self)
-            self.close_button.configure(
-                border_width=0,
-                border_spacing=0,
-                width=5,
-                corner_radius=10,
-                bg_color="transparent",
-                fg_color="transparent",
-                hover=False,
-                image=icon_delete,
-                text="",
-                command=close_command
-            )
-            self.close_button.pack(side="left")
-
         self.selected = False
 
     def set_selected(self, value):
@@ -89,10 +64,6 @@ class NavButton(ctk.CTkFrame):
             self.main_button.configure(
                 state="disabled"
             )
-            if hasattr(self,"close_button"):
-                self.close_button.configure(
-                    background_corner_colors=(self.bg_sel, self.bg, self.bg_sel, self.bg_sel)
-                )
         else:
             self.configure(
                 fg_color=self.bg,
@@ -101,10 +72,6 @@ class NavButton(ctk.CTkFrame):
             self.main_button.configure(
                 state="normal"
             )
-            if hasattr(self,"close_button"):
-                self.close_button.configure(
-                    background_corner_colors=(self.bg, self.bg, self.bg, self.bg)
-                )
 
 
 class HeaderTitle(ctk.CTkLabel):
