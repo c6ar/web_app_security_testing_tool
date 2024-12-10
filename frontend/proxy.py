@@ -1,9 +1,8 @@
 import os
 import pickle
+import random
 from idlelib.rpc import response_queue
-
 from flask import request
-
 from backend.Request import *
 import dill
 import time
@@ -20,7 +19,6 @@ import socket
 import subprocess
 import threading
 from PIL import Image, ImageTk
-from test_functions import *
 import json
 import threading
 
@@ -148,7 +146,7 @@ class GUIProxy(ctk.CTkFrame):
          > Sub navigation tabs of Proxy GUI
         """
         self.subnav = ctk.CTkFrame(self, fg_color="transparent")
-        self.http_history_tab_button = NavButton(self.subnav, text="HTTP History", command=self.show_http_history_tab,
+        self.http_history_tab_button = NavButton(self.subnav, text="HTTP Traffic", command=self.show_http_history_tab,
                                                  font=ctk.CTkFont(family="Calibri", size=14, weight="normal"),
                                                  background=color_bg_br, background_selected=color_bg)
         self.scope_tab_button = NavButton(self.subnav, text="Scope", command=self.show_scope_tab,
@@ -198,7 +196,7 @@ class GUIProxy(ctk.CTkFrame):
             light_image=Image.open(f"{ASSET_DIR}\\icon_random.png"),
             dark_image=Image.open(f"{ASSET_DIR}\\icon_random.png"), size=(20, 20))
         self.add_random_entry = ActionButton(
-            self.sf_top_bar, text=f"Add random entry", image=self.icon_random, command=self.add_random_request,
+            self.sf_top_bar, text=f"Random request", image=self.icon_random, command=self.generate_random_request,
             compound="left", corner_radius=32)
 
         self.icon_browser = ctk.CTkImage(
@@ -211,8 +209,12 @@ class GUIProxy(ctk.CTkFrame):
         self.icon_settings = ctk.CTkImage(
             light_image=Image.open(f"{ASSET_DIR}\\icon_settings.png"),
             dark_image=Image.open(f"{ASSET_DIR}\\icon_settings.png"), size=(20, 20))
-        self.settings_button = ActionButton(self.sf_top_bar, text="Proxy settings", image=self.icon_settings,
-                                            compound="left", corner_radius=32)
+        self.settings_button = ActionButton(
+            self.sf_top_bar, text="Proxy settings", image=self.icon_settings, command=self.open_settings_window,
+            compound="left", corner_radius=32)
+        self.settings_window = None
+        self.settings_entries = {}
+        self.running_conf = self.load_config()
 
         self.sf_paned_window = tk.PanedWindow(self.scope_frame, orient=tk.VERTICAL, sashwidth=10,
                                               background=color_bg_br)
@@ -226,7 +228,7 @@ class GUIProxy(ctk.CTkFrame):
 
         columns = ("Host", "URL", "Method", "Content")
         self.sf_requests_list = RequestList(self.sf_top_pane, columns=columns, show="headings", style="Treeview",
-                                            selectmode="browse")
+                                            selectmode="none")
         self.sf_requests_list.bind("<<TreeviewSelect>>", self.show_scope_request_content)
         for col in columns:
             self.sf_requests_list.heading(col, text=col)
@@ -301,9 +303,13 @@ class GUIProxy(ctk.CTkFrame):
             self.hhf_top_bar, text="Delete all requests", image=self.icon_delete,
             command=self.delete_all_requests_in_http_traffic,
             fg_color=color_acc3, hover_color=color_acc4, compound="left", corner_radius=32)
+        self.hhf_browser_button = ActionButton(
+            self.hhf_top_bar, text="Open browser", image=self.icon_browser, command=self.root.start_browser_thread,
+            compound="left", corner_radius=32)
 
         self.hhf_send_requests_to_scope_button.pack(side=tk.LEFT, padx=(10, 5), pady=15)
         self.hhf_delete_requests_button.pack(side=tk.LEFT, padx=5, pady=15)
+        self.hhf_browser_button.pack(side=tk.RIGHT, padx=(10, 5), pady=15)
 
         self.hhf_paned_window = tk.PanedWindow(self.http_history_frame, orient=tk.VERTICAL, sashwidth=10,
                                                background=color_bg_br)
@@ -465,8 +471,10 @@ class GUIProxy(ctk.CTkFrame):
     def browser_button_update(self):
         if self.root.browser_opened:
             self.browser_button.configure(text="Go to browser")
+            self.hhf_browser_button.configure(text="Go to browser")
         else:
             self.browser_button.configure(text="Open browser")
+            self.hhf_browser_button.configure(text="Open browser")
 
     def check_requests_list_empty(self):
         """
@@ -533,15 +541,6 @@ class GUIProxy(ctk.CTkFrame):
             self.sf_request_content.insert_text("Select a request to display its contents.")
             self.sf_request_content.configure(state=tk.DISABLED, font=self.hh_request_textbox.monoscape_font_italic)
 
-    def requests_update(self):
-        """
-        Funkcja testowa do pobierania logów z otwartej przeglądarki.
-        """
-        # if self.root.requests is not None:
-        #     for req in self.root.requests:
-        #         print(json.dumps(json.loads(req["message"]), indent=5))
-        pass
-
     def receive_and_add_to_http_traffic(self):
         """
             Receives tab = [flow.request, flow.response] from backend.proxy.WebRequestInterceptor.send_flow_to_http_trafic_tab
@@ -560,11 +559,10 @@ class GUIProxy(ctk.CTkFrame):
                             if isinstance(flow_tab, list) and len(flow_tab) == 2:
                                 request2 = Request2.from_request(flow_tab[0])
                                 response = flow_tab[1]
-                                print(f"REQUEST AND RESPONSE\n\tRequest:\n\t\t{request2}\tResponse:\n\t\t{response}")
+                                # print(f"REQUEST AND RESPONSE\n\tRequest:\n\t\t{request2}\tResponse:\n\t\t{response}")
                                 self.add_reqeust_to_http_traffic_tab(request2, response)
-                                # self.show_history_response_content(flow_tab[1])
                             else:
-                                print(f"REQUEST ONLY\n\tRequest:\n\t\t{request2}")
+                                # print(f"REQUEST ONLY\n\tRequest:\n\t\t{request2}")
                                 self.add_reqeust_to_http_traffic_tab(request2)
                             self.check_requests_list_empty()
                         except Exception as e:
@@ -592,27 +590,7 @@ class GUIProxy(ctk.CTkFrame):
                         except Exception as e:
                             print(f"Error while deserialization recieved in scope: {e}")
 
-                        request2 = Request2.from_request(deserialized_request)
-
                         self.check_requests_list_empty()
-
-    def send_reqeust_from_scope(self):
-        """
-        Sends request made from scope tab textbox, request is forwarded to web browser.
-        """
-        request2 = Request2.from_http_message(self.sf_request_content.get_text())
-        request = request2.to_request()
-        serialized_reqeust = pickle.dumps(request)
-
-        try:
-            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-                s.connect((HOST, FRONT_BACK_FORWARDBUTTON_PORT))
-                s.sendall(serialized_reqeust)
-        except Exception as e:
-            print(f"Error while sending after Forward button: {e}")
-
-        self.sf_requests_list.drop_selected()
-        self.check_requests_list_empty()
 
     def add_reqeust_to_http_traffic_tab(self, req, resp=None):
         """
@@ -636,19 +614,74 @@ class GUIProxy(ctk.CTkFrame):
 
         self.hhf_requests_list.insert("", tk.END, values=values)
 
-    def add_random_request(self):
+        if len(self.hhf_requests_list.selection()) == 0:
+            self.hhf_requests_list.selection_add(self.hhf_requests_list.get_children()[0])
+
+    def add_request_to_scope_tab(self, req=None):
+        """
+            Adds request to scope list in GUI tab.
+        """
+        if req is None:
+            if len(self.hhf_requests_list.get_children()) > 0:
+                selected_item = self.hhf_requests_list.selection()[0]
+                host = self.hhf_requests_list.item(selected_item)['values'][0]
+                url = self.hhf_requests_list.item(selected_item)['values'][1]
+                method = self.hhf_requests_list.item(selected_item)['values'][2]
+                request_content = self.hh_request_textbox.get_text()
+                values = (host, url, method, request_content)
+
+                self.sf_requests_list.insert("", 0, values=values)
+        else:
+            host = req.host
+            url = req.path
+            method = req.method
+            request_content = req.return_http_message()
+            values = (host, url, method, request_content)
+
+            self.sf_requests_list.insert("", 0, values=values)
+
+        if len(self.sf_requests_list.selection()) == 0:
+            self.sf_requests_list.selection_add(self.sf_requests_list.get_children()[0])
+
+    def send_reqeust_from_scope(self):
+        """
+        Sends request made from scope tab textbox, request is forwarded to web browser.
+        """
+        request2 = Request2.from_http_message(self.sf_request_content.get_text())
+        request = request2.to_request()
+        serialized_reqeust = pickle.dumps(request)
+
+        try:
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                s.connect((HOST, FRONT_BACK_FORWARDBUTTON_PORT))
+                s.sendall(serialized_reqeust)
+        except Exception as e:
+            print(f"Error while sending after Forward button: {e}")
+
+        self.sf_requests_list.drop_selected()
+        self.check_requests_list_empty()
+        if len(self.sf_requests_list.get_children()) > 0:
+            self.sf_requests_list.selection_add(self.sf_requests_list.get_children()[-1])
+
+    def generate_random_request(self):
         """
         Adds random request in scope tab
         """
-        self.sf_requests_list.insert("", tk.END, values=generate_random_reqeust())
-        self.hhf_requests_list.insert("", tk.END, values=generate_random_reqeust())
+        url = f"http://{random.choice(['example', 'test', 'check', 'domain'])}.{random.choice(['org', 'com', 'pl', 'eu'])}/"
+        path = f"/{random.choice(['entry', 'page', '', 'test', 'subpage'])}"
+        method = random.choice(["GET", "POST", "PUT", "DELETE"])
+        content = f'{method} {path} HTTP/1.1\nHost: {url}\nProxy-Connection: keep-alive\nrandom stuff here'
+        random_request = [url, path, method, content]
+
+        self.sf_requests_list.insert("", 0, values=random_request)
+        self.hhf_requests_list.insert("", tk.END, values=random_request)
         self.sf_requests_list.selection_remove(self.sf_requests_list.get_children())
         self.sf_requests_list.selection_add(self.sf_requests_list.get_children()[-1])
         self.check_requests_list_empty()
 
     def drop_request(self):
         """
-        Removes and request from list in GUI, request is dropped, proxy sends "request dropped info" .
+            Removes an request from list in GUI, request is dropped, proxy sends "request dropped info".
         """
         flag = "True"
         try:
@@ -660,24 +693,12 @@ class GUIProxy(ctk.CTkFrame):
             print(f"Error while sending flag to kill process: {e}")
 
         self.sf_requests_list.drop_selected()
-
         try:
             if self.root.browser is not None:
-                self.root.browser.set_page_load_timeout(1)
-                try:
-                    self.root.browser.get("http://www.example.com")
-                except:
-                    pass
-                script = """ alert('Request has been dropped'); """
-                self.root.browser.execute_script(script)
-                self.root.browser.execute_script("window.open('http://www.newpage.com', '_blank');")
-                self.root.browser.switch_to.window(self.root.browser.window_handles[-1])
-                self.root.browser.switch_to.window(self.root.browser.window_handles[0])
-                self.root.browser.close()
-                self.root.browser.switch_to.window(self.root.browser.window_handles[-1])
-                self.root.browser.set_page_load_timeout(1)
+                if len(self.root.browser.window_handles) > 0:
+                    self.root.browser.execute_script("alert('WASTT: Request has been dropped by user. Please close this page.');")
         except Exception as e:
-            print(f"Error while closing the tab: {e}")
+            print(f"Error while letting know about dropped request: {e}")
 
         if len(self.sf_requests_list.get_children()) > 0:
             self.sf_requests_list.selection_add(self.sf_requests_list.get_children()[-1])
@@ -686,47 +707,15 @@ class GUIProxy(ctk.CTkFrame):
 
     def delete_all_requests_in_http_traffic(self):
         """
-            Deletes from GUI list.
+            Deletes all requests from HTTP Traffic list.
         """
-        # http_message = self.sf_request_content.get_text()
-        # message = "False" + http_message
-        # try:
-        #     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        #         s.connect((HOST, PORT_GUI))
-        #         s.sendall(message.encode('utf-8'))
-        # except Exception as e:
-        #     print(f"Błąd przy wysyłaniu żądania do PROXY: {e}")
-        # self.sf_requests_list.drop_selected()
         self.hhf_requests_list.delete_all()
         self.check_requests_list_empty()
 
-    def add_request_to_scope_tab(self, req=None):
-        """
-        Adds request to scope list in GUI tab.
-        """
-        if req is None:
-            if len(self.hhf_requests_list.get_children()) > 0:
-                selected_item = self.hhf_requests_list.selection()[0]
-                host = self.hhf_requests_list.item(selected_item)['values'][0]
-                url = self.hhf_requests_list.item(selected_item)['values'][1]
-                method = self.hhf_requests_list.item(selected_item)['values'][2]
-                request_content = self.hh_request_textbox.get_text()
-                values = (host, url, method, request_content)
-
-                self.sf_requests_list.insert("", tk.END, values=values)
-        else:
-            host = req.host
-            url = req.path
-            method = req.method
-            request_content = req.return_http_message()
-            values = (host, url, method, request_content)
-
-            self.sf_requests_list.insert("", tk.END, values=values)
-
     def send_request_to_filter(self):
         """
-        Updates filtering in backend logic, sends hostname
-        Adds request to scope tab list
+            Updates filtering in backend logic, sends hostname
+            Adds request to scope tab list
         """
         request2 = Request2.from_http_message(self.hh_request_textbox.get_text())
         request = request2.to_request()
@@ -758,7 +747,78 @@ class GUIProxy(ctk.CTkFrame):
     def send_to_repeater(self):
         pass
 
-    # TODO Smoothing out browser drop request
-    # TODO Smoothing out browser interactions - closing app closes the browser.
+    def open_settings_window(self):
+        self.settings_window = ctk.CTkToplevel(self.root)
+        self.settings_window.title("Proxy Settings")
+
+        for key, value in self.running_conf.items():
+            label = ctk.CTkLabel(self.settings_window, text=key)
+            label.pack()
+            entry = ctk.CTkEntry(self.settings_window)
+            entry.insert(0, value)
+            entry.pack()
+            self.settings_entries[key] = entry
+
+        save_button = ctk.CTkButton(self.settings_window, text="Save", command=self.save_settings, fg_color=color_acc3, hover_color=color_acc4, corner_radius=32)
+        save_button.pack(side=tk.LEFT, padx=10, pady=10)
+
+        cancel_button = ctk.CTkButton(self.settings_window, text="Cancel", command=self.settings_window.destroy, corner_radius=32)
+        cancel_button.pack(side=tk.RIGHT, padx=10, pady=10)
+
+        self.settings_window.lift()
+
+    def save_settings(self):
+        for key, entry in self.settings_entries.items():
+            self.running_conf[key] = entry.get()
+        self.save_config(self.running_conf)
+        self.settings_window.destroy()
+
+    def load_config(self):
+        default_config = {
+            "host_address": "127.0.0.1",
+            "port": 8082
+        }
+        config = default_config.copy()
+        try:
+            with open("proxy.conf", "r") as file:
+                for line in file:
+                    line = line.strip()
+                    if line and not line.startswith("#"):
+                        key, value = line.split("=", 1)
+                        config[key.strip()] = value.strip()
+        except FileNotFoundError:
+            print("Proxy config file could not be open. Default settings loaded.")
+        return config
+
+    def save_config(self, config):
+        try:
+            with open("proxy.conf", "r") as file:
+                lines = file.readlines()
+
+            updated_lines = []
+            keys_found = set()
+            for line in lines:
+                if line.strip() and not line.strip().startswith("#"):
+                    key, value = line.split("=", 1)
+                    key = key.strip()
+                    if key in config:
+                        updated_lines.append(f"{key} = {config[key]}\n")
+                        keys_found.add(key)
+                    else:
+                        updated_lines.append(line)
+                else:
+                    updated_lines.append(line)
+
+            for key, value in config.items():
+                if key not in keys_found:
+                    updated_lines.append(f"{key} = {value}\n")
+
+            with open("proxy.conf", "w") as file:
+                file.writelines(updated_lines)
+                self.load_config()
+        except Exception as e:
+            print(f"Error during saving a config: {e}")
+
+
     # TODO Synching of threads(?)
-    # TODO Setting of proxy(?)
+    # TODO Actual implmentation of config logic in the app

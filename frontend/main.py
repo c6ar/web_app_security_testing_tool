@@ -100,26 +100,29 @@ class GUI(ctk.CTk):
         options.add_argument("--enable-logging")
         options.add_argument("--log-level=0")
         options.add_argument(f"--proxy-server=localhost:8082")
+        options.add_argument("--disable-infobars")
+        options.add_argument("--disable-notifications")
         options.add_experimental_option("excludeSwitches", ["enable-logging"])
         options.set_capability("goog:loggingPrefs", {"performance": "ALL"})
 
-        driver = webdriver.Chrome(service=Service(), options=options)
-        self.browser = driver
-        self.browser.get("http://www.example.com")
-
+        self.browser = webdriver.Chrome(options=options)
+        self.browser.get("about://newtab")
 
         try:
             while self.browser_opened:
                 # self.requests = driver.get_log('performance')
-                if len(driver.window_handles) == 0:
+                if len(self.browser.window_handles) == 0:
                     self.browser_opened = False
         finally:
             self.proxy_frame.browser_button_update()
             print("Closing Browser Window")
-            driver.quit()
+            self.browser.quit()
             self.browser = None
 
     def start_browser_thread(self):
+        """
+        Starting thread of the browser.
+        """
         if self.browser is None:
             print("Opening Browser Window")
             self.browser_opened = True
@@ -143,7 +146,7 @@ class GUI(ctk.CTk):
             try:
                 # Użycie terminate() do zakończenia procesu
                 self.proxy_frame.process.terminate()  # Wysyła sygnał zakończenia
-                self.proxy_frame.process.wait()  # Czeka na zakończenie procesu
+                # self.proxy_frame.process.wait()  # Czeka na zakończenie procesu
                 print("Proces proxy został zatrzymany.")
             except Exception as e:
                 print(f"Błąd przy zatrzymywaniu procesu: {e}")
@@ -151,8 +154,11 @@ class GUI(ctk.CTk):
     def on_close(self):
         """Zamykanie aplikacji"""
         self.stop_proxy()
-        app.destroy()  # Zamknięcie głównego okna aplikacji
+        if self.browser is not None:
+            self.browser.quit()
+        self.destroy()
 
-app = GUI()
-app.protocol("WM_DELETE_WINDOW", app.on_close)
-app.mainloop()
+
+wastt = GUI()
+wastt.protocol("WM_DELETE_WINDOW", wastt.on_close)
+wastt.mainloop()
