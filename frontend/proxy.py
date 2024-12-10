@@ -750,6 +750,7 @@ class GUIProxy(ctk.CTkFrame):
     def open_settings_window(self):
         self.settings_window = ctk.CTkToplevel(self.root)
         self.settings_window.title("Proxy Settings")
+        self.settings_window.attributes("-topmost", True)
 
         for key, value in self.running_conf.items():
             label = ctk.CTkLabel(self.settings_window, text=key)
