@@ -78,8 +78,10 @@ class RepeaterNav(ctk.CTkFrame):
 
 
 class RepeaterFrame(ctk.CTkFrame):
-    def __init__(self, master, id_number, nav, request=None):
+    def __init__(self, master, id_number, nav, request=None, url=None):
         super().__init__(master)
+        # url neded to make possible working with requests without 'host' in header
+        self.url=url
         self.configure(
             fg_color=color_bg,
             corner_radius=10,
@@ -105,7 +107,7 @@ class RepeaterFrame(ctk.CTkFrame):
             text="Send",
             width=30,
             image=icon_send,
-            command=self.send_request_to_proxy,
+            command=self.send_request_from_repeater,
             compound="left",
             corner_radius=32
         )
@@ -161,11 +163,8 @@ class RepeaterFrame(ctk.CTkFrame):
         self.grid_columnconfigure(1, weight=1)
         self.grid_rowconfigure(2, weight=1)
 
-        # TODO Confirm if these async methods can be deleted
-        # self.loop = asyncio.new_event_loop()  # Tworzymy pętlę asyncio dla tego obiektu
-        # self.start_async_servers()
-        #
-        # self.flow = None
+
+
 
     def update_number(self, id_number):
         self.id = id_number
@@ -189,72 +188,8 @@ class RepeaterFrame(ctk.CTkFrame):
     def _reset_request_modified_flag(self):
         self.request_textbox.edit_modified(False)
 
-    # TODO Confirm if these async methods can be deleted
-    # def start_async_servers(self):
-    #     """
-    #     Starts the asyncio servers in a separate thread to handle scope updates and flow killing asynchronously.
-    #     """
-    #
-    #     def run_servers():
-    #         asyncio.set_event_loop(self.loop)
-    #         tasks = [
-    #             self.listen_for_flow(),
-    #             self.listen_for_response(),
-    #         ]
-    #         self.loop.run_until_complete(asyncio.gather(*tasks))
-    #
-    #     thread = threading.Thread(target=run_servers, daemon=True)
-    #     thread.start()
-    #
-    # async def listen_for_flow(self):
-    #     server = await asyncio.start_server(
-    #         self.handle_flow, HOST, BACK_REPEATER_FLOWSEND_PORT
-    #     )
-    #     async with server:
-    #         await server.serve_forever()
-    #
-    # async def handle_flow(self, reader, writer):
-    #     serialized_flow = await reader.read(4096)
-    #     if serialized_flow:
-    #         try:
-    #             deserialized_flow = pickle.loads(serialized_flow)
-    #             self.flow = deserialized_flow
-    #
-    #         except Exception as e:
-    #             print(f"Error while deserialization recived in repeater: {e}")
-    #         try:
-    #             request2 = Request2.from_request(deserialized_flow.request)
-    #             self.gui.add_request_to_repeater_tab(request2.return_http_message())
-    #         except Exception as e:
-    #             print(f"Error while display request in repeater textbox: {e}")
-    #     writer.close()
-    #     await writer.wait_closed()
-    #
-    # async def listen_for_response(self):
-    #     server = await asyncio.start_server(
-    #         self.handle_response, HOST, BACK_REPEATER_RESPONSESEND_PORT
-    #     )
-    #     async with server:
-    #         await server.serve_forever()
-    #
-    # async def handle_response(self, reader, writer):
-    #     serialized_response = await reader.read(4096)
-    #     if serialized_response:
-    #         try:
-    #             deserialized_response = pickle.loads(serialized_response)
-    #         except Exception as e:
-    #             print(f"Error while deserialization recived in repeater: {e}")
-    #         try:
-    #             self.add_response_to_repeater_tab(deserialized_response.content)
-    #         except Exception as e:
-    #             print(f"Error while display respose in repeater textbox: {e}")
-    #     writer.close()
-    #
-    #     await writer.wait_closed()
-
-    def send_request_to_proxy(self):
-        # TODO It correctly parses headers that follow pattern like example.com, headers from wp.pl or kurnik.pl fail
-        response = send_http_message(self.request_textbox.get_text())
+    def send_request_from_repeater(self):
+        response = send_http_message(self.request_textbox.get_text(), self.url)
         self.add_response_to_repeater_tab(process_response(response))
 
     def add_response_to_repeater_tab(self, response):
@@ -271,12 +206,14 @@ class GUIRepeater(ctk.CTkFrame):
         self.frames = []
         self.nav = RepeaterNav(self, self.frames)
 
-    def add_request_to_repeater_tab(self, request):
+    def add_request_to_repeater_tab(self, request, url=None):
+        self.request_url = url
+        # TODO Łukasz, tworzenie pierwszej zakładki z parametrem url (jak frontend/repeater.py:224)
         for frame in self.frames:
             if frame.is_empty:
                 frame.request_textbox.insert_text(request)
                 frame.is_empty = False
                 return
         else:
-            new_frame = RepeaterFrame(self, len(self.nav.buttons), self.nav, request)
+            new_frame = RepeaterFrame(self, len(self.nav.buttons), self.nav, request, url=url)
             self.nav.add_frame(new_frame)
