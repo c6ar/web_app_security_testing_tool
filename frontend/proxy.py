@@ -229,7 +229,8 @@ class GUIProxy(ctk.CTkFrame):
         self.sf_top_pane = ctk.CTkFrame(self.sf_paned_window, corner_radius=10)
         self.sf_paned_window.add(self.sf_top_pane, height=350)
 
-        columns = ("Host", "URL", "Method", "Content")
+        columns = ("Host", "URL", "Method", "Content","RealURL")
+
         self.sf_requests_list = RequestList(self.sf_top_pane, columns=columns, show="headings", style="Treeview",
                                             selectmode="none")
         self.sf_requests_list.bind("<<TreeviewSelect>>", self.show_scope_request_content)
@@ -237,6 +238,7 @@ class GUIProxy(ctk.CTkFrame):
             self.sf_requests_list.heading(col, text=col)
             self.sf_requests_list.column(col, width=100)
         self.sf_requests_list.column("Content", width=0, stretch=tk.NO)
+        self.sf_requests_list.column("RealURL", width=0, stretch=tk.NO)
         self.sf_requests_list.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
 
         self.sf_intercept_placeholder = ctk.CTkFrame(self.sf_top_pane, fg_color="transparent")
@@ -328,7 +330,7 @@ class GUIProxy(ctk.CTkFrame):
         self.hhf_top_pane = ctk.CTkFrame(self.hhf_paned_window, corner_radius=10)
         self.hhf_paned_window.add(self.hhf_top_pane, height=350)
 
-        hhf_columns = ("Host", "URL", "Method", "Request", "Status code", "Title", "Length", "Response")
+        hhf_columns = ("Host", "URL", "Method", "Request", "Status code", "Title", "Length", "Response", "RealURL")
         self.hhf_requests_list = RequestList(self.hhf_top_pane, columns=hhf_columns, show="headings", style="Treeview")
         self.hhf_requests_list.bind("<<TreeviewSelect>>", self.show_history_request_content)
         for col in hhf_columns:
@@ -336,6 +338,7 @@ class GUIProxy(ctk.CTkFrame):
             self.hhf_requests_list.column(col, width=100)
         self.hhf_requests_list.column("Request", width=0, stretch=tk.NO)
         self.hhf_requests_list.column("Response", width=0, stretch=tk.NO)
+        self.hhf_requests_list.column("RealURL", width=0, stretch=tk.NO)
         self.hhf_requests_list.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
 
         """
@@ -401,6 +404,8 @@ class GUIProxy(ctk.CTkFrame):
         self.show_scope_tab()
 
         self.check_requests_list_empty()
+
+
 
         """
         Run mitmproxy at start
@@ -605,6 +610,7 @@ class GUIProxy(ctk.CTkFrame):
         """
         Adds request to HTTP traffic list in GUI.
         """
+        real_url=req.url
         host = req.host
         url = req.path
         method = req.method
@@ -619,7 +625,7 @@ class GUIProxy(ctk.CTkFrame):
             title = ""
             response_content = resp.content.decode('utf-8')
             length = len(response_content)
-        values = (host, url, method, request_content, code, title, length, response_content)
+        values = (host, url, method, request_content, code, title, length, response_content, real_url)
 
         self.hhf_requests_list.insert("", tk.END, values=values)
 
@@ -636,8 +642,9 @@ class GUIProxy(ctk.CTkFrame):
                 host = self.hhf_requests_list.item(selected_item)['values'][0]
                 url = self.hhf_requests_list.item(selected_item)['values'][1]
                 method = self.hhf_requests_list.item(selected_item)['values'][2]
+                real_url = self.hhf_requests_list.item(selected_item)['values'][8]
                 request_content = self.hh_request_textbox.get_text()
-                values = (host, url, method, request_content)
+                values = (host, url, method, request_content, real_url)
 
                 self.sf_requests_list.insert("", 0, values=values)
         else:
@@ -743,26 +750,17 @@ class GUIProxy(ctk.CTkFrame):
             print(f"Error while sendind request to filter: {e}")
 
     def send_to_repeater(self):
-        # TODO Confirm if this can be deleted
-        # flag = "True"
-        # try:
-        #     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        #         s.connect((HOST, FRONT_BACK_SENDTOREPEATER_PORT))
-        #         serialized_flag = flag.encode("utf-8")
-        #         s.sendall(serialized_flag)
-        # except Exception as e:
-        #     print(f"Error Proxy/Send to repeater: While sending flag to kill process: {e}")
-
         request_content = self.sf_request_content.get_text()
         request_lines = request_content.split("\n")
+        selected_item = self.sf_requests_list.selection()[0]
         if not any(line.startswith("Host:") for line in request_lines):
-            selected_item = self.sf_requests_list.selection()[0]
             host_string = self.sf_requests_list.item(selected_item)['values'][0]
             request_lines.insert(1, f"Host: {host_string}")
             request_content = "\n".join(request_lines)
 
         # print(f"Debug Proxy/Send to repeater:\n{request_content}")
-        self.root.repeater_frame.add_request_to_repeater_tab(request_content)
+        url = self.hhf_requests_list.item(selected_item)['values'][-1]
+        self.root.repeater_frame.add_request_to_repeater_tab(request_content, url=url)
 
         self.sf_requests_list.drop_selected()
         if len(self.sf_requests_list.get_children()) > 0:
@@ -772,14 +770,15 @@ class GUIProxy(ctk.CTkFrame):
     def send_to_repeater_from_traffic(self):
         request_content = self.hh_request_textbox.get_text()
         request_lines = request_content.split("\n")
+        selected_item = self.hhf_requests_list.selection()[0]
         if not any(line.startswith("Host:") for line in request_lines):
-            selected_item = self.hhf_requests_list.selection()[0]
             host_string = self.hhf_requests_list.item(selected_item)['values'][0]
             request_lines.insert(1, f"Host: {host_string}")
             request_content = "\n".join(request_lines)
-
         # print(f"Debug Proxy/Send to repeater:\n{request_content}")
-        self.root.repeater_frame.add_request_to_repeater_tab(request_content)
+
+        url = self.hhf_requests_list.item(selected_item)['values'][-1]
+        self.root.repeater_frame.add_request_to_repeater_tab(request_content, url)
 
     # TODO Merge send_to_repeater and send_to_repeater_from_traffic into one method that takes textbox and requestlist as params.
 

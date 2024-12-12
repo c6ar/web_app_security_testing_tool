@@ -194,7 +194,7 @@ from collections import namedtuple
 # print(result)
 
 
-def parse_http_message(self, http_message, flow):
+def parse_http_message(http_message, flow):
     """
     Parses an HTTP message string and updates the flow.request object.
     """
