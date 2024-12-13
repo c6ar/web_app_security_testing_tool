@@ -2,7 +2,7 @@ import customtkinter as ctk
 import tkinter as tk
 from tkinter import ttk
 from tkinter import filedialog
-from head import *
+from common import *
 from functools import partial
 import re
 
@@ -92,10 +92,6 @@ class IntruderFrame(ctk.CTkFrame):
 
         self.top_bar = ctk.CTkFrame(self, fg_color="transparent")
         self.top_bar.pack(side=tk.TOP, fill=tk.X, padx=10, pady=10)
-
-        icon_attack = ctk.CTkImage(
-            light_image=Image.open(f"{ASSET_DIR}\\icon_attack.png"),
-            dark_image=Image.open(f"{ASSET_DIR}\\icon_attack.png"), size=(20, 20))
 
         self.start_attack_button = ctk.CTkButton(
             self.top_bar,

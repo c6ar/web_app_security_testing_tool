@@ -9,7 +9,7 @@ import time
 from operator import truediv
 from backend.Request import Request2
 from mitmproxy.http import Headers, Request, Response
-from head import *
+from common import *
 import tkinter as tk
 from tkinter import ttk
 import customtkinter as ctk
@@ -28,23 +28,10 @@ default_fg_color = ThemeManager.theme["CTkButton"]["fg_color"]
 accent_fg_color = "#d1641b"
 
 
-class ActionButton(ctk.CTkButton):
-    def __init__(self, parent, *args, **kwargs):
-        super().__init__(parent, *args, **kwargs)
-        if "font" not in kwargs:
-            kwargs["font"] = ctk.CTkFont(family="Calibri", size=14)
-        text_width = kwargs["font"].measure(kwargs["text"])
-        self.button_width = text_width + 20 + 25
-        if self.button_width < 100:
-            self.button_width = 100
-        self.configure(width=self.button_width)
-
-
 class RequestList(ttk.Treeview):
     """
     Request List class
     """
-
     def __init__(self, parent, *args, **kwargs):
         super().__init__(parent, *args, **kwargs)
         self.popup_menu = tk.Menu(self, tearoff=0)
@@ -61,8 +48,7 @@ class RequestList(ttk.Treeview):
         treestyle.map('Treeview', background=[('selected', color_acc)], foreground=[('selected', 'white')])
         treestyle.map("Treeview.Heading", background=[('active', color_bg)])
 
-        self.configure(style="Treeview")
-
+    # TODO FRONTEND: Rework the popmenu 3 scenarios: HTTP Traffics historical requests, Intercepted requests, Scope urls
     def popup(self, event):
         """
         Right click menu
@@ -105,39 +91,10 @@ class RequestList(ttk.Treeview):
         pyperclip.copy(copied_text.strip())
 
 
-class RequestTextBox(ctk.CTkTextbox):
-    """
-    Request content class
-    """
-
-    def __init__(self, master, root, text=""):
-        super().__init__(master)
-        self.root = root
-        self.monoscape_font = ctk.CTkFont(family="Courier New", size=14, weight="normal")
-        self.monoscape_font_italic = ctk.CTkFont(family="Courier New", size=14, weight="normal", slant="italic")
-        self.configure(wrap="none", font=self.monoscape_font, state="normal", padx=5, pady=5)
-
-        self.insert_text(text)
-
-    def insert_text(self, text):
-        """
-        Inserting text
-        """
-        self.delete("0.0", "end")
-        self.insert("1.0", text)
-
-    def get_text(self):
-        """
-        Retrieve the current text content from the text box.
-        """
-        return self.get("1.0", "end").strip()  # Use `self.get` directly.
-
-
 class GUIProxy(ctk.CTkFrame):
     """
     Proxy Tab GUI class
     """
-
     def __init__(self, master, root):
         super().__init__(master)
         self.process = None
@@ -148,249 +105,217 @@ class GUIProxy(ctk.CTkFrame):
         """
          > Sub navigation tabs of Proxy GUI
         """
-        self.subnav = ctk.CTkFrame(self, fg_color="transparent")
-        self.http_history_tab_button = NavButton(self.subnav, text="HTTP Traffic", command=self.show_http_history_tab,
-                                                 font=ctk.CTkFont(family="Calibri", size=14, weight="normal"),
-                                                 background=color_bg_br, background_selected=color_bg)
-        self.scope_tab_button = NavButton(self.subnav, text="Scope", command=self.show_scope_tab,
-                                          font=ctk.CTkFont(family="Calibri", size=14, weight="normal"),
-                                          background=color_bg_br, background_selected=color_bg)
-
-        self.subnav.pack(side="top", fill="x", padx=15, pady=(10, 0))
-        self.scope_tab_button.pack(side="left")
-        self.http_history_tab_button.pack(side="left")
-
-        """
-         > Scope Frame starts here.
-        """
+        self.intercept_frame = ctk.CTkFrame(self, fg_color="transparent")
+        self.http_traffic_frame = ctk.CTkFrame(self, fg_color="transparent")
         self.scope_frame = ctk.CTkFrame(self, fg_color="transparent")
-
-        self.sf_top_bar = ctk.CTkFrame(self.scope_frame, height=50, corner_radius=10)
-        self.sf_top_bar.pack(side=tk.TOP, fill=tk.X, pady=(0, 5), padx=5)
-
-        self.icon_toggle_on = ctk.CTkImage(
-            light_image=Image.open(f"{ASSET_DIR}\\icon_toggle_on.png"),
-            dark_image=Image.open(f"{ASSET_DIR}\\icon_toggle_on.png"), size=(20, 20))
-        self.icon_toggle_off = ctk.CTkImage(
-            light_image=Image.open(f"{ASSET_DIR}\\icon_toggle_off.png"),
-            dark_image=Image.open(f"{ASSET_DIR}\\icon_toggle_off.png"), size=(20, 20))
-        self.toggle_intercept_button = ActionButton(
-            self.sf_top_bar, text="Intercept off", image=self.icon_toggle_off, command=self.toggle_intercept,
-            fg_color=color_acc3, hover_color=color_acc4, compound="left", corner_radius=32)
-
-        self.icon_foward = ctk.CTkImage(
-            light_image=Image.open(f"{ASSET_DIR}\\icon_arrow_up.png"),
-            dark_image=Image.open(f"{ASSET_DIR}\\icon_arrow_up.png"), size=(20, 20))
-
-        self.icon_drop = ctk.CTkImage(
-            light_image=Image.open(f"{ASSET_DIR}\\icon_arrow_down.png"),
-            dark_image=Image.open(f"{ASSET_DIR}\\icon_arrow_down.png"), size=(20, 20))
-        self.drop_button = ActionButton(
-            self.sf_top_bar, text=f"Drop", image=self.icon_drop, state=tk.NORMAL, command=self.drop_request,
-            compound="left", corner_radius=32)
-
-        self.send_to_repeater_button = ActionButton(self.sf_top_bar, text=f"Send to repeater", state=tk.DISABLED,
-                                                    corner_radius=32, command=self.send_to_repeater)
-
-        self.send_to_intruder_button = ActionButton(self.sf_top_bar, text=f"Send to intruder", state=tk.DISABLED,
-                                                    corner_radius=32, command=self.send_to_intruder)
-
-        self.icon_random = ctk.CTkImage(
-            light_image=Image.open(f"{ASSET_DIR}\\icon_random.png"),
-            dark_image=Image.open(f"{ASSET_DIR}\\icon_random.png"), size=(20, 20))
-        self.add_random_entry = ActionButton(
-            self.sf_top_bar, text=f"Random request", image=self.icon_random, command=self.generate_random_request,
-            compound="left", corner_radius=32)
-
-        self.icon_browser = ctk.CTkImage(
-            light_image=Image.open(f"{ASSET_DIR}\\icon_browser.png"),
-            dark_image=Image.open(f"{ASSET_DIR}\\icon_browser.png"), size=(20, 20))
-        self.browser_button = ActionButton(
-            self.sf_top_bar, text="Open browser", image=self.icon_browser, command=self.root.start_browser_thread,
-            compound="left", corner_radius=32)
-
-        self.icon_settings = ctk.CTkImage(
-            light_image=Image.open(f"{ASSET_DIR}\\icon_settings.png"),
-            dark_image=Image.open(f"{ASSET_DIR}\\icon_settings.png"), size=(20, 20))
-        self.settings_button = ActionButton(
-            self.sf_top_bar, text="Proxy settings", image=self.icon_settings, command=self.open_settings_window,
-            compound="left", corner_radius=32)
-        self.settings_window = None
-        self.settings_entries = {}
-        self.running_conf = self.load_config()
-
-        self.sf_paned_window = tk.PanedWindow(self.scope_frame, orient=tk.VERTICAL, sashwidth=10,
-                                              background=color_bg_br)
-        self.sf_paned_window.pack(fill=tk.BOTH, expand=1, padx=5, pady=5)
+        self.tabs = {
+            "HTTP Traffic": self.http_traffic_frame,
+            "Intercept": self.intercept_frame,
+            "Scope": self.scope_frame,
+        }
+        self.tab_nav = ctk.CTkFrame(self, fg_color="transparent")
+        self.tab_nav.pack(side="top", fill="x", padx=15, pady=(10, 0))
+        self.tab_nav_buttons = {}
+        for tab in self.tabs.keys():
+            self.tab_nav_buttons[tab] = NavButton(self.tab_nav, text=tab, command=lambda t=tab: self.switch_tab(t),
+                                                  font=ctk.CTkFont(family="Calibri", size=14, weight="normal"),
+                                                  background=color_bg_br, background_selected=color_bg)
+            self.tab_nav_buttons[tab].pack(side="left")
 
         """
-         >> Top Pane of Scope Frame starts here.
+         > Intercept tab starts here.
         """
-        self.sf_top_pane = ctk.CTkFrame(self.sf_paned_window, corner_radius=10)
-        self.sf_paned_window.add(self.sf_top_pane, height=350)
+        self.if_top_bar = ctk.CTkFrame(self.intercept_frame, height=50, corner_radius=10)
+        self.if_top_bar.pack(side=tk.TOP, fill=tk.X, pady=(0, 5), padx=5)
+        
+        self.if_toggle_intercept_button = ActionButton(
+            self.if_top_bar, text="Intercept off", image=icon_toggle_off, command=self.toggle_intercept,
+            fg_color=color_acc3, hover_color=color_acc4)
+        self.if_drop_button = ActionButton(
+            self.if_top_bar, text=f"Drop", image=icon_arrow_down, command=self.drop_request)
+        self.if_send_to_repeater_button = ActionButton(
+            self.if_top_bar, text=f"Send to repeater", command=lambda: self.send_to_repeater(self.if_request_textbox, self.if_request_list),
+            state=tk.DISABLED)
+        self.if_send_to_intruder_button = ActionButton(
+            self.if_top_bar, text=f"Send to intruder", command=lambda: self.send_to_intruder(self.if_request_textbox, self.if_request_list), state=tk.DISABLED)
+        self.if_add_random_entry = ActionButton(
+            self.if_top_bar, text=f"Random request", image=icon_random, command=self.generate_random_request)
+        self.if_browser_button = ActionButton(
+            self.if_top_bar, text="Open browser", image=icon_browser, command=self.root.start_browser_thread)
 
-        columns = ("Host", "URL", "Method", "Content")
-        self.sf_requests_list = RequestList(self.sf_top_pane, columns=columns, show="headings", style="Treeview",
-                                            selectmode="none")
-        self.sf_requests_list.bind("<<TreeviewSelect>>", self.show_scope_request_content)
-        for col in columns:
-            self.sf_requests_list.heading(col, text=col)
-            self.sf_requests_list.column(col, width=100)
-        self.sf_requests_list.column("Content", width=0, stretch=tk.NO)
-        self.sf_requests_list.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
+        self.if_paned_window = tk.PanedWindow(self.intercept_frame, orient=tk.VERTICAL, sashwidth=10, background=color_bg_br)
+        self.if_paned_window.pack(fill=tk.BOTH, expand=1, padx=5, pady=5)
 
-        self.sf_intercept_placeholder = ctk.CTkFrame(self.sf_top_pane, fg_color="transparent")
-        self.sf_intercept_placeholder.place(relx=0.5, rely=0.5, anchor=tk.CENTER)
+        """
+         >> Top pane of Intercept tab starts here.
+        """
+        self.if_top_pane = ctk.CTkFrame(self.if_paned_window, corner_radius=10)
+        self.if_paned_window.add(self.if_top_pane, height=350)
+
+        if_columns = ("Host", "URL", "Method", "Content", "RealURL")
+        self.if_request_list = RequestList(self.if_top_pane, columns=if_columns, show="headings", style="Treeview",
+                                           selectmode="none")
+        self.if_request_list.bind("<<TreeviewSelect>>", self.show_scope_request_content)
+        for col in if_columns:
+            self.if_request_list.heading(col, text=col)
+            self.if_request_list.column(col, width=100)
+        self.if_request_list.column("Content", width=0, stretch=tk.NO)
+        self.if_request_list.column("RealURL", width=0, stretch=tk.NO)
+        self.if_request_list.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
+
+        self.if_intercept_placeholder = ctk.CTkFrame(self.if_top_pane, fg_color="transparent")
+        self.if_intercept_placeholder.place(relx=0.5, rely=0.5, anchor=tk.CENTER)
         self.intercept_off_image = ctk.CTkImage(light_image=Image.open(f"{ASSET_DIR}\\intercept_off.png"),
                                                 dark_image=Image.open(f"{ASSET_DIR}\\intercept_off.png"),
                                                 size=(81, 136))
         self.intercept_on_image = ctk.CTkImage(light_image=Image.open(f"{ASSET_DIR}\\intercept_on.png"),
                                                dark_image=Image.open(f"{ASSET_DIR}\\intercept_on.png"), size=(81, 136))
-        self.sf_placeholder_image = ctk.CTkLabel(self.sf_intercept_placeholder, image=self.intercept_off_image, text="")
-        self.sf_placeholder_image.pack(pady=5)
-        self.sf_placeholder_label = ctk.CTkLabel(self.sf_intercept_placeholder, text="Intercept is off")
-        self.sf_placeholder_label.pack(pady=5, expand=True)
+        self.if_placeholder_image = ctk.CTkLabel(self.if_intercept_placeholder, image=self.intercept_off_image, text="")
+        self.if_placeholder_image.pack(pady=5)
+        self.if_placeholder_label = ctk.CTkLabel(self.if_intercept_placeholder, text="Intercept is off")
+        self.if_placeholder_label.pack(pady=5, expand=True)
 
         """
-         >> Bottom Pane of Scope Frame starts here.
+         >> Bottom pane of Intercept tab starts here.
         """
-        self.sf_bottom_pane = ctk.CTkFrame(self.sf_paned_window, corner_radius=10)
-        self.sf_paned_window.add(self.sf_bottom_pane)
+        self.if_bottom_pane = ctk.CTkFrame(self.if_paned_window, corner_radius=10)
+        self.if_paned_window.add(self.if_bottom_pane)
 
-        self.sf_request_wrapper = ctk.CTkFrame(self.sf_bottom_pane, fg_color="transparent")
-        self.sf_request_wrapper.pack(fill="both", expand=True, padx=10, pady=10)
-        self.sf_request_wrapper.grid_columnconfigure(0, weight=1)
-        self.sf_request_wrapper.grid_rowconfigure(0, weight=1)
+        self.if_request_wrapper = ctk.CTkFrame(self.if_bottom_pane, fg_color="transparent")
+        self.if_request_wrapper.pack(fill="both", expand=True, padx=10, pady=10)
+        self.if_request_wrapper.grid_columnconfigure(0, weight=1)
+        self.if_request_wrapper.grid_rowconfigure(0, weight=1)
 
-        self.sf_request_wrapper_header = ctk.CTkLabel(self.sf_request_wrapper, text="Request",
+        self.if_request_wrapper_header = ctk.CTkLabel(self.if_request_wrapper, text="Request",
                                                       font=ctk.CTkFont(family="Calibri", size=24, weight="bold"),
                                                       anchor="w",
                                                       padx=10, pady=10, height=20, fg_color=color_bg)
-        self.sf_request_wrapper_header.pack(fill=tk.X)
+        self.if_request_wrapper_header.pack(fill=tk.X)
 
-        self.sf_request_content = RequestTextBox(self.sf_request_wrapper, self,
-                                                 "Select request to display its contents.")
-        self.sf_request_content.pack(pady=10, padx=10, fill="both", expand=True)
+        self.if_request_textbox = TextBox(self.if_request_wrapper, self, "Select request to display its contents.")
+        self.if_request_textbox.pack(pady=10, padx=10, fill="both", expand=True)
 
-        self.forward_button = ActionButton(self.sf_top_bar, text=f"Forward", image=self.icon_foward, state=tk.DISABLED,
-                                           compound="left", corner_radius=32, command=self.send_reqeust_from_scope)
+        self.if_forward_button = ActionButton(self.if_top_bar, text=f"Forward", image=icon_arrow_up, state=tk.DISABLED,
+                                              compound="left", corner_radius=32, command=self.send_reqeust_from_intercept)
 
-        self.toggle_intercept_button.pack(side=tk.LEFT, padx=(10, 15), pady=15)
-        self.drop_button.pack(side=tk.LEFT, padx=5, pady=15)
-        self.forward_button.pack(side=tk.LEFT, padx=5, pady=15)
-        self.send_to_repeater_button.pack(side=tk.LEFT, padx=5, pady=15)
-        self.send_to_intruder_button.pack(side=tk.LEFT, padx=5, pady=15)
-        self.add_random_entry.pack(side=tk.LEFT, padx=5, pady=15)
-        self.browser_button.pack(side=tk.RIGHT, padx=(5, 10), pady=15)
-        self.settings_button.pack(side=tk.RIGHT, padx=5, pady=15)
-
+        self.if_toggle_intercept_button.pack(side=tk.LEFT, padx=(10, 15), pady=15)
+        self.if_drop_button.pack(side=tk.LEFT, padx=5, pady=15)
+        self.if_forward_button.pack(side=tk.LEFT, padx=5, pady=15)
+        self.if_send_to_repeater_button.pack(side=tk.LEFT, padx=5, pady=15)
+        self.if_send_to_intruder_button.pack(side=tk.LEFT, padx=5, pady=15)
+        self.if_add_random_entry.pack(side=tk.LEFT, padx=5, pady=15)
+        self.if_browser_button.pack(side=tk.RIGHT, padx=(5, 10), pady=15)
+        
         """
-         > HTTP History Frame starts here.
+         > HTTP Taffic tab starts here.
         """
-        self.http_history_frame = ctk.CTkFrame(self, fg_color="transparent")
+        self.htf_top_bar = ctk.CTkFrame(self.http_traffic_frame, height=50, corner_radius=10)
+        self.htf_top_bar.pack(side=tk.TOP, fill=tk.X, pady=(0, 5), padx=5)
 
-        self.hhf_top_bar = ctk.CTkFrame(self.http_history_frame, height=50, corner_radius=10)
-        self.hhf_top_bar.pack(side=tk.TOP, fill=tk.X, pady=(0, 5), padx=5)
-
-        self.icon_delete = ctk.CTkImage(
-            light_image=Image.open(f"{ASSET_DIR}\\icon_delete.png"),
-            dark_image=Image.open(f"{ASSET_DIR}\\icon_delete.png"), size=(20, 20))
-        self.icon_send = ctk.CTkImage(
-            light_image=Image.open(f"{ASSET_DIR}\\icon_arrow_up.png"),
-            dark_image=Image.open(f"{ASSET_DIR}\\icon_arrow_up.png"), size=(20, 20))
-
-        self.hhf_send_requests_to_scope_button = ActionButton(
-            self.hhf_top_bar, text="Send to scope", image=self.icon_send, command=self.send_request_to_filter,
+        self.htf_send_requests_to_scope_button = ActionButton(
+            self.htf_top_bar, text="Add to scope", image=icon_arrow_up, command=self.add_url_to_scope,
             fg_color=color_acc, hover_color=color_acc2, compound="left", corner_radius=32)
-        self.hhf_send_requests_to_repeater_button = ActionButton(
-            self.hhf_top_bar, text="Send to repeater", image=self.icon_send, command=self.send_to_repeater_from_traffic,
+        self.htf_send_requests_to_repeater_button = ActionButton(
+            self.htf_top_bar, text="Send to repeater", image=icon_arrow_up, command=lambda: self.send_to_repeater(self.htf_request_textbox, self.htf_request_list),
             fg_color=color_acc, hover_color=color_acc2, compound="left", corner_radius=32)
-        self.hhf_delete_requests_button = ActionButton(
-            self.hhf_top_bar, text="Delete all requests", image=self.icon_delete,
+        self.htf_delete_requests_button = ActionButton(
+            self.htf_top_bar, text="Delete all requests", image=icon_delete,
             command=self.delete_all_requests_in_http_traffic,
             fg_color=color_acc3, hover_color=color_acc4, compound="left", corner_radius=32)
-        self.hhf_browser_button = ActionButton(
-            self.hhf_top_bar, text="Open browser", image=self.icon_browser, command=self.root.start_browser_thread,
+        self.htf_browser_button = ActionButton(
+            self.htf_top_bar, text="Open browser", image=icon_browser, command=self.root.start_browser_thread,
             compound="left", corner_radius=32)
 
-        self.hhf_send_requests_to_scope_button.pack(side=tk.LEFT, padx=(10, 5), pady=15)
-        self.hhf_send_requests_to_repeater_button.pack(side=tk.LEFT, padx=5, pady=15)
-        self.hhf_delete_requests_button.pack(side=tk.LEFT, padx=5, pady=15)
-        self.hhf_browser_button.pack(side=tk.RIGHT, padx=(10, 5), pady=15)
+        self.htf_send_requests_to_scope_button.pack(side=tk.LEFT, padx=(10, 5), pady=15)
+        self.htf_send_requests_to_repeater_button.pack(side=tk.LEFT, padx=5, pady=15)
+        self.htf_delete_requests_button.pack(side=tk.LEFT, padx=5, pady=15)
+        self.htf_browser_button.pack(side=tk.RIGHT, padx=(5, 10), pady=15)
 
-        self.hhf_paned_window = tk.PanedWindow(self.http_history_frame, orient=tk.VERTICAL, sashwidth=10,
+        self.htf_paned_window = tk.PanedWindow(self.http_traffic_frame, orient=tk.VERTICAL, sashwidth=10,
                                                background=color_bg_br)
-        self.hhf_paned_window.pack(fill=tk.BOTH, expand=1, padx=5, pady=5)
+        self.htf_paned_window.pack(fill=tk.BOTH, expand=1, padx=5, pady=5)
 
         """
-         >> Top Pane of HTTP History Frame starts here.
+         >> Top pane of HTTP Traffic tab starts here.
         """
-        self.hhf_top_pane = ctk.CTkFrame(self.hhf_paned_window, corner_radius=10)
-        self.hhf_paned_window.add(self.hhf_top_pane, height=350)
+        self.htf_top_pane = ctk.CTkFrame(self.htf_paned_window, corner_radius=10)
+        self.htf_paned_window.add(self.htf_top_pane, height=350)
 
-        hhf_columns = ("Host", "URL", "Method", "Request", "Status code", "Title", "Length", "Response")
-        self.hhf_requests_list = RequestList(self.hhf_top_pane, columns=hhf_columns, show="headings", style="Treeview")
-        self.hhf_requests_list.bind("<<TreeviewSelect>>", self.show_history_request_content)
-        for col in hhf_columns:
-            self.hhf_requests_list.heading(col, text=col)
-            self.hhf_requests_list.column(col, width=100)
-        self.hhf_requests_list.column("Request", width=0, stretch=tk.NO)
-        self.hhf_requests_list.column("Response", width=0, stretch=tk.NO)
-        self.hhf_requests_list.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
+        htf_columns = ("Host", "URL", "Method", "Request", "Status code", "Title", "Length", "Response", "RealURL")
+        self.htf_request_list = RequestList(self.htf_top_pane, columns=htf_columns, show="headings", style="Treeview")
+        self.htf_request_list.bind("<<TreeviewSelect>>", self.show_history_request_content)
+        for col in htf_columns:
+            self.htf_request_list.heading(col, text=col)
+            self.htf_request_list.column(col, width=100)
+        self.htf_request_list.column("Request", width=0, stretch=tk.NO)
+        self.htf_request_list.column("Response", width=0, stretch=tk.NO)
+        self.htf_request_list.column("RealURL", width=0, stretch=tk.NO)
+        self.htf_request_list.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
 
         """
-         >> Bottom Pane of HTTP History Frame starts here.
+         >> Bottom pane of HTTP Traffic tab starts here.
         """
-        self.hhf_bottom_pane = ctk.CTkFrame(self.hhf_paned_window, corner_radius=10)
-        self.hhf_paned_window.add(self.hhf_bottom_pane)
+        self.htf_bottom_pane = ctk.CTkFrame(self.htf_paned_window, corner_radius=10)
+        self.htf_paned_window.add(self.htf_bottom_pane)
 
-        self.hhf_bottom_pane.grid_columnconfigure(0, weight=1)
-        self.hhf_bottom_pane.grid_columnconfigure(1, weight=1)
-        self.hhf_bottom_pane.grid_rowconfigure(0, weight=1)
+        self.htf_bottom_pane.grid_columnconfigure(0, weight=1)
+        self.htf_bottom_pane.grid_columnconfigure(1, weight=1)
+        self.htf_bottom_pane.grid_rowconfigure(0, weight=1)
 
-        self.hh_request_frame = ctk.CTkFrame(self.hhf_bottom_pane, fg_color=color_bg)
-        self.hh_request_frame.grid(row=0, column=0, sticky="nsew", padx=10, pady=10)
+        self.htf_request_frame = ctk.CTkFrame(self.htf_bottom_pane, fg_color=color_bg)
+        self.htf_request_frame.grid(row=0, column=0, sticky="nsew", padx=10, pady=10)
 
-        self.hh_request_header = ctk.CTkLabel(
-            self.hh_request_frame,
-            text="Request",
-            font=ctk.CTkFont(family="Calibri", size=24, weight="bold"),
-            anchor="w",
-            padx=10,
-            pady=10,
-            height=20,
-            fg_color=color_bg
-        )
-        self.hh_request_header.pack(fill=tk.X)
+        self.htf_request_header = HeaderTitle(self.htf_request_frame, "Request")
+        self.htf_request_header.pack(fill=tk.X)
 
-        self.hh_request_textbox = RequestTextBox(self.hh_request_frame, self, "Select request to display its contents.")
-        self.hh_request_textbox.pack(pady=10, padx=10, fill="both", expand=True)
+        self.htf_request_textbox = TextBox(self.htf_request_frame, self, "Select request to display its contents.")
+        self.htf_request_textbox.pack(pady=10, padx=10, fill="both", expand=True)
 
-        self.hh_response_frame = ctk.CTkFrame(self.hhf_bottom_pane, fg_color=color_bg)
-        self.hh_response_frame.grid(row=0, column=1, sticky="nsew", padx=10, pady=10)
+        self.htf_response_frame = ctk.CTkFrame(self.htf_bottom_pane, fg_color=color_bg)
+        self.htf_response_frame.grid(row=0, column=1, sticky="nsew", padx=10, pady=10)
 
-        self.hh_response_header = ctk.CTkLabel(
-            self.hh_response_frame,
-            text="Response",
-            font=ctk.CTkFont(family="Calibri", size=24, weight="bold"),
-            anchor="w",
-            padx=10,
-            pady=10,
-            height=20,
-            fg_color=color_bg
-        )
-        self.hh_response_header.pack(fill=tk.X)
+        self.htf_response_header = HeaderTitle(self.htf_response_frame, "Response")
+        self.htf_response_header.pack(fill=tk.X)
 
-        self.hh_response_textbox = RequestTextBox(self.hh_response_frame, self,
-                                                  "Select request to display its response contents.")
-        self.hh_response_textbox.configure(state=tk.DISABLED)
-        self.hh_response_textbox.pack(pady=10, padx=10, fill="both", expand=True)
+        self.htf_response_textbox = TextBox(self.htf_response_frame, self, "Select request to display its response contents.")
+        self.htf_response_textbox.configure(state=tk.DISABLED)
+        self.htf_response_textbox.pack(pady=10, padx=10, fill="both", expand=True)
+
+        """
+         > Scope tab starts here.
+        """
+        self.sf_wrapper = ctk.CTkFrame(self.scope_frame, fg_color=color_bg, corner_radius=10)
+        self.sf_wrapper.pack(fill=tk.X, padx=10, pady=0)
+
+        self.sf_header = HeaderTitle(self.sf_wrapper, "Scope")
+        self.sf_header.pack(fill=tk.X, padx=10, pady=0)
+
+        sf_columns = ("Enable", "Host prefix")
+        self.sf_url_list = RequestList(
+            self.sf_wrapper,
+            columns=sf_columns,
+            show="headings", style="Treeview", selectmode="browse")
+        self.sf_url_list.heading("Enable", text="Enable?")
+        self.sf_url_list.column("Enable", width=25)
+        self.sf_url_list.heading("Host prefix", text="Host prefix")
+        self.sf_url_list.pack(side="left", fill=tk.BOTH, expand=True, padx=5, pady=5)
+
+        self.sf_buttons = ctk.CTkFrame(self.sf_wrapper, fg_color="transparent")
+        self.sf_buttons.pack(side="right", fill=tk.Y, padx=(0, 10))
+
+        self.sf_add_button = ActionButton(self.sf_buttons, text="Add URL", command=self.add_url_to_scope_dialog)
+        self.sf_add_button.pack(side="top", padx=5, pady=10)
+        self.sf_add_url_dialog = None
+
+        self.sf_remove_button = ActionButton(self.sf_buttons, text="Remove URL", command=self.remove_url_from_scope)
+        self.sf_remove_button.pack(side="top", padx=5, pady=10)
+
+        self.sf_clear_button = ActionButton(self.sf_buttons, text="Clear URLs", command=self.clear_scope)
+        self.sf_clear_button.pack(side="top", padx=5, pady=10)
 
         """
         Actual initialising of the Proxy GUI.
         """
-        self.requests = []
-
         self.update_thread_scope = threading.Thread(target=self.receive_and_add_to_scope)
         self.update_thread_scope.daemon = True
         self.update_thread_scope.start()
@@ -398,9 +323,10 @@ class GUIProxy(ctk.CTkFrame):
         self.update_thread_traffic.daemon = True
         self.update_thread_traffic.start()
         self.deserialized_flow = None
-        self.show_scope_tab()
 
-        self.check_requests_list_empty()
+        self.switch_tab("HTTP Traffic")
+
+        self.check_request_lists_empty()
 
         """
         Run mitmproxy at start
@@ -413,47 +339,6 @@ class GUIProxy(ctk.CTkFrame):
 
             threading.Thread(target=self.run_mitmdump, args=(command, backend_dir)).start()
         self.intercepting = True
-
-    def show_scope_tab(self):
-        self.http_history_frame.pack_forget()
-        self.http_history_tab_button.set_selected(False)
-        self.scope_tab_button.set_selected(True)
-        self.scope_frame.pack(side="top", fill="both", expand=True)
-
-    def show_http_history_tab(self):
-        self.scope_frame.pack_forget()
-        self.http_history_tab_button.set_selected(True)
-        self.scope_tab_button.set_selected(False)
-        self.http_history_frame.pack(side="top", fill="both", expand=True)
-
-    def toggle_intercept(self):
-        if self.root.intercepting:
-            self.toggle_intercept_button.configure(text="Intercept off", image=self.icon_toggle_off,
-                                                   fg_color=color_acc3, hover_color=color_acc4)
-            self.root.intercepting = False
-            self.sf_placeholder_label.configure(text="Intercept is off.")
-            self.sf_placeholder_image.configure(image=self.intercept_off_image)
-            print("Turning intercept off.")
-            self.change_intercept_state()
-        else:
-            self.toggle_intercept_button.configure(text="Intercept on", image=self.icon_toggle_on,
-                                                   fg_color=color_acc, hover_color=color_acc2)
-            self.root.intercepting = True
-            self.sf_placeholder_label.configure(text="Intercept is on.")
-            self.sf_placeholder_image.configure(image=self.intercept_on_image)
-            print("Turning intercept on.")
-            self.change_intercept_state()
-        self.check_requests_list_empty()
-
-    def change_intercept_state(self):
-        flag = "Change state"
-        try:
-            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-                s.connect((HOST, FRONT_BACK_INTERCEPTBUTTON_PORT))
-                serialized_flag = flag.encode("utf-8")
-                s.sendall(serialized_flag)
-        except Exception as e:
-            print(f"Error while sending change intercept state flag: {e}")
 
     def run_mitmdump(self, command, cwd):
         try:
@@ -471,84 +356,124 @@ class GUIProxy(ctk.CTkFrame):
                 print(f"Mitmdump stderr:\n{stderr.decode('utf-8', errors='ignore')}")
 
         except Exception as e:
-            print(f"Error while turn on Proxy: {e}")
+            print(f"Error while turning on Proxy process: {e}")
         finally:
             self.process = None
 
+    def switch_tab(self, selected_tab):
+        for tab_name, tab in self.tabs.items():
+            if tab_name == selected_tab:
+                # print(f"Debug Proxy/Tabs: Switching to {tab_name} tab")
+                tab.pack(side="top", fill="both", expand=True)
+                self.tab_nav_buttons[tab_name].set_selected(True)
+            else:
+                # print(f"Debug Proxy/Tabs: Hiding {tab_name} tab")
+                tab.pack_forget()
+                self.tab_nav_buttons[tab_name].set_selected(False)
+
+    def toggle_intercept(self):
+        if self.root.intercepting:
+            self.if_toggle_intercept_button.configure(text="Intercept off", image=icon_toggle_off,
+                                                      fg_color=color_acc3, hover_color=color_acc4)
+            self.root.intercepting = False
+            self.if_placeholder_label.configure(text="Intercept is off.")
+            self.if_placeholder_image.configure(image=self.intercept_off_image)
+            print("Turning intercept off.")
+            self.change_intercept_state()
+        else:
+            self.if_toggle_intercept_button.configure(text="Intercept on", image=icon_toggle_on,
+                                                      fg_color=color_acc, hover_color=color_acc2)
+            self.root.intercepting = True
+            self.if_placeholder_label.configure(text="Intercept is on.")
+            self.if_placeholder_image.configure(image=self.intercept_on_image)
+            print("Turning intercept on.")
+            self.change_intercept_state()
+        self.check_request_lists_empty()
+
+    def change_intercept_state(self):
+        flag = "Change state"
+        try:
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                s.connect((HOST, FRONT_BACK_INTERCEPTBUTTON_PORT))
+                serialized_flag = flag.encode("utf-8")
+                s.sendall(serialized_flag)
+        except Exception as e:
+            print(f"Error while sending change intercept state flag: {e}")
+
     def browser_button_update(self):
         if self.root.browser_opened:
-            self.browser_button.configure(text="Go to browser")
-            self.hhf_browser_button.configure(text="Go to browser")
+            self.if_browser_button.configure(text="Go to browser")
+            self.htf_browser_button.configure(text="Go to browser")
         else:
-            self.browser_button.configure(text="Open browser")
-            self.hhf_browser_button.configure(text="Open browser")
+            self.if_browser_button.configure(text="Open browser")
+            self.htf_browser_button.configure(text="Open browser")
 
-    def check_requests_list_empty(self):
+    def check_request_lists_empty(self):
         """
         Checks if lists in Gui are empty
         """
-        if len(self.sf_requests_list.get_children()) == 0:
-            self.sf_intercept_placeholder.lift()
-            self.forward_button.configure(state=tk.DISABLED)
-            self.drop_button.configure(state=tk.DISABLED)
-            self.send_to_intruder_button.configure(state=tk.DISABLED)
-            self.send_to_repeater_button.configure(state=tk.DISABLED)
+        if len(self.if_request_list.get_children()) == 0:
+            self.if_intercept_placeholder.lift()
+            self.if_forward_button.configure(state=tk.DISABLED)
+            self.if_drop_button.configure(state=tk.DISABLED)
+            self.if_send_to_intruder_button.configure(state=tk.DISABLED)
+            self.if_send_to_repeater_button.configure(state=tk.DISABLED)
         else:
-            self.sf_intercept_placeholder.lower()
-            self.forward_button.configure(state=tk.NORMAL)
-            self.drop_button.configure(state=tk.NORMAL)
-            self.send_to_intruder_button.configure(state=tk.NORMAL)
-            self.send_to_repeater_button.configure(state=tk.NORMAL)
+            self.if_intercept_placeholder.lower()
+            self.if_forward_button.configure(state=tk.NORMAL)
+            self.if_drop_button.configure(state=tk.NORMAL)
+            self.if_send_to_intruder_button.configure(state=tk.NORMAL)
+            self.if_send_to_repeater_button.configure(state=tk.NORMAL)
 
-        if len(self.hhf_requests_list.get_children()) == 0:
-            self.hhf_send_requests_to_scope_button.configure(state=tk.DISABLED)
-            self.hhf_send_requests_to_repeater_button.configure(state=tk.DISABLED)
-            self.hhf_delete_requests_button.configure(state=tk.DISABLED)
+        if len(self.htf_request_list.get_children()) == 0:
+            self.htf_send_requests_to_scope_button.configure(state=tk.DISABLED)
+            self.htf_send_requests_to_repeater_button.configure(state=tk.DISABLED)
+            self.htf_delete_requests_button.configure(state=tk.DISABLED)
         else:
-            self.hhf_send_requests_to_scope_button.configure(state=tk.NORMAL)
-            self.hhf_send_requests_to_repeater_button.configure(state=tk.NORMAL)
-            self.hhf_delete_requests_button.configure(state=tk.NORMAL)
+            self.htf_send_requests_to_scope_button.configure(state=tk.NORMAL)
+            self.htf_send_requests_to_repeater_button.configure(state=tk.NORMAL)
+            self.htf_delete_requests_button.configure(state=tk.NORMAL)
 
     def show_history_request_content(self, event):
         """
         Shows HTTP message of a request in textbox in history tab.
         """
-        if len(self.hhf_requests_list.selection()) > 0:
-            selected_item = self.hhf_requests_list.selection()[0]
-            request_string = self.hhf_requests_list.item(selected_item)['values'][3]
-            if len(self.hhf_requests_list.item(selected_item)['values']) == 8:
-                response_string = self.hhf_requests_list.item(selected_item)['values'][7]
-            elif len(self.hhf_requests_list.item(selected_item)['values']) == 5:
-                response_string = self.hhf_requests_list.item(selected_item)['values'][5]
+        if len(self.htf_request_list.selection()) > 0:
+            selected_item = self.htf_request_list.selection()[0]
+            request_string = self.htf_request_list.item(selected_item)['values'][3]
+            if len(self.htf_request_list.item(selected_item)['values']) == 8:
+                response_string = self.htf_request_list.item(selected_item)['values'][7]
+            elif len(self.htf_request_list.item(selected_item)['values']) == 5:
+                response_string = self.htf_request_list.item(selected_item)['values'][5]
             else:
                 response_string = "Request got no response."
-            self.hh_request_textbox.configure(state=tk.NORMAL, font=self.hh_request_textbox.monoscape_font)
-            self.hh_request_textbox.insert_text(request_string)
-            self.hh_response_textbox.configure(state=tk.NORMAL, font=self.hh_request_textbox.monoscape_font)
-            self.hh_response_textbox.insert_text(response_string)
-            self.hh_response_textbox.configure(state=tk.DISABLED)
+            self.htf_request_textbox.configure(state=tk.NORMAL, font=self.htf_request_textbox.monoscape_font)
+            self.htf_request_textbox.insert_text(request_string)
+            self.htf_response_textbox.configure(state=tk.NORMAL, font=self.htf_request_textbox.monoscape_font)
+            self.htf_response_textbox.insert_text(response_string)
+            self.htf_response_textbox.configure(state=tk.DISABLED)
 
         else:
-            self.hh_request_textbox.configure(state=tk.NORMAL)
-            self.hh_request_textbox.insert_text("Select a request to display its contents.")
-            self.hh_request_textbox.configure(state=tk.DISABLED, font=self.hh_request_textbox.monoscape_font_italic)
-            self.hh_response_textbox.configure(state=tk.NORMAL)
-            self.hh_response_textbox.insert_text("Select a request to display contents of its response.")
-            self.hh_response_textbox.configure(state=tk.DISABLED, font=self.hh_request_textbox.monoscape_font_italic)
+            self.htf_request_textbox.configure(state=tk.NORMAL)
+            self.htf_request_textbox.insert_text("Select a request to display its contents.")
+            self.htf_request_textbox.configure(state=tk.DISABLED, font=self.htf_request_textbox.monoscape_font_italic)
+            self.htf_response_textbox.configure(state=tk.NORMAL)
+            self.htf_response_textbox.insert_text("Select a request to display contents of its response.")
+            self.htf_response_textbox.configure(state=tk.DISABLED, font=self.htf_request_textbox.monoscape_font_italic)
 
     def show_scope_request_content(self, event):
         """
         Shows HTTP message of a request in textbox in scope tab.
         """
-        if len(self.sf_requests_list.selection()) > 0:
-            selected_item = self.sf_requests_list.selection()[0]
-            request_string = self.sf_requests_list.item(selected_item)['values'][3]
-            self.sf_request_content.configure(state=tk.NORMAL, font=self.hh_request_textbox.monoscape_font)
-            self.sf_request_content.insert_text(request_string)
+        if len(self.if_request_list.selection()) > 0:
+            selected_item = self.if_request_list.selection()[0]
+            request_string = self.if_request_list.item(selected_item)['values'][3]
+            self.if_request_textbox.configure(state=tk.NORMAL, font=self.htf_request_textbox.monoscape_font)
+            self.if_request_textbox.insert_text(request_string)
         else:
-            self.sf_request_content.configure(state=tk.NORMAL)
-            self.sf_request_content.insert_text("Select a request to display its contents.")
-            self.sf_request_content.configure(state=tk.DISABLED, font=self.hh_request_textbox.monoscape_font_italic)
+            self.if_request_textbox.configure(state=tk.NORMAL)
+            self.if_request_textbox.insert_text("Select a request to display its contents.")
+            self.if_request_textbox.configure(state=tk.DISABLED, font=self.htf_request_textbox.monoscape_font_italic)
 
     def receive_and_add_to_http_traffic(self):
         """
@@ -573,7 +498,7 @@ class GUIProxy(ctk.CTkFrame):
                             else:
                                 # print(f"REQUEST ONLY\n\tRequest:\n\t\t{request2}")
                                 self.add_reqeust_to_http_traffic_tab(request2)
-                            self.check_requests_list_empty()
+                            self.check_request_lists_empty()
                         except Exception as e:
                             if str(e) != "pickle data was truncated":  #cannot pickle "cryptography.hazmat.bindings._rust.x509.Certificate"
                                 print(f"Error while deserialization request to http traffic: {e}")
@@ -595,16 +520,17 @@ class GUIProxy(ctk.CTkFrame):
                         try:
                             deserialized_request = pickle.loads(serialized_reqeust)
                             request2 = Request2.from_request(deserialized_request)
-                            self.add_request_to_scope_tab(request2)
+                            self.add_request_to_intercept_tab(request2)
                         except Exception as e:
                             print(f"Error while deserialization recieved in scope: {e}")
 
-                        self.check_requests_list_empty()
+                        self.check_request_lists_empty()
 
     def add_reqeust_to_http_traffic_tab(self, req, resp=None):
         """
         Adds request to HTTP traffic list in GUI.
         """
+        real_url=req.url
         host = req.host
         url = req.path
         method = req.method
@@ -619,27 +545,28 @@ class GUIProxy(ctk.CTkFrame):
             title = ""
             response_content = resp.content.decode('utf-8')
             length = len(response_content)
-        values = (host, url, method, request_content, code, title, length, response_content)
+        values = (host, url, method, request_content, code, title, length, response_content, real_url)
 
-        self.hhf_requests_list.insert("", tk.END, values=values)
+        self.htf_request_list.insert("", tk.END, values=values)
 
-        if len(self.hhf_requests_list.selection()) == 0:
-            self.hhf_requests_list.selection_add(self.hhf_requests_list.get_children()[0])
+        if len(self.htf_request_list.selection()) == 0:
+            self.htf_request_list.selection_add(self.htf_request_list.get_children()[0])
 
-    def add_request_to_scope_tab(self, req=None):
+    def add_request_to_intercept_tab(self, req=None):
         """
             Adds request to scope list in GUI tab.
         """
         if req is None:
-            if len(self.hhf_requests_list.get_children()) > 0:
-                selected_item = self.hhf_requests_list.selection()[0]
-                host = self.hhf_requests_list.item(selected_item)['values'][0]
-                url = self.hhf_requests_list.item(selected_item)['values'][1]
-                method = self.hhf_requests_list.item(selected_item)['values'][2]
-                request_content = self.hh_request_textbox.get_text()
-                values = (host, url, method, request_content)
+            if len(self.htf_request_list.get_children()) > 0:
+                selected_item = self.htf_request_list.selection()[0]
+                host = self.htf_request_list.item(selected_item)['values'][0]
+                url = self.htf_request_list.item(selected_item)['values'][1]
+                method = self.htf_request_list.item(selected_item)['values'][2]
+                real_url = self.htf_request_list.item(selected_item)['values'][8]
+                request_content = self.htf_request_textbox.get_text()
+                values = (host, url, method, request_content, real_url)
 
-                self.sf_requests_list.insert("", 0, values=values)
+                self.if_request_list.insert("", 0, values=values)
         else:
             host = req.host
             url = req.path
@@ -647,16 +574,16 @@ class GUIProxy(ctk.CTkFrame):
             request_content = req.return_http_message()
             values = (host, url, method, request_content)
 
-            self.sf_requests_list.insert("", 0, values=values)
+            self.if_request_list.insert("", 0, values=values)
 
-        if len(self.sf_requests_list.selection()) == 0:
-            self.sf_requests_list.selection_add(self.sf_requests_list.get_children()[0])
+        if len(self.if_request_list.selection()) == 0:
+            self.if_request_list.selection_add(self.if_request_list.get_children()[0])
 
-    def send_reqeust_from_scope(self):
+    def send_reqeust_from_intercept(self):
         """
         Sends request made from scope tab textbox, request is forwarded to web browser.
         """
-        request2 = Request2.from_http_message(self.sf_request_content.get_text())
+        request2 = Request2.from_http_message(self.if_request_textbox.get_text())
         request = request2.to_request()
         serialized_reqeust = pickle.dumps(request)
 
@@ -667,10 +594,10 @@ class GUIProxy(ctk.CTkFrame):
         except Exception as e:
             print(f"Error while sending after Forward button: {e}")
 
-        self.sf_requests_list.drop_selected()
-        self.check_requests_list_empty()
-        if len(self.sf_requests_list.get_children()) > 0:
-            self.sf_requests_list.selection_add(self.sf_requests_list.get_children()[-1])
+        self.if_request_list.drop_selected()
+        self.check_request_lists_empty()
+        if len(self.if_request_list.get_children()) > 0:
+            self.if_request_list.selection_add(self.if_request_list.get_children()[-1])
 
     def generate_random_request(self):
         """
@@ -682,11 +609,11 @@ class GUIProxy(ctk.CTkFrame):
         content = f'{method} {path} HTTP/1.1\nHost: {url}\nProxy-Connection: keep-alive\nrandom stuff here'
         random_request = [url, path, method, content]
 
-        self.sf_requests_list.insert("", 0, values=random_request)
-        self.hhf_requests_list.insert("", tk.END, values=random_request)
-        self.sf_requests_list.selection_remove(self.sf_requests_list.get_children())
-        self.sf_requests_list.selection_add(self.sf_requests_list.get_children()[-1])
-        self.check_requests_list_empty()
+        self.if_request_list.insert("", 0, values=random_request)
+        self.htf_request_list.insert("", tk.END, values=random_request)
+        self.if_request_list.selection_remove(self.if_request_list.get_children())
+        self.if_request_list.selection_add(self.if_request_list.get_children()[-1])
+        self.check_request_lists_empty()
 
     def drop_request(self):
         """
@@ -701,7 +628,7 @@ class GUIProxy(ctk.CTkFrame):
         except Exception as e:
             print(f"Error while sending flag to kill process: {e}")
 
-        self.sf_requests_list.drop_selected()
+        self.if_request_list.drop_selected()
         try:
             if self.root.browser is not None:
                 if len(self.root.browser.window_handles) > 0:
@@ -710,154 +637,97 @@ class GUIProxy(ctk.CTkFrame):
         except Exception as e:
             print(f"Error while letting know about dropped request: {e}")
 
-        if len(self.sf_requests_list.get_children()) > 0:
-            self.sf_requests_list.selection_add(self.sf_requests_list.get_children()[-1])
+        if len(self.if_request_list.get_children()) > 0:
+            self.if_request_list.selection_add(self.if_request_list.get_children()[-1])
 
-        self.check_requests_list_empty()
+        self.check_request_lists_empty()
 
     def delete_all_requests_in_http_traffic(self):
         """
             Deletes all requests from HTTP Traffic list.
         """
-        self.hhf_requests_list.delete_all()
-        self.check_requests_list_empty()
+        self.htf_request_list.delete_all()
+        self.check_request_lists_empty()
 
-    def send_request_to_filter(self):
+    def add_url_to_scope_dialog(self):
+        self.sf_add_url_dialog = ctk.CTkToplevel(self)
+        self.sf_add_url_dialog.title("Add URL to Scope")
+        self.sf_add_url_dialog.geometry("300x150")
+        self.sf_add_url_dialog.attributes("-topmost", True)
+
+        url_label = ctk.CTkLabel(self.sf_add_url_dialog, text="Enter URL:", anchor="w")
+        url_label.pack(pady=(10, 5), padx=10, fill="x")
+
+        self.url_entry = ctk.CTkEntry(self.sf_add_url_dialog)
+        self.url_entry.pack(pady=(5, 10), padx=10, fill="x")
+
+        submit_button = ctk.CTkButton(self.sf_add_url_dialog, text="Submit", command=self.submit_url)
+        submit_button.pack(pady=10)
+
+    def submit_url(self):
+        url = self.url_entry.get()
+        self.add_url_to_scope(url)
+        self.sf_add_url_dialog.destroy()
+
+    def add_url_to_scope(self, url=None):
         """
             Updates filtering in backend logic, sends hostname
             Adds request to scope tab list
         """
-        # TODO Splitting sending to filter and intercept into two tabs.
-        request2 = Request2.from_http_message(self.hh_request_textbox.get_text())
-        request = request2.to_request()
-        serialized_reqeust = pickle.dumps(request)
+        if url is not None: # Temporal if solution to be implementing old backend logic
+            self.sf_url_list.insert("", "end", values=(True, url))
+            # TODO BACKEND: Sending url inserted to the list to the backend proxy to add it to the filter.
+        else:
+            # TODO BACKEND: Change backend logic beind it to be only receiving url to the proxy.
+            request2 = Request2.from_http_message(self.htf_request_textbox.get_text())
+            request = request2.to_request()
+            serialized_reqeust = pickle.dumps(request)
 
-        self.add_request_to_scope_tab()
-        self.check_requests_list_empty()
+            self.sf_url_list.insert("", tk.END, values=(True, request.host))
+            self.check_request_lists_empty()
 
-        try:
-            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-                s.connect((HOST, FRONT_BACK_SCOPEUPDATE_PORT))
-                s.sendall(serialized_reqeust)
-        except Exception as e:
-            print(f"Error while sendind request to filter: {e}")
+            try:
+                with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                    s.connect((HOST, FRONT_BACK_SCOPEUPDATE_PORT))
+                    s.sendall(serialized_reqeust)
+            except Exception as e:
+                print(f"Error while sendind request to filter: {e}")
 
-    def send_to_repeater(self):
-        # TODO Confirm if this can be deleted
-        # flag = "True"
-        # try:
-        #     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        #         s.connect((HOST, FRONT_BACK_SENDTOREPEATER_PORT))
-        #         serialized_flag = flag.encode("utf-8")
-        #         s.sendall(serialized_flag)
-        # except Exception as e:
-        #     print(f"Error Proxy/Send to repeater: While sending flag to kill process: {e}")
+    def remove_url_from_scope(self):
+        if len(self.sf_url_list.selection()) > 0:
+            selected_item = self.sf_url_list.selection()[-1]
+            url_to_remove = self.sf_url_list.item(selected_item)['values'][1]
+            # print(url_to_remove)
+            # TODO BACKEND: Sending url removed from the list to the backend proxy to remove it from the filter.
+            if selected_item:
+                self.sf_url_list.delete(selected_item)
 
-        request_content = self.sf_request_content.get_text()
+    def clear_scope(self):
+        for item in self.sf_url_list.get_children():
+            url_to_remove = self.sf_url_list.item(item)['values'][1]
+            # print(url_to_remove)
+            # TODO BACKEND: Sending url removed from the list to the backend proxy to remove it from the filter.
+            self.sf_url_list.delete(item)
+
+    def send_to_repeater(self, request_textbox, requests_list):
+        request_content = request_textbox.get_text()
         request_lines = request_content.split("\n")
+        selected_item = requests_list.selection()[0]
         if not any(line.startswith("Host:") for line in request_lines):
-            selected_item = self.sf_requests_list.selection()[0]
-            host_string = self.sf_requests_list.item(selected_item)['values'][0]
+            host_string = requests_list.item(selected_item)['values'][0]
             request_lines.insert(1, f"Host: {host_string}")
             request_content = "\n".join(request_lines)
 
         # print(f"Debug Proxy/Send to repeater:\n{request_content}")
-        self.root.repeater_frame.add_request_to_repeater_tab(request_content)
+        url = self.htf_request_list.item(selected_item)['values'][-1]
+        self.root.repeater_frame.add_request_to_repeater_tab(request_content, url=url)
 
-        self.sf_requests_list.drop_selected()
-        if len(self.sf_requests_list.get_children()) > 0:
-            self.sf_requests_list.selection_add(self.sf_requests_list.get_children()[-1])
-        self.check_requests_list_empty()
+        if requests_list is self.if_request_list:
+            print("Sending from a intercept frame.")
+            requests_list.drop_selected()
+            if len(requests_list.get_children()) > 0:
+                requests_list.selection_add(requests_list.get_children()[-1])
+            self.check_request_lists_empty()
 
-    def send_to_repeater_from_traffic(self):
-        request_content = self.hh_request_textbox.get_text()
-        request_lines = request_content.split("\n")
-        if not any(line.startswith("Host:") for line in request_lines):
-            selected_item = self.hhf_requests_list.selection()[0]
-            host_string = self.hhf_requests_list.item(selected_item)['values'][0]
-            request_lines.insert(1, f"Host: {host_string}")
-            request_content = "\n".join(request_lines)
-
-        # print(f"Debug Proxy/Send to repeater:\n{request_content}")
-        self.root.repeater_frame.add_request_to_repeater_tab(request_content)
-
-    # TODO Merge send_to_repeater and send_to_repeater_from_traffic into one method that takes textbox and requestlist as params.
-
-    def send_to_intruder(self):
+    def send_to_intruder(self, request_textbox, requests_list):
         pass
-
-    def open_settings_window(self):
-        # TODO Actual implmentation of config logic in the app, probably moving to main.py or separate file.
-        self.settings_window = ctk.CTkToplevel(self.root)
-        self.settings_window.title("Proxy Settings")
-        self.settings_window.attributes("-topmost", True)
-
-        for key, value in self.running_conf.items():
-            label = ctk.CTkLabel(self.settings_window, text=key)
-            label.pack()
-            entry = ctk.CTkEntry(self.settings_window)
-            entry.insert(0, value)
-            entry.pack()
-            self.settings_entries[key] = entry
-
-        save_button = ctk.CTkButton(self.settings_window, text="Save", command=self.save_settings, fg_color=color_acc3,
-                                    hover_color=color_acc4, corner_radius=32)
-        save_button.pack(side=tk.LEFT, padx=10, pady=10)
-
-        cancel_button = ctk.CTkButton(self.settings_window, text="Cancel", command=self.settings_window.destroy,
-                                      corner_radius=32)
-        cancel_button.pack(side=tk.RIGHT, padx=10, pady=10)
-
-        self.settings_window.lift()
-
-    def save_settings(self):
-        for key, entry in self.settings_entries.items():
-            self.running_conf[key] = entry.get()
-        self.save_config(self.running_conf)
-        self.settings_window.destroy()
-
-    def load_config(self):
-        default_config = {
-            "host_address": "127.0.0.1",
-            "port": 8082
-        }
-        config = default_config.copy()
-        try:
-            with open("proxy.conf", "r") as file:
-                for line in file:
-                    line = line.strip()
-                    if line and not line.startswith("#"):
-                        key, value = line.split("=", 1)
-                        config[key.strip()] = value.strip()
-        except FileNotFoundError:
-            print("Proxy config file could not be open. Default settings loaded.")
-        return config
-
-    def save_config(self, config):
-        try:
-            with open("proxy.conf", "r") as file:
-                lines = file.readlines()
-
-            updated_lines = []
-            keys_found = set()
-            for line in lines:
-                if line.strip() and not line.strip().startswith("#"):
-                    key, value = line.split("=", 1)
-                    key = key.strip()
-                    if key in config:
-                        updated_lines.append(f"{key} = {config[key]}\n")
-                        keys_found.add(key)
-                    else:
-                        updated_lines.append(line)
-                else:
-                    updated_lines.append(line)
-
-            for key, value in config.items():
-                if key not in keys_found:
-                    updated_lines.append(f"{key} = {value}\n")
-
-            with open("proxy.conf", "w") as file:
-                file.writelines(updated_lines)
-                self.load_config()
-        except Exception as e:
-            print(f"Error during saving a config: {e}")
