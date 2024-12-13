@@ -1,6 +1,9 @@
 import customtkinter as ctk
 import tkinter as tk
+from tkinter import ttk
 from pathlib import Path
+import pyperclip
+from collections.abc import Iterable
 import ctypes
 import time
 from PIL import Image, ImageTk
@@ -216,3 +219,69 @@ class TextBox(ctk.CTkTextbox):
             str: content from the TextBox stripped from leading and trailing whitespace.
         """
         return self.get("1.0", "end").strip()  # Use `self.get` directly.
+
+class ItemList(ttk.Treeview):
+    """
+    Request List class
+    """
+    def __init__(self, parent, *args, **kwargs):
+        super().__init__(parent, *args, **kwargs)
+        self.popup_menu = tk.Menu(self, tearoff=0)
+        self.bind("<Button-3>", self.popup)
+
+        treestyle = ttk.Style()
+        treestyle.theme_use('default')
+        treestyle.configure("Treeview", background=color_bg, foreground="white", fieldbackground=color_bg,
+                            borderwidth=0)
+        treestyle.configure("Treeview.Heading", background=color_bg, foreground="white", borderwidth=0)
+        treestyle.map('Treeview', background=[('selected', color_acc)], foreground=[('selected', 'white')])
+        treestyle.map("Treeview.Heading", background=[('active', color_bg)])
+
+    def popup(self, event):
+        """
+            Show right-click menu.
+        """
+        try:
+            self.popup_menu.tk_popup(event.x_root, event.y_root, 0)
+        finally:
+            self.popup_menu.grab_release()
+
+    def select_all(self):
+        """
+            Select all items in the list
+        """
+        for item in self.get_children():
+            self.selection_add(item)
+
+    def delete_selected(self):
+        """
+            Delete a selected items from the list, select the last item in the list afterward.
+        """
+        for item in self.selection():
+            self.delete(item)
+
+        if len(self.get_children()) > 0 and len(self.selection()) == 0:
+            self.selection_add(self.get_children()[-1])
+
+    def delete_all(self):
+        """
+            Delete all items in the list
+        """
+        for item in self.get_children():
+            self.delete(item)
+
+    def copy_value(self, index=0):
+        """
+            Copies values at the given indexes of the last selected item in selection.
+        """
+        if len(self.selection()) > 0:
+            selected_item = self.selection()[-1]
+            content = ""
+            if isinstance(index, Iterable):
+                for i in index:
+                    content += self.item(selected_item)['values'][i] + "\n"
+            elif isinstance(index, int):
+                content = self.item(selected_item)['values'][index]
+            # print(f'DEBUG/FRONTEND/PROXY: selected_item = {selected_item}\n\nits values = {self.item(selected_item)['values']}')
+            # print(f"DEBUG/FRONTEND/PROXY: Copied {content}")
+            pyperclip.copy(content.strip())

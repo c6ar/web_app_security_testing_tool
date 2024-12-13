@@ -8,7 +8,7 @@ from selenium.webdriver.chrome.options import Options
 
 # TODO FRONTEND: Add theme support, after settings implemented.
 # TODO FRONTEND: Add lang support only EN and PL.
-ctk.set_appearance_mode("system")
+ctk.set_appearance_mode("dark")
 ctk.set_default_color_theme("dark-blue")
 
 
@@ -211,6 +211,7 @@ class GUI(ctk.CTk):
 
     def show_settings(self):
         # TODO OTHER: Actual implmentation of config logic in the app, probably moving to main.py or separate file.
+        # Settings ideas, appearance (theme), language (EN or PL), Proxy rerun, show Proxy log, turn on Debug mode for the app DEBUG PRINTOUTS
         self.settings_window = ctk.CTkToplevel(self)
         self.settings_window.title("Proxy Settings")
         self.settings_window.attributes("-topmost", True)
