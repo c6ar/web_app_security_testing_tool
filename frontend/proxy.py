@@ -145,10 +145,10 @@ class GUIProxy(ctk.CTkFrame):
         self.htt_request_list.popup_menu.add_separator()
         self.htt_request_list.popup_menu.add_command(
             label="Add url to the scope",
-            command=lambda: self.from_request_list_to_scope(self.htt_request_list, -1, "add"))
+            command=lambda: self.from_request_list_to_scope(self.htt_request_list, 0, "add"))
         self.htt_request_list.popup_menu.add_command(
             label="Remove url from the scope",
-            command=lambda: self.from_request_list_to_scope(self.htt_request_list, -1, "remove"))
+            command=lambda: self.from_request_list_to_scope(self.htt_request_list, 0, "remove"))
         self.htt_request_list.popup_menu.add_separator()
         self.htt_request_list.popup_menu.add_command(
             label="Send to repeater",
@@ -200,6 +200,7 @@ class GUIProxy(ctk.CTkFrame):
         """
          > INTERCEPT TAB
         """
+        # TODO FRONTEND/BACKEND: Can we have intercepting like in Burp? - When scope empty then intercepting anything, else we intercept stuff from scope.
         self.it_top_bar = ctk.CTkFrame(self.intercept_tab, height=50, corner_radius=10)
         self.it_top_bar.pack(side=tk.TOP, fill=tk.X, pady=(0, 5), padx=5)
 
@@ -248,10 +249,10 @@ class GUIProxy(ctk.CTkFrame):
         self.it_request_list.popup_menu.add_separator()
         self.it_request_list.popup_menu.add_command(
             label="Add url to the scope",
-            command=lambda: self.from_request_list_to_scope(self.it_request_list, -1, "add"))
+            command=lambda: self.from_request_list_to_scope(self.it_request_list, 0, "add"))
         self.it_request_list.popup_menu.add_command(
             label="Remove url from the scope",
-            command=lambda: self.from_request_list_to_scope(self.it_request_list, -1, "remove"))
+            command=lambda: self.from_request_list_to_scope(self.it_request_list, 0, "remove"))
         self.it_request_list.popup_menu.add_separator()
         self.it_request_list.popup_menu.add_command(
             label="Send to repeater",
@@ -507,7 +508,7 @@ class GUIProxy(ctk.CTkFrame):
             for action in st_url_list_actions:
                 self.st_url_list.popup_menu.entryconfig(action, state=tk.NORMAL)
 
-    def from_request_list_to_scope(self, request_list, url_index=4, mode="add"):
+    def from_request_list_to_scope(self, request_list, url_index=0, mode="add"):
         """
         Proxy GUI:
             Adds to / Removes from the scope selected url(s) from the given request list.
@@ -820,9 +821,8 @@ class GUIProxy(ctk.CTkFrame):
         """
         if url is not None: # Temporal if solution to be implementing old backend logic
             self.st_url_list.insert("", "end", values=(True, url))
-            # TODO BACKEND: Sending url inserted to the list to the backend proxy to add it to the filter.
         else:
-            # TODO BACKEND: Change backend logic beind it to be only receiving url to the proxy.
+            # TODO BACKEND: Change backend logic behind it to be only receiving hostname for the filter.
             request2 = Request2.from_http_message(self.htt_request_textbox.get_text())
             request = request2.to_request()
             serialized_reqeust = pickle.dumps(request)
