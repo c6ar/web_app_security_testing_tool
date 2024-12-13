@@ -145,10 +145,10 @@ class GUIProxy(ctk.CTkFrame):
         self.htt_request_list.popup_menu.add_separator()
         self.htt_request_list.popup_menu.add_command(
             label="Add url to the scope",
-            command=lambda: self.from_request_list_to_scope(self.htt_request_list, 7, "add"))
+            command=lambda: self.from_request_list_to_scope(self.htt_request_list, -1, "add"))
         self.htt_request_list.popup_menu.add_command(
             label="Remove url from the scope",
-            command=lambda: self.from_request_list_to_scope(self.htt_request_list, 7, "remove"))
+            command=lambda: self.from_request_list_to_scope(self.htt_request_list, -1, "remove"))
         self.htt_request_list.popup_menu.add_separator()
         self.htt_request_list.popup_menu.add_command(
             label="Send to repeater",
@@ -248,10 +248,10 @@ class GUIProxy(ctk.CTkFrame):
         self.it_request_list.popup_menu.add_separator()
         self.it_request_list.popup_menu.add_command(
             label="Add url to the scope",
-            command=lambda: self.from_request_list_to_scope(self.it_request_list, 4, "add"))
+            command=lambda: self.from_request_list_to_scope(self.it_request_list, -1, "add"))
         self.it_request_list.popup_menu.add_command(
             label="Remove url from the scope",
-            command=lambda: self.from_request_list_to_scope(self.it_request_list, 4, "remove"))
+            command=lambda: self.from_request_list_to_scope(self.it_request_list, -1, "remove"))
         self.it_request_list.popup_menu.add_separator()
         self.it_request_list.popup_menu.add_command(
             label="Send to repeater",
