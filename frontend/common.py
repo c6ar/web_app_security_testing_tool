@@ -1,26 +1,84 @@
+#
+# Loading moduels and libraries
+#
+# noinspection PyUnresolvedReferences
+from backend.global_setup import *
+# noinspection PyUnresolvedReferences
+from backend.Request import *
+from collections.abc import Iterable
+# noinspection PyUnresolvedReferences
+import ctypes
 import customtkinter as ctk
+# noinspection PyUnresolvedReferences
+from customtkinter import ThemeManager, AppearanceModeTracker
+# noinspection PyUnresolvedReferences
+from datetime import datetime
+# noinspection PyUnresolvedReferences
+from flask import request
+# noinspection PyUnresolvedReferences
+from idlelib.rpc import response_queue
+# noinspection PyUnresolvedReferences
+import json
+# noinspection PyUnresolvedReferences
+from operator import truediv
+# noinspection PyUnresolvedReferences
+import os
+from pathlib import Path
+# noinspection PyUnresolvedReferences
+import pickle
+# noinspection PyUnresolvedReferences
+from PIL import Image, ImageTk
+import pyperclip
+# noinspection PyUnresolvedReferences
+import random
+# noinspection PyUnresolvedReferences
+import re
+# noinspection PyUnresolvedReferences
+import socket
+# noinspection PyUnresolvedReferences
+import subprocess
+# noinspection PyUnresolvedReferences
+import threading
+# noinspection PyUnresolvedReferences
+import time
 import tkinter as tk
 from tkinter import ttk
-from pathlib import Path
-import pyperclip
-from collections.abc import Iterable
-import ctypes
-import time
-from PIL import Image, ImageTk
-from backend.global_setup import *
+# noinspection PyUnresolvedReferences
+from tkinter import filedialog
+# noinspection PyUnresolvedReferences
+from utils.request_methods import *
 
-# TODO Global variables to be moved to common.conf file once settings implemented
-color_bg = "#222"
-color_bg_br = "#333"
+#
+# Global settings and variables
+#
+ctk.set_appearance_mode("system")
+ctk.set_default_color_theme("dark-blue")
+if ctk.get_appearance_mode() == "Light":
+    color_text = "#000"
+    color_text_br = "#333"
+    color_bg = "#dcdcdc"
+    color_bg_br = "#eee"
+else:
+    color_text = "#eee"
+    color_text_br = "#ccc"
+    color_bg = "#222"
+    color_bg_br = "#333"
 ctk.set_default_color_theme("dark-blue")
 color_acc = ctk.ThemeManager.theme["CTkButton"]["fg_color"][1]
 color_acc2 = ctk.ThemeManager.theme["CTkButton"]["hover_color"][1]
 color_acc3 = "#d1641b"
 color_acc4 = "#924511"
+color_green = "#228600"
+color_green_dk = "#186000"
+color_red = "#c81800"
+color_red_dk = "#911100"
 
 CURRENT_DIR = f"{Path.cwd()}"
 ASSET_DIR = f"{Path.cwd()}\\assets"
 
+#
+# Icon and image assets loading
+#
 icon_toggle_on = ctk.CTkImage(
     light_image=Image.open(f"{ASSET_DIR}\\icon_toggle_on.png"),
     dark_image=Image.open(f"{ASSET_DIR}\\icon_toggle_on.png"), size=(20, 20))
@@ -54,9 +112,35 @@ icon_info = ctk.CTkImage(
 icon_attack = ctk.CTkImage(
     light_image=Image.open(f"{ASSET_DIR}\\icon_attack.png"),
     dark_image=Image.open(f"{ASSET_DIR}\\icon_attack.png"), size=(20, 20))
+intercept_off_image = ctk.CTkImage(light_image=Image.open(f"{ASSET_DIR}\\intercept_off_light.png"),
+                                   dark_image=Image.open(f"{ASSET_DIR}\\intercept_off.png"),
+                                   size=(87, 129))
+intercept_on_image = ctk.CTkImage(light_image=Image.open(f"{ASSET_DIR}\\intercept_on_light.png"),
+                                  dark_image=Image.open(f"{ASSET_DIR}\\intercept_on.png"), size=(87, 129))
+
+
+#
+# Common functions
+#
+def center_window(root_window, window, width, height):
+    """
+    Centers TopLevel window relatively to its parent.
+    """
+    parent_x = root_window.winfo_x()
+    parent_y = root_window.winfo_y()
+    parent_width = root_window.winfo_width()
+    parent_height = root_window.winfo_height()
+
+    position_right = parent_x + int(parent_width / 2 - width / 2)
+    position_down = parent_y + int(parent_height / 2 - height / 2)
+
+    window.geometry(f"{width}x{height}+{position_right}+{position_down}")
 
 
 class ActionButton(ctk.CTkButton):
+    """
+    A preset action button based on CTkButton.
+    """
     # TODO FRONTEND: Stop flickering!
     def __init__(self, parent, *args, **kwargs):
         super().__init__(parent, *args, **kwargs)
@@ -64,15 +148,18 @@ class ActionButton(ctk.CTkButton):
             kwargs['font'] = ctk.CTkFont(family="Calibri", size=14)
             self.configure(font=kwargs['font'])
         if "corner_radius" not in kwargs:
-            self.configure(corner_radius=32)
+            self.configure(corner_radius=10)
         text_width = kwargs["font"].measure(kwargs["text"])
-        self.button_width = text_width + 20 + 25
+        self.button_width = text_width + 10
         if self.button_width < 100:
             self.button_width = 100
         self.configure(width=self.button_width)
 
 
 class NavButton(ctk.CTkFrame):
+    """
+    A preset tab navigation button based on CTkButton.
+    """
     # TODO FRONTEND: Stop flickering!
     def __init__(self, master, text, command, icon=None, compound="left", font=None, background=color_bg, background_selected=color_bg_br):
         super().__init__(master)
@@ -87,9 +174,10 @@ class NavButton(ctk.CTkFrame):
         button_width = text_width + 25
 
         self.configure(
+            border_width=0,
             corner_radius=10,
-            bg_color=self.bg,
             fg_color=self.bg,
+            bg_color="transparent",
             background_corner_colors=(self.bg, self.bg, self.bg, self.bg)
         )
 
@@ -99,22 +187,23 @@ class NavButton(ctk.CTkFrame):
             border_spacing=0,
             width=button_width,
             corner_radius=10,
+            text_color=color_text,
             bg_color="transparent",
             fg_color="transparent",
             hover_color=self.bg_sel,
-            text_color_disabled="white",
+            text_color_disabled=color_text,
             text=text,
             command=command,
             font=font
         )
         if icon is not None:
-            icon.configure(size=(15,15))
+            icon.configure(size=(15, 15))
             self.main_button.configure(
-                image = icon,
-                compound = compound
+                image=icon,
+                compound=compound
             )
 
-        self.main_button.pack(side="left", padx=3)
+        self.main_button.pack(side="left", padx=3, pady=(1, 5))
         self.selected = False
 
     def set_selected(self, value):
@@ -138,7 +227,9 @@ class NavButton(ctk.CTkFrame):
 
 
 class HeaderTitle(ctk.CTkLabel):
-
+    """
+    A preset title for section / module headers.
+    """
     def __init__(self, master, text, size=24, padx=10, pady=10, height=20):
         super().__init__(
             master,
@@ -155,9 +246,11 @@ class HeaderTitle(ctk.CTkLabel):
 
 
 class ConfirmDialog(ctk.CTkToplevel):
-
+    """
+    A custom Confirm dialog class based on customtkinter's Top Level widget.
+    """
     def __init__(self,
-                 master,
+                 master, root,
                  prompt="Are you sure you want to continue?",
                  action1="Yes", command1=None,
                  action2=None, command2=None,
@@ -166,6 +259,8 @@ class ConfirmDialog(ctk.CTkToplevel):
         self.title("Confirm")
         self.geometry("300x100")
         self.attributes("-topmost", True)
+        center_window(root, self, 300, 100)
+        self.overrideredirect(True)
 
         label = ctk.CTkLabel(self, text=prompt, wraplength=250)
         label.pack(pady=(10, 5), padx=10)
@@ -184,22 +279,31 @@ class ConfirmDialog(ctk.CTkToplevel):
 
 class TextBox(ctk.CTkTextbox):
     """
-    TextBox based on customtkinter's CTkTextbox with monoscape font and custom insert and get text methods.
+    Custom TextBox class based on customtkinter's CTkTextbox with monoscape font and custom insert and get text methods.
 
     Args:
         master (CTkBaseClass)
-        root (CTkBaseClass)
         text (str)
     """
-
-    def __init__(self, master, root, text=""):
-        super().__init__(master)
-        self.root = root
+    def __init__(self, master, text="", **kwargs):
+        super().__init__(master, **kwargs)
         self.monoscape_font = ctk.CTkFont(family="Courier New", size=14, weight="normal")
         self.monoscape_font_italic = ctk.CTkFont(family="Courier New", size=14, weight="normal", slant="italic")
-        self.configure(wrap="none", font=self.monoscape_font, state="normal", padx=5, pady=5)
+        self.configure(wrap="none", font=self.monoscape_font, state="normal", padx=5, pady=5, fg_color=color_bg_br, text_color=color_text)
+
+        self.popup_menu = tk.Menu(self, tearoff=0)
+        self.bind("<Button-3>", self.popup)
 
         self.insert_text(text)
+
+    def popup(self, event):
+        """
+            Show right-click menu.
+        """
+        try:
+            self.popup_menu.tk_popup(event.x_root, event.y_root, 0)
+        finally:
+            self.popup_menu.grab_release()
 
     def insert_text(self, text):
         """
@@ -220,9 +324,10 @@ class TextBox(ctk.CTkTextbox):
         """
         return self.get("1.0", "end").strip()  # Use `self.get` directly.
 
+
 class ItemList(ttk.Treeview):
     """
-    Request List class
+    Custom Item List class
     """
     def __init__(self, parent, *args, **kwargs):
         super().__init__(parent, *args, **kwargs)
@@ -231,9 +336,9 @@ class ItemList(ttk.Treeview):
 
         treestyle = ttk.Style()
         treestyle.theme_use('default')
-        treestyle.configure("Treeview", background=color_bg, foreground="white", fieldbackground=color_bg,
+        treestyle.configure("Treeview", background=color_bg, foreground=color_text, fieldbackground=color_bg,
                             borderwidth=0)
-        treestyle.configure("Treeview.Heading", background=color_bg, foreground="white", borderwidth=0)
+        treestyle.configure("Treeview.Heading", background=color_bg, foreground=color_text, borderwidth=0)
         treestyle.map('Treeview', background=[('selected', color_acc)], foreground=[('selected', 'white')])
         treestyle.map("Treeview.Heading", background=[('active', color_bg)])
 
@@ -285,3 +390,15 @@ class ItemList(ttk.Treeview):
             # print(f'DEBUG/FRONTEND/PROXY: selected_item = {selected_item}\n\nits values = {self.item(selected_item)['values']}')
             # print(f"DEBUG/FRONTEND/PROXY: Copied {content}")
             pyperclip.copy(content.strip())
+
+
+class TextEntry(ctk.CTkEntry):
+    """
+    Custom TextEntry class
+    """
+    def __init__(self, parent, *args, **kwargs):
+        super().__init__(parent, *args, **kwargs)
+        self.configure(border_width=0,
+                       text_color=color_text,
+                       fg_color=color_bg_br,
+                       bg_color="transparent")

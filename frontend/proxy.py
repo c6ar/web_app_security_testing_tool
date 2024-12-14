@@ -1,25 +1,4 @@
-import os
-import pickle
-import random
-from idlelib.rpc import response_queue
-from flask import request
-from backend.Request import *
-import time
-from operator import truediv
-from backend.Request import Request2
-# from mitmproxy.http import Headers, Request, Response
 from common import *
-import tkinter as tk
-from tkinter import ttk
-import customtkinter as ctk
-from customtkinter import ThemeManager
-import pyperclip
-import socket
-import subprocess
-import threading
-from PIL import Image, ImageTk
-import json
-import threading
 
 # TODO Confirm if this is important or needed anywhere, otherwise delete it
 i = 0
@@ -74,29 +53,31 @@ class GUIProxy(ctk.CTkFrame):
         """
          > HTTP TRAFFIC TAB
         """
-        self.htt_top_bar = ctk.CTkFrame(self.http_traffic_tab, height=50, corner_radius=10)
+        self.htt_top_bar = ctk.CTkFrame(self.http_traffic_tab, height=50, corner_radius=10, fg_color=color_bg, bg_color="transparent")
         self.htt_top_bar.pack(side=tk.TOP, fill=tk.X, pady=(0, 5), padx=5)
 
         self.htt_add_to_scope_button = ActionButton(
             self.htt_top_bar, text="Add to scope", image=icon_add,
             command=self.st_add_url,
-            fg_color=color_acc, hover_color=color_acc2, compound="left", corner_radius=32)
+            fg_color=color_acc, hover_color=color_acc2)
         self.htt_send_requests_to_repeater_button = ActionButton(
             self.htt_top_bar, text="Send to repeater", image=icon_arrow_up,
             command=lambda: self.send_to_repeater(self.htt_request_textbox, self.htt_request_list),
-            fg_color=color_acc, hover_color=color_acc2, compound="left", corner_radius=32)
+            fg_color=color_acc, hover_color=color_acc2)
         self.htt_send_requests_to_intruder_button = ActionButton(
             self.htt_top_bar, text="Send to intruder", image=icon_arrow_up,
             command=lambda: self.send_to_intruder(self.htt_request_textbox, self.htt_request_list),
-            fg_color=color_acc, hover_color=color_acc2, compound="left", corner_radius=32)
+            fg_color=color_acc, hover_color=color_acc2)
         self.htt_delete_requests_button = ActionButton(
             self.htt_top_bar, text="Delete all requests", image=icon_delete,
             command=lambda: (self.htt_request_list.delete_all(), self.check_request_lists_empty()),
-            fg_color=color_acc3, hover_color=color_acc4, compound="left", corner_radius=32)
+            fg_color=color_acc3, hover_color=color_acc4)
         self.htt_browser_button = ActionButton(
             self.htt_top_bar, text="Open browser", image=icon_browser,
-            command=self.root.start_browser_thread,
-            compound="left", corner_radius=32)
+            command=self.root.start_browser_thread)
+        self.htt_add_random_entry = ActionButton(
+            self.htt_top_bar, text=f"Random request", image=icon_random,
+            command=lambda: self.generate_random_request(self.htt_request_list))
 
         self.htt_top_bar_buttons = [
             self.htt_add_to_scope_button,
@@ -109,6 +90,8 @@ class GUIProxy(ctk.CTkFrame):
                 button.pack(side=tk.LEFT, padx=(10, 5), pady=15)
             else:
                 button.pack(side=tk.LEFT, padx=5, pady=15)
+
+        self.htt_add_random_entry.pack(side=tk.LEFT, padx=5, pady=15)
         self.htt_browser_button.pack(side=tk.RIGHT, padx=(5, 10), pady=15)
 
         self.htt_paned_window = tk.PanedWindow(self.http_traffic_tab, orient=tk.VERTICAL, sashwidth=10,
@@ -119,7 +102,7 @@ class GUIProxy(ctk.CTkFrame):
          > HTTP TRAFFIC TAB:
          >> Top pane
         """
-        self.htt_top_pane = ctk.CTkFrame(self.htt_paned_window, corner_radius=10)
+        self.htt_top_pane = ctk.CTkFrame(self.htt_paned_window, corner_radius=10, fg_color=color_bg, bg_color="transparent")
         self.htt_paned_window.add(self.htt_top_pane, height=350)
 
         htt_columns = ("Host", "URL", "Method", "Request", "Status code", "Title", "Length", "Response", "RealURL")
@@ -171,7 +154,7 @@ class GUIProxy(ctk.CTkFrame):
          > HTTP TRAFFIC TAB:
          >> Bottom pane
         """
-        self.htt_bottom_pane = ctk.CTkFrame(self.htt_paned_window, corner_radius=10)
+        self.htt_bottom_pane = ctk.CTkFrame(self.htt_paned_window, corner_radius=10, fg_color=color_bg, bg_color="transparent")
         self.htt_paned_window.add(self.htt_bottom_pane)
 
         self.htt_bottom_pane.grid_columnconfigure(0, weight=1)
@@ -184,16 +167,16 @@ class GUIProxy(ctk.CTkFrame):
         self.htt_request_header = HeaderTitle(self.htt_request_frame, "Request")
         self.htt_request_header.pack(fill=tk.X)
 
-        self.htt_request_textbox = TextBox(self.htt_request_frame, self, "Select request to display its contents.")
+        self.htt_request_textbox = TextBox(self.htt_request_frame, "Select request to display its contents.")
         self.htt_request_textbox.pack(pady=10, padx=10, fill="both", expand=True)
 
-        self.htt_response_frame = ctk.CTkFrame(self.htt_bottom_pane, fg_color=color_bg)
+        self.htt_response_frame = ctk.CTkFrame(self.htt_bottom_pane, fg_color=color_bg, bg_color="transparent")
         self.htt_response_frame.grid(row=0, column=1, sticky="nsew", padx=10, pady=10)
 
         self.htt_response_header = HeaderTitle(self.htt_response_frame, "Response")
         self.htt_response_header.pack(fill=tk.X)
 
-        self.htt_response_textbox = TextBox(self.htt_response_frame, self, "Select request to display its response contents.")
+        self.htt_response_textbox = TextBox(self.htt_response_frame, "Select request to display its response contents.")
         self.htt_response_textbox.configure(state=tk.DISABLED)
         self.htt_response_textbox.pack(pady=10, padx=10, fill="both", expand=True)
 
@@ -201,12 +184,12 @@ class GUIProxy(ctk.CTkFrame):
          > INTERCEPT TAB
         """
         # TODO FRONTEND/BACKEND: Can we have intercepting like in Burp? - When scope empty then intercepting anything, else we intercept stuff from scope.
-        self.it_top_bar = ctk.CTkFrame(self.intercept_tab, height=50, corner_radius=10)
+        self.it_top_bar = ctk.CTkFrame(self.intercept_tab, height=50, corner_radius=10, fg_color=color_bg, bg_color="transparent")
         self.it_top_bar.pack(side=tk.TOP, fill=tk.X, pady=(0, 5), padx=5)
 
         self.it_toggle_intercept_button = ActionButton(
             self.it_top_bar, text="Intercept off", image=icon_toggle_off, command=self.it_toggle_intercept,
-            fg_color=color_acc3, hover_color=color_acc4)
+            fg_color=color_green, hover_color=color_green_dk)
         self.it_drop_button = ActionButton(
             self.it_top_bar, text=f"Drop", image=icon_arrow_down, command=self.it_drop_request)
         self.it_send_to_repeater_button = ActionButton(
@@ -215,7 +198,8 @@ class GUIProxy(ctk.CTkFrame):
         self.it_send_to_intruder_button = ActionButton(
             self.it_top_bar, text=f"Send to intruder", command=lambda: self.send_to_intruder(self.it_request_textbox, self.it_request_list), state=tk.DISABLED)
         self.it_add_random_entry = ActionButton(
-            self.it_top_bar, text=f"Random request", image=icon_random, command=self.generate_random_request)
+            self.it_top_bar, text=f"Random request", image=icon_random,
+            command=lambda: self.generate_random_request(self.it_request_list))
         self.it_browser_button = ActionButton(
             self.it_top_bar, text="Open browser", image=icon_browser, command=self.root.start_browser_thread)
 
@@ -226,7 +210,7 @@ class GUIProxy(ctk.CTkFrame):
          > INTERCEPT TAB:
          >> Top pane
         """
-        self.it_top_pane = ctk.CTkFrame(self.it_paned_window, corner_radius=10)
+        self.it_top_pane = ctk.CTkFrame(self.it_paned_window, corner_radius=10, fg_color=color_bg, bg_color="transparent")
         self.it_paned_window.add(self.it_top_pane, height=350)
 
         it_columns = ("Host", "URL", "Method", "Content", "RealURL")
@@ -268,14 +252,10 @@ class GUIProxy(ctk.CTkFrame):
             label="Copy request url",
             command=lambda: self.it_request_list.copy_value(-1))
 
-        self.it_intercept_placeholder = ctk.CTkFrame(self.it_top_pane, fg_color="transparent")
+        self.it_intercept_placeholder = ctk.CTkFrame(self.it_top_pane, fg_color="transparent", bg_color="transparent")
         self.it_intercept_placeholder.place(relx=0.5, rely=0.5, anchor=tk.CENTER)
-        self.intercept_off_image = ctk.CTkImage(light_image=Image.open(f"{ASSET_DIR}\\intercept_off.png"),
-                                                dark_image=Image.open(f"{ASSET_DIR}\\intercept_off.png"),
-                                                size=(81, 136))
-        self.intercept_on_image = ctk.CTkImage(light_image=Image.open(f"{ASSET_DIR}\\intercept_on.png"),
-                                               dark_image=Image.open(f"{ASSET_DIR}\\intercept_on.png"), size=(81, 136))
-        self.it_placeholder_image = ctk.CTkLabel(self.it_intercept_placeholder, image=self.intercept_off_image, text="")
+
+        self.it_placeholder_image = ctk.CTkLabel(self.it_intercept_placeholder, image=intercept_off_image, text="")
         self.it_placeholder_image.pack(pady=5)
         self.it_placeholder_label = ctk.CTkLabel(self.it_intercept_placeholder, text="Intercept is off")
         self.it_placeholder_label.pack(pady=5, expand=True)
@@ -284,10 +264,10 @@ class GUIProxy(ctk.CTkFrame):
          > INTERCEPT TAB:
          >> Bottom pane
         """
-        self.it_bottom_pane = ctk.CTkFrame(self.it_paned_window, corner_radius=10)
+        self.it_bottom_pane = ctk.CTkFrame(self.it_paned_window, corner_radius=10, fg_color=color_bg, bg_color="transparent")
         self.it_paned_window.add(self.it_bottom_pane)
 
-        self.it_request_wrapper = ctk.CTkFrame(self.it_bottom_pane, fg_color="transparent")
+        self.it_request_wrapper = ctk.CTkFrame(self.it_bottom_pane, fg_color="transparent", bg_color="transparent")
         self.it_request_wrapper.pack(fill="both", expand=True, padx=10, pady=10)
         self.it_request_wrapper.grid_columnconfigure(0, weight=1)
         self.it_request_wrapper.grid_rowconfigure(0, weight=1)
@@ -298,7 +278,7 @@ class GUIProxy(ctk.CTkFrame):
                                                       padx=10, pady=10, height=20, fg_color=color_bg)
         self.it_request_wrapper_header.pack(fill=tk.X)
 
-        self.it_request_textbox = TextBox(self.it_request_wrapper, self, "Select request to display its contents.")
+        self.it_request_textbox = TextBox(self.it_request_wrapper, "Select request to display its contents.")
         self.it_request_textbox.pack(pady=10, padx=10, fill="both", expand=True)
 
         self.it_forward_button = ActionButton(self.it_top_bar, text=f"Forward", image=icon_arrow_up, state=tk.DISABLED,
@@ -318,7 +298,7 @@ class GUIProxy(ctk.CTkFrame):
         """
          > SCOPE TAB:
         """
-        self.st_wrapper = ctk.CTkFrame(self.scope_tab, fg_color=color_bg, corner_radius=10)
+        self.st_wrapper = ctk.CTkFrame(self.scope_tab, corner_radius=10, fg_color=color_bg, bg_color="transparent")
         self.st_wrapper.pack(fill=tk.X, padx=10, pady=0)
 
         self.st_header = HeaderTitle(self.st_wrapper, "Scope")
@@ -347,7 +327,7 @@ class GUIProxy(ctk.CTkFrame):
         self.st_url_list.popup_menu.add_separator()
         self.st_url_list.popup_menu.add_command(
             label="Copy URL",
-            command=self.st_url_list.copy_value(1))
+            command=lambda: self.st_url_list.copy_value(1))
         
         self.st_buttons = ctk.CTkFrame(self.st_wrapper, fg_color="transparent")
         self.st_buttons.pack(side="right", fill=tk.Y, padx=(0, 10))
@@ -613,18 +593,18 @@ class GUIProxy(ctk.CTkFrame):
         """
         if self.root.intercepting:
             self.it_toggle_intercept_button.configure(text="Intercept off", image=icon_toggle_off,
-                                                      fg_color=color_acc3, hover_color=color_acc4)
+                                                      fg_color=color_green, hover_color=color_green_dk)
             self.root.intercepting = False
             self.it_placeholder_label.configure(text="Intercept is off.")
-            self.it_placeholder_image.configure(image=self.intercept_off_image)
+            self.it_placeholder_image.configure(image=intercept_off_image)
             print("Turning intercept off.")
             change_intercept_state()
         else:
             self.it_toggle_intercept_button.configure(text="Intercept on", image=icon_toggle_on,
-                                                      fg_color=color_acc, hover_color=color_acc2)
+                                                      fg_color=color_red, hover_color=color_red_dk)
             self.root.intercepting = True
             self.it_placeholder_label.configure(text="Intercept is on.")
-            self.it_placeholder_image.configure(image=self.intercept_on_image)
+            self.it_placeholder_image.configure(image=intercept_on_image)
             print("Turning intercept on.")
             change_intercept_state()
         self.check_request_lists_empty()
@@ -751,7 +731,7 @@ class GUIProxy(ctk.CTkFrame):
 
         # print(f"Debug Proxy/Send to repeater:\n{request_content}")
         url = self.htt_request_list.item(selected_item)['values'][-1]
-        self.root.repeater_frame.add_request_to_repeater_tab(request_content, url=url)
+        self.root.repeater_tab.add_request_to_repeater_tab(request_content, url=url)
 
         if requests_list is self.it_request_list:
             # print("DEBUG/FRONTEND/Proxy: Sending from an intercept frame.")
@@ -767,7 +747,7 @@ class GUIProxy(ctk.CTkFrame):
         """
         pass
 
-    def generate_random_request(self):
+    def generate_random_request(self, request_list):
         """
         Proxy GUI:
             Generates a random fake request and adds it to the request lists.
@@ -775,13 +755,18 @@ class GUIProxy(ctk.CTkFrame):
         url = f"http://{random.choice(['example', 'test', 'check', 'domain'])}.{random.choice(['org', 'com', 'pl', 'eu'])}"
         path = f"/{random.choice(['entry', 'page', '', 'test', 'subpage'])}"
         method = random.choice(["GET", "POST", "PUT", "DELETE"])
-        content = f'{method} {path} HTTP/1.1\nHost: {url}\nProxy-Connection: keep-alive\nrandom stuff here'
-        random_request = [url, path, method, content, url+path]
+        request_content = f'{method} {path} HTTP/1.1\nHost: {url}\nProxy-Connection: keep-alive\nrandom stuff here'
+        random_request = [url, path, method, request_content, url]
+        if request_list == self.htt_request_list:
+            status_code = f"{random.choice(['400','401','402','403','404'])}"
+            title = f""
+            response_content = f'Some HTTP gibberish here.'
+            length = len(response_content)
+            random_request = [url, path, method, request_content, status_code, title, length, response_content, url]
 
-        self.it_request_list.insert("", 0, values=random_request)
-        self.htt_request_list.insert("", tk.END, values=random_request)
-        self.it_request_list.selection_remove(self.it_request_list.get_children())
-        self.it_request_list.selection_add(self.it_request_list.get_children()[-1])
+        request_list.insert("", tk.END, values=random_request)
+        request_list.selection_remove(request_list.get_children())
+        request_list.selection_add(request_list.get_children()[-1])
 
         self.check_request_lists_empty()
 
@@ -794,24 +779,27 @@ class GUIProxy(ctk.CTkFrame):
         self.st_add_url_dialog.title("Add URL to Scope")
         self.st_add_url_dialog.geometry("300x150")
         self.st_add_url_dialog.attributes("-topmost", True)
+        center_window(self.root, self.st_add_url_dialog, 300, 150)
 
         url_label = ctk.CTkLabel(self.st_add_url_dialog, text="Enter URL:", anchor="w")
         url_label.pack(pady=(10, 5), padx=10, fill="x")
 
-        url_entry = ctk.CTkEntry(self.st_add_url_dialog)
+        url_entry = TextEntry(self.st_add_url_dialog)
         url_entry.pack(pady=(5, 10), padx=10, fill="x")
+        url_entry.bind("<Return>", lambda event: self.st_submit_url(url_entry.get()))
 
         submit_button = ctk.CTkButton(self.st_add_url_dialog, text="Submit", command=lambda: self.st_submit_url(url_entry.get()))
         submit_button.pack(pady=10)
+        submit_button.bind("<Return>", lambda event: self.st_submit_url(url_entry.get()))
 
     def st_submit_url(self, url):
         """
         Scope Tab:
             Submit the provided custom URL in the dialog.
         """
-        # TODO FRONTEND: Update logic to prevent adding empty strings.
-        self.st_add_url(url)
-        self.st_add_url_dialog.destroy()
+        if len(url) > 0 and re.match(r"^[a-zA-Z0-9-]+\.[a-zA-Z]{1,3}$", url):
+            self.st_add_url(url)
+            self.st_add_url_dialog.destroy()
 
     def st_add_url(self, url=None):
         """
