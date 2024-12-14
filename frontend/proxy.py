@@ -25,8 +25,9 @@ class GUIProxy(ctk.CTkFrame):
     """
     def __init__(self, master, root):
         super().__init__(master)
+        super().__init__(master)
         self.process = None
-        self.configure(fg_color="transparent")
+        self.configure(fg_color=color_bg_br, bg_color="transparent", corner_radius=10)
         self.root = root
         self.intercepting = root.intercepting
 
@@ -59,22 +60,26 @@ class GUIProxy(ctk.CTkFrame):
         self.htt_add_to_scope_button = ActionButton(
             self.htt_top_bar, text="Add to scope", image=icon_add,
             command=self.st_add_url,
-            fg_color=color_acc, hover_color=color_acc2)
+            state=tk.DISABLED)
         self.htt_send_requests_to_repeater_button = ActionButton(
             self.htt_top_bar, text="Send to repeater", image=icon_arrow_up,
             command=lambda: self.send_to_repeater(self.htt_request_textbox, self.htt_request_list),
-            fg_color=color_acc, hover_color=color_acc2)
+            state=tk.DISABLED)
         self.htt_send_requests_to_intruder_button = ActionButton(
             self.htt_top_bar, text="Send to intruder", image=icon_arrow_up,
             command=lambda: self.send_to_intruder(self.htt_request_textbox, self.htt_request_list),
-            fg_color=color_acc, hover_color=color_acc2)
+            state=tk.DISABLED)
         self.htt_delete_requests_button = ActionButton(
             self.htt_top_bar, text="Delete all requests", image=icon_delete,
-            command=lambda: (self.htt_request_list.delete_all(), self.check_request_lists_empty()),
+            command=self.htt_remove_all_requests_from_list,
+            state=tk.DISABLED,
             fg_color=color_acc3, hover_color=color_acc4)
         self.htt_browser_button = ActionButton(
             self.htt_top_bar, text="Open browser", image=icon_browser,
             command=self.root.start_browser_thread)
+        self.htt_proxy_button = ActionButton(
+            self.htt_top_bar, text="Re-run proxy", image=icon_reload,
+            command=self.run_mitmdump)
         self.htt_add_random_entry = ActionButton(
             self.htt_top_bar, text=f"Random request", image=icon_random,
             command=lambda: self.generate_random_request(self.htt_request_list))
@@ -93,6 +98,7 @@ class GUIProxy(ctk.CTkFrame):
 
         self.htt_add_random_entry.pack(side=tk.LEFT, padx=5, pady=15)
         self.htt_browser_button.pack(side=tk.RIGHT, padx=(5, 10), pady=15)
+        self.htt_proxy_button.pack(side=tk.RIGHT, padx=5, pady=15)
 
         self.htt_paned_window = tk.PanedWindow(self.http_traffic_tab, orient=tk.VERTICAL, sashwidth=10,
                                                background=color_bg_br)
@@ -115,16 +121,17 @@ class GUIProxy(ctk.CTkFrame):
         self.htt_request_list.column("Response", width=0, stretch=tk.NO)
         self.htt_request_list.column("RealURL", width=0, stretch=tk.NO)
         self.htt_request_list.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
+        self.htt_request_list_empty = True
 
         self.htt_request_list.popup_menu.add_command(
             label="Select all",
             command=self.htt_request_list.select_all)
         self.htt_request_list.popup_menu.add_command(
             label="Delete selected",
-            command=lambda: (self.htt_request_list.delete_selected(), self.check_request_lists_empty()))
+            command=self.htt_remove_selected_request_from_list())
         self.htt_request_list.popup_menu.add_command(
             label="Delete all",
-            command=lambda: (self.htt_request_list.delete_all(), self.check_request_lists_empty()))
+            command=self.htt_remove_all_requests_from_list)
         self.htt_request_list.popup_menu.add_separator()
         self.htt_request_list.popup_menu.add_command(
             label="Add url to the scope",
@@ -183,13 +190,13 @@ class GUIProxy(ctk.CTkFrame):
         """
          > INTERCEPT TAB
         """
-        # TODO FRONTEND/BACKEND: Can we have intercepting like in Burp? - When scope empty then intercepting anything, else we intercept stuff from scope.
+        # TODO OTHER: Burp's behavior, that when intercept on and filter empty, every request is intercepted?
         self.it_top_bar = ctk.CTkFrame(self.intercept_tab, height=50, corner_radius=10, fg_color=color_bg, bg_color="transparent")
         self.it_top_bar.pack(side=tk.TOP, fill=tk.X, pady=(0, 5), padx=5)
 
         self.it_toggle_intercept_button = ActionButton(
             self.it_top_bar, text="Intercept off", image=icon_toggle_off, command=self.it_toggle_intercept,
-            fg_color=color_green, hover_color=color_green_dk)
+            fg_color=color_green, hover_color=color_green_dk, width=150)
         self.it_drop_button = ActionButton(
             self.it_top_bar, text=f"Drop", image=icon_arrow_down, command=self.it_drop_request)
         self.it_send_to_repeater_button = ActionButton(
@@ -214,8 +221,7 @@ class GUIProxy(ctk.CTkFrame):
         self.it_paned_window.add(self.it_top_pane, height=350)
 
         it_columns = ("Host", "URL", "Method", "Content", "RealURL")
-        self.it_request_list = ItemList(self.it_top_pane, columns=it_columns, show="headings", style="Treeview",
-                                           selectmode="none")
+        self.it_request_list = ItemList(self.it_top_pane, columns=it_columns, show="headings", style="Treeview", selectmode="none")
         self.it_request_list.bind("<<TreeviewSelect>>", self.it_show_request_content)
         for col in it_columns:
             self.it_request_list.heading(col, text=col)
@@ -223,6 +229,7 @@ class GUIProxy(ctk.CTkFrame):
         self.it_request_list.column("Content", width=0, stretch=tk.NO)
         self.it_request_list.column("RealURL", width=0, stretch=tk.NO)
         self.it_request_list.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
+        self.it_request_list_empty = True
 
         self.it_request_list.popup_menu.add_command(
             label="Drop request",
@@ -281,8 +288,8 @@ class GUIProxy(ctk.CTkFrame):
         self.it_request_textbox = TextBox(self.it_request_wrapper, "Select request to display its contents.")
         self.it_request_textbox.pack(pady=10, padx=10, fill="both", expand=True)
 
-        self.it_forward_button = ActionButton(self.it_top_bar, text=f"Forward", image=icon_arrow_up, state=tk.DISABLED,
-                                              compound="left", corner_radius=32, command=self.it_forward_request)
+        self.it_forward_button = ActionButton(self.it_top_bar, text="Forward", image=icon_arrow_up,
+                                              command=self.it_forward_request, state=tk.DISABLED)
         self.it_top_bar_buttons = [
             self.it_drop_button,
             self.it_forward_button,
@@ -308,22 +315,22 @@ class GUIProxy(ctk.CTkFrame):
         self.st_url_list = ItemList(
             self.st_wrapper,
             columns=st_columns,
-            show="headings", style="Treeview", selectmode="browse")
+            show="headings", style="Treeview")
         self.st_url_list.heading("Enable", text="Enable?")
         self.st_url_list.column("Enable", width=25)
         self.st_url_list.heading("Host prefix", text="Host prefix")
         self.st_url_list.pack(side="left", fill=tk.BOTH, expand=True, padx=5, pady=5)
+        self.st_url_list_empty = True
 
-        # TODO FRONTEND: Update the commands for these pop menu once BACKEND logic implemented.
         self.st_url_list.popup_menu.add_command(
             label="Select all",
             command=self.st_url_list.select_all)
         self.st_url_list.popup_menu.add_command(
             label="Delete selected",
-            command=lambda: (self.st_url_list.delete_selected(), self.check_request_lists_empty()))
+            command=self.st_remove_url)
         self.st_url_list.popup_menu.add_command(
             label="Delete all",
-            command=lambda: (self.st_url_list.delete_all(), self.check_request_lists_empty()))
+            command=self.st_clear_all)
         self.st_url_list.popup_menu.add_separator()
         self.st_url_list.popup_menu.add_command(
             label="Copy URL",
@@ -356,49 +363,68 @@ class GUIProxy(ctk.CTkFrame):
          >> Initialising backend for the Proxy tab.
          >> Running mitmproxy at start
         """
-        self.update_thread_scope = threading.Thread(target=self.it_receive_request)
-        self.update_thread_scope.daemon = True
-        self.update_thread_scope.start()
-        self.update_thread_traffic = threading.Thread(target=self.htt_receive_request)
-        self.update_thread_traffic.daemon = True
-        self.update_thread_traffic.start()
+        threading.Thread(target=self.it_receive_request, daemon=True).start()
+        threading.Thread(target=self.htt_receive_request, daemon=True).start()
         self.deserialized_flow = None
 
         if not self.process:
-            current_dir = os.path.dirname(os.path.abspath(__file__))
-            backend_dir = os.path.join(current_dir, "..", "backend")
-            proxy_script = os.path.join(backend_dir, "proxy.py")
-            command = ["mitmdump", "-s", proxy_script, "--listen-port", "8082"]
-
-            threading.Thread(target=self.run_mitmdump, args=(command, backend_dir)).start()
+            threading.Thread(target=self.run_mitmdump).start()
         self.intercepting = True
 
         self.switch_tab("HTTP Traffic")
-        self.check_request_lists_empty()
 
-    def run_mitmdump(self, command, cwd):
+    def run_mitmdump(self):
         """
         Proxy GUI:
             Runs mitmdump proxy script.
         """
         try:
+            result = subprocess.run(['taskkill', '/F', '/IM', 'mitmdump.exe', '/T'], capture_output=True, text=True)
+            if 'SUCCESS' in result.stdout:
+                print("INFO: Previously run mitmdump.exe process has been terminated.")
+        except Exception as e:
+            print(f"Error terminating previously run mitmdump process: {e}")
+
+        try:
+            backend_dir = Path.cwd().parent / "backend"
+            proxy_script = backend_dir / "proxy.py"
+            command = ["mitmdump", "-s", proxy_script, "--listen-port", "8082"]
+            if RUNNING_CONFIG["proxy_console"]:
+                command = ["start", "cmd", "/k"] + command
+                print("INFO: Starting the HTTP(S) proxy process in new shell terminal window.")
+            else:
+                print("INFO: Starting the HTTP(S) proxy process.")
+
             self.process = subprocess.Popen(
                 command,
-                cwd=cwd,
+                cwd=backend_dir,
+                shell=RUNNING_CONFIG["proxy_console"],
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
+                text=True,
+                bufsize=1
             )
-            stdout, stderr = self.process.communicate()
+            threading.Thread(target=self.read_stdout, daemon=True).start()
+            threading.Thread(target=self.read_stderr, daemon=True).start()
 
-            if stdout:
-                print(f"Mitmdump stdout:\n{stdout.decode('utf-8', errors='ignore')}")
-            if stderr:
-                print(f"Mitmdump stderr:\n{stderr.decode('utf-8', errors='ignore')}")
-
+            # TODO Confirm if this was important, cuz' the option above lets you get printouts in real time.
+            # stdout, stderr = self.process.communicate()
+            # if stdout:
+            #     print(f"Mitmdump stdout:\n{stdout.decode('utf-8', errors='ignore')}")
+            # if stderr:
+            #     print(f"Mitmdump stderr:\n{stderr.decode('utf-8', errors='ignore')}")
         except Exception as e:
-            print(f"Error while turning on Proxy process: {e}")
+            print(f"Error while starting the HTTP(S) proxy process: {e}")
         finally:
             self.process = None
+
+    def read_stdout(self):
+        for line in iter(self.process.stdout.readline, ''):
+            print(f"INFO (mitmdump): {line.strip()}")
+
+    def read_stderr(self):
+        for line in iter(self.process.stderr.readline, ''):
+            print(f"ERROR (mitmdump): {line.strip()}")
 
     def switch_tab(self, selected_tab):
         """
@@ -427,7 +453,7 @@ class GUIProxy(ctk.CTkFrame):
             self.it_browser_button.configure(text="Open browser")
             self.htt_browser_button.configure(text="Open browser")
 
-    def check_request_lists_empty(self):
+    def toggle_list_actions(self, item_list, state="normal"):
         """
         Proxy GUI:
             Checks if request lists in proxy GUI are empty and updates action buttons and menu buttons accordingly.
@@ -442,19 +468,6 @@ class GUIProxy(ctk.CTkFrame):
             "Copy request content",
             "Copy request url",
         )
-        if len(self.it_request_list.get_children()) == 0:
-            self.it_intercept_placeholder.lift()
-            for button in self.it_top_bar_buttons:
-                button.configure(state=tk.DISABLED)
-            for action in it_request_list_actions:
-                self.it_request_list.popup_menu.entryconfig(action, state=tk.DISABLED)
-        else:
-            self.it_intercept_placeholder.lower()
-            for button in self.it_top_bar_buttons:
-                button.configure(state=tk.NORMAL)
-            for action in it_request_list_actions:
-                self.it_request_list.popup_menu.entryconfig(action, state=tk.NORMAL)
-
         htt_request_list_actions = (
             "Add url to the scope",
             "Remove url from the scope",
@@ -464,29 +477,35 @@ class GUIProxy(ctk.CTkFrame):
             "Copy response content",
             "Copy request url",
         )
-        if len(self.htt_request_list.get_children()) == 0:
-            for button in self.htt_top_bar_buttons:
-                button.configure(state=tk.DISABLED)
-            for action in htt_request_list_actions:
-                self.htt_request_list.popup_menu.entryconfig(action, state=tk.DISABLED)
-        else:
-            for button in self.htt_top_bar_buttons:
-                button.configure(state=tk.NORMAL)
-            for action in htt_request_list_actions:
-                self.htt_request_list.popup_menu.entryconfig(action, state=tk.NORMAL)
-
         st_url_list_actions = (
             "Select all",
             "Delete selected",
             "Delete all",
             "Copy URL"
         )
-        if len(self.st_url_list.get_children()) == 0:
-            for action in st_url_list_actions:
-                self.st_url_list.popup_menu.entryconfig(action, state=tk.DISABLED)
+        if item_list == self.it_request_list:
+            actions = it_request_list_actions
+            buttons = self.it_top_bar_buttons
+            if state == "normal":
+                self.it_intercept_placeholder.lower()
+            else:
+                self.it_intercept_placeholder.lift()
+        elif item_list == self.htt_request_list:
+            actions = htt_request_list_actions
+            buttons = self.htt_top_bar_buttons
+        elif item_list == st_url_list_actions:
+            actions = st_url_list_actions
+            buttons = []
         else:
-            for action in st_url_list_actions:
-                self.st_url_list.popup_menu.entryconfig(action, state=tk.NORMAL)
+            actions = []
+            buttons = []
+
+        for button in buttons:
+            if str(button.cget("state") != state):
+                button.configure(state=state)
+        # print(f"DEBUG/FRONTEND/PROXY: Toggling buttons to {state} state.")
+        for action in actions:
+            item_list.popup_menu.entryconfig(action, state=state)
 
     def from_request_list_to_scope(self, request_list, url_index=0, mode="add"):
         """
@@ -497,10 +516,10 @@ class GUIProxy(ctk.CTkFrame):
             for selected_item in request_list.selection():
                 url = request_list.item(selected_item)['values'][url_index]
                 if mode == "add":
-                    print(f"DEBUG/FRONTEND/PROXY: Adding {url} to the scope")
+                    # print(f"DEBUG/FRONTEND/PROXY: Adding {url} to the scope")
                     self.st_add_url(url)
-                elif mode =="remove":
-                    print(f"DEBUG/FRONTEND/PROXY: Removing {url} from the scope")
+                elif mode == "remove":
+                    # print(f"DEBUG/FRONTEND/PROXY: Removing {url} from the scope")
                     self.st_remove_url(url)
 
     def htt_receive_request(self):
@@ -512,7 +531,7 @@ class GUIProxy(ctk.CTkFrame):
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             s.bind((HOST, BACK_FRONT_HISTORYREQUESTS_PORT))
             s.listen()
-            while True:
+            while not self.root.stop_threads:
                 conn, addr = s.accept()
                 with conn:
                     serialized_flow = conn.recv(4096)
@@ -527,9 +546,8 @@ class GUIProxy(ctk.CTkFrame):
                             else:
                                 # print(f"REQUEST ONLY\n\tRequest:\n\t\t{request2}")
                                 self.htt_add_request_to_list(request2)
-                            self.check_request_lists_empty()
                         except Exception as e:
-                            if str(e) != "pickle data was truncated":  #cannot pickle "cryptography.hazmat.bindings._rust.x509.Certificate"
+                            if str(e) != "pickle data was truncated":  # Cannot pickle "cryptography.hazmat.bindings._rust.x509.Certificate"
                                 print(f"Error while deserialization request to http traffic: {e}")
 
     def htt_add_request_to_list(self, req, resp=None):
@@ -537,27 +555,34 @@ class GUIProxy(ctk.CTkFrame):
         HTTP Traffic Tab:
             Adds request to the list.
         """
-        real_url=req.url
+        real_url = req.url
         host = req.host
         url = req.path
         method = req.method
         request_content = req.return_http_message()
         if resp is None:
             code = ""
-            title = ""
+            status = ""
             length = 0
             response_content = ""
         else:
             code = resp.status_code
-            title = ""
+            try:
+                status = HTTPStatus(code).phrase
+            except ValueError:
+                status = ""
             response_content = resp.content.decode('utf-8')
             length = len(response_content)
-        values = (host, url, method, request_content, code, title, length, response_content, real_url)
+        values = (host, url, method, request_content, code, status, length, response_content, real_url)
 
         self.htt_request_list.insert("", tk.END, values=values)
 
         if len(self.htt_request_list.selection()) == 0:
             self.htt_request_list.selection_add(self.htt_request_list.get_children()[0])
+
+        if self.htt_request_list_empty:
+            self.toggle_list_actions(self.htt_request_list, "normal")
+            self.htt_request_list_empty = False
 
     def htt_show_request_content(self, event):
         """
@@ -567,10 +592,8 @@ class GUIProxy(ctk.CTkFrame):
         if len(self.htt_request_list.selection()) > 0:
             selected_item = self.htt_request_list.selection()[0]
             request_string = self.htt_request_list.item(selected_item)['values'][3]
-            if len(self.htt_request_list.item(selected_item)['values']) == 8:
+            if len(self.htt_request_list.item(selected_item)['values']) == 9:
                 response_string = self.htt_request_list.item(selected_item)['values'][7]
-            elif len(self.htt_request_list.item(selected_item)['values']) == 5:
-                response_string = self.htt_request_list.item(selected_item)['values'][5]
             else:
                 response_string = "Request got no response."
             self.htt_request_textbox.configure(state=tk.NORMAL, font=self.htt_request_textbox.monoscape_font)
@@ -585,6 +608,19 @@ class GUIProxy(ctk.CTkFrame):
             self.htt_response_textbox.configure(state=tk.NORMAL)
             self.htt_response_textbox.insert_text("Select a request to display contents of its response.")
             self.htt_response_textbox.configure(state=tk.DISABLED, font=self.htt_request_textbox.monoscape_font_italic)
+
+    def htt_remove_selected_request_from_list(self):
+        self.htt_request_list.delete_selected()
+        if len(self.htt_request_list.get_children()) == 0 and not self.htt_request_list_empty:
+            self.toggle_list_actions(self.htt_request_list, "disabled")
+            self.htt_request_list_empty = True
+
+    def htt_remove_all_requests_from_list(self):
+        self.htt_request_list.delete_all()
+        if not self.htt_request_list_empty:
+            # print("DEBUG/FRONTEND/PROXY/HTTP TRAFFIC: Deleting all of the requests from the list.")
+            self.toggle_list_actions(self.htt_request_list, "disabled")
+            self.htt_request_list_empty = True
 
     def it_toggle_intercept(self):
         """
@@ -607,7 +643,6 @@ class GUIProxy(ctk.CTkFrame):
             self.it_placeholder_image.configure(image=intercept_on_image)
             print("Turning intercept on.")
             change_intercept_state()
-        self.check_request_lists_empty()
 
     def it_receive_request(self):
         """
@@ -619,7 +654,7 @@ class GUIProxy(ctk.CTkFrame):
             s.bind((HOST, BACK_FRONT_SCOPEREQUESTS_PORT))
             s.listen()
 
-            while True:
+            while not self.root.stop_threads:
                 conn, addr = s.accept()
 
                 with conn:
@@ -631,8 +666,6 @@ class GUIProxy(ctk.CTkFrame):
                             self.it_add_request_to_list(request2)
                         except Exception as e:
                             print(f"Error while deserialization recieved in scope: {e}")
-
-                        self.check_request_lists_empty()
 
     def it_add_request_to_list(self, req):
         """
@@ -649,6 +682,10 @@ class GUIProxy(ctk.CTkFrame):
 
         if len(self.it_request_list.selection()) == 0:
             self.it_request_list.selection_add(self.it_request_list.get_children()[0])
+
+        if self.it_request_list_empty:
+            self.toggle_list_actions(self.it_request_list, "normal")
+            self.it_request_list_empty = False
 
     def it_show_request_content(self, event):
         """
@@ -685,7 +722,11 @@ class GUIProxy(ctk.CTkFrame):
             self.it_request_list.delete_selected()
             if len(self.it_request_list.get_children()) > 0:
                 self.it_request_list.selection_add(self.it_request_list.get_children()[-1])
-        self.check_request_lists_empty()
+
+        if len(self.it_request_list.get_children()) == 0:
+            if not self.it_request_list_empty:
+                self.toggle_list_actions(self.it_request_list, "disabled")
+                self.it_request_list_empty = True
 
     def it_drop_request(self):
         """
@@ -714,7 +755,10 @@ class GUIProxy(ctk.CTkFrame):
             if len(self.it_request_list.get_children()) > 0:
                 self.it_request_list.selection_add(self.it_request_list.get_children()[-1])
 
-        self.check_request_lists_empty()
+        if len(self.it_request_list.get_children()) == 0:
+            if not self.it_request_list_empty:
+                self.toggle_list_actions(self.it_request_list, "disabled")
+                self.it_request_list_empty = True
 
     def send_to_repeater(self, request_textbox, requests_list):
         """
@@ -732,13 +776,6 @@ class GUIProxy(ctk.CTkFrame):
         # print(f"Debug Proxy/Send to repeater:\n{request_content}")
         url = self.htt_request_list.item(selected_item)['values'][-1]
         self.root.repeater_tab.add_request_to_repeater_tab(request_content, url=url)
-
-        if requests_list is self.it_request_list:
-            # print("DEBUG/FRONTEND/Proxy: Sending from an intercept frame.")
-            requests_list.delete_selected()
-            if len(requests_list.get_children()) > 0:
-                requests_list.selection_add(requests_list.get_children()[-1])
-            self.check_request_lists_empty()
 
     def send_to_intruder(self, request_textbox, requests_list):
         """
@@ -768,7 +805,14 @@ class GUIProxy(ctk.CTkFrame):
         request_list.selection_remove(request_list.get_children())
         request_list.selection_add(request_list.get_children()[-1])
 
-        self.check_request_lists_empty()
+        if request_list == self.it_request_list:
+            if self.it_request_list_empty:
+                self.toggle_list_actions(self.it_request_list, "normal")
+                self.it_request_list_empty = False
+        elif request_list == self.htt_request_list:
+            if self.htt_request_list_empty:
+                self.toggle_list_actions(self.htt_request_list, "normal")
+                self.htt_request_list_empty = False
 
     def st_add_url_dialog(self):
         """
@@ -801,54 +845,61 @@ class GUIProxy(ctk.CTkFrame):
             self.st_add_url(url)
             self.st_add_url_dialog.destroy()
 
-    def st_add_url(self, url=None):
+    def st_add_url(self, hostname=None):
         """
         Scope Tab:
             Updates filtering in backend logic, sends hostname
             Adds request to scope tab list
+            If hostname is not given, it gets it from the last selected item in the HTTP Traffic.
         """
-        if url is not None: # Temporal if solution to be implementing old backend logic
-            self.st_url_list.insert("", "end", values=(True, url))
-        else:
-            # TODO BACKEND: Change backend logic behind it to be only receiving hostname for the filter.
-            request2 = Request2.from_http_message(self.htt_request_textbox.get_text())
-            request = request2.to_request()
-            serialized_reqeust = pickle.dumps(request)
+        if hostname is None:
+            if len(self.htt_request_list.selection()) > 0:
+                selected_item = self.htt_request_list.selection()[-1]
+                hostname = self.htt_request_list.item(selected_item)['values'][0]
+        try:
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                data_to_send = ("add", hostname)
+                serialized_data = pickle.dumps(data_to_send)
+                s.connect((HOST, FRONT_BACK_SCOPEUPDATE_PORT))
+                s.sendall(serialized_data)
+                self.st_url_list.insert("", tk.END, values=(True, extract_domain(hostname)))
+        except Exception as e:
+            print(f"Error while sendind request to filter: {e}")
 
-            self.st_url_list.insert("", tk.END, values=(True, request.host))
-            self.check_request_lists_empty()
+        if self.st_url_list_empty:
+            self.toggle_list_actions(self.st_url_list, "normal")
+            self.st_url_list_empty = False
 
-            try:
-                with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-                    s.connect((HOST, FRONT_BACK_SCOPEUPDATE_PORT))
-                    s.sendall(serialized_reqeust)
-            except Exception as e:
-                print(f"Error while sendind request to filter: {e}")
-
-        self.check_request_lists_empty()
-
-    def st_remove_url(self, url_to_remove=None):
+    def st_remove_url(self, hostname_to_remove=None):
         """
         Scope Tab:
-            If url_to_remove is not provided as a parameter, it removes urls selected in the Scope Tab's URL list.
-            If url_to_remove is provided, it looks for it in the Scope Tab's URL List to remove it.
+            If hostname_to_remove is not provided as a parameter, it removes hostnames selected in the Scope Tab's list.
+            If hostname_to_remove is provided, it looks for it in the Scope Tab's URL List to remove it.
             Either way, it updates filtering in the backend logic, sends hostname
         """
-        if url_to_remove is None:
+        hostnames_to_remove = set()
+        if hostname_to_remove is None:
             if len(self.st_url_list.selection()) > 0:
-                for selected_item in self.st_url_list.selection():
-                    url_to_remove = self.st_url_list.item(selected_item)['values'][1]
-                    if selected_item:
-                        self.st_url_list.delete(selected_item)
+                for selected_item in  self.st_url_list.selection():
+                    hostnames_to_remove.add(self.st_url_list.item(selected_item)['values'][1])
+                    self.st_url_list.delete(selected_item)
         else:
+            hostnames_to_remove.add(hostname_to_remove)
             for item in self.st_url_list.get_children():
-                if url_to_remove == self.st_url_list.item(item)['values'][1]:
+                if hostname_to_remove == self.st_url_list.item(item)['values'][1]:
                     self.st_url_list.delete(item)
+        try:
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                data_to_send = ("remove", *hostnames_to_remove)
+                serialized_data = pickle.dumps(data_to_send)
+                s.connect((HOST, FRONT_BACK_SCOPEUPDATE_PORT))
+                s.sendall(serialized_data)
+        except Exception as e:
+            print(f"Error while sendind request to filter: {e}")
 
-        self.check_request_lists_empty()
-
-        # print(url_to_remove)
-        # TODO BACKEND: Sending url_to_remove to the backend proxy to remove it from the filter.
+        if len(self.st_url_list.get_children()) == 0 and not self.st_url_list_empty:
+            self.toggle_list_actions(self.st_url_list, "disabled")
+            self.st_url_list_empty = True
 
     def st_clear_all(self):
         """
@@ -857,10 +908,17 @@ class GUIProxy(ctk.CTkFrame):
             Updates backend filtering.
             With empty filter Intercept should be intercepting any request.
         """
-        for item in self.st_url_list.get_children():
-            url_to_remove = self.st_url_list.item(item)['values'][1]
-            # print(url_to_remove)
-            # TODO BACKEND: Sending url_to_remove to the backend proxy to remove it from the filter.
-            self.st_url_list.delete(item)
+        try:
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                data_to_send = ("clear", "")
+                serialized_data = pickle.dumps(data_to_send)
+                s.connect((HOST, FRONT_BACK_SCOPEUPDATE_PORT))
+                s.sendall(serialized_data)
+                for item in self.st_url_list.get_children():
+                    self.st_url_list.delete(item)
+        except Exception as e:
+            print(f"Error while sendind request to filter: {e}")
 
-        self.check_request_lists_empty()
+        if not self.st_url_list_empty:
+            self.toggle_list_actions(self.st_url_list, "disabled")
+            self.st_url_list_empty = True

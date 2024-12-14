@@ -83,7 +83,7 @@ class WebRequestInterceptor:
         async with server:
             await server.serve_forever()
 
-    async def handle_toggle_intercept(self,reader, writer):
+    async def handle_toggle_intercept(self, reader, writer):
         data = await reader.read(4096)
         if data:
             self.intercept_state = not self.intercept_state
@@ -93,8 +93,8 @@ class WebRequestInterceptor:
                 if self.current_flow.intercepted:
                     self.current_flow.resume()
             else:
-
                 self.scope = self.backup
+        print(f"Intercepting state: {self.intercept_state}")
         writer.close()
         await writer.wait_closed()
 
@@ -114,9 +114,22 @@ class WebRequestInterceptor:
         """
         data = await reader.read(4096)
         if data:
-            deserialized_request = pickle.loads(data)
-            self.backup.append(extract_domain(deserialized_request.host))
-            print("\nHost added to scope:", extract_domain(deserialized_request.host))
+            operation, *hostnames = pickle.loads(data)
+            if operation == "add":
+                for hostname in hostnames:
+                    hostname = extract_domain(hostname)
+                    self.backup.append(hostname)
+                    print(f"Host {hostname} added to the scope.")
+            elif operation == "remove":
+                for hostname in hostnames:
+                    try:
+                        self.backup.remove(hostname)
+                        print(f"Host {hostname} removed from scope.")
+                    except ValueError:
+                        print(f"Attempted to remove {hostname} from scope, but could not be found there.")
+            elif operation == "clear":
+                self.backup.clear()
+                print("Scope cleared.")
         writer.close()
         await writer.wait_closed()
 

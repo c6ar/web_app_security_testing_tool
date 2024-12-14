@@ -16,6 +16,8 @@ from datetime import datetime
 # noinspection PyUnresolvedReferences
 from flask import request
 # noinspection PyUnresolvedReferences
+from http import HTTPStatus
+# noinspection PyUnresolvedReferences
 from idlelib.rpc import response_queue
 # noinspection PyUnresolvedReferences
 import json
@@ -47,11 +49,13 @@ from tkinter import ttk
 from tkinter import filedialog
 # noinspection PyUnresolvedReferences
 from utils.request_methods import *
+# noinspection PyUnresolvedReferences
+from utils.get_domain import *
 
 #
 # Global settings and variables
 #
-ctk.set_appearance_mode("system")
+ctk.set_appearance_mode("dark")
 ctk.set_default_color_theme("dark-blue")
 if ctk.get_appearance_mode() == "Light":
     color_text = "#000"
@@ -101,17 +105,20 @@ icon_delete = ctk.CTkImage(
     light_image=Image.open(f"{ASSET_DIR}\\icon_delete.png"),
     dark_image=Image.open(f"{ASSET_DIR}\\icon_delete.png"), size=(20, 20))
 icon_settings = ctk.CTkImage(
-    light_image=Image.open(f"{ASSET_DIR}\\icon_settings.png"),
+    light_image=Image.open(f"{ASSET_DIR}\\icon_settings_light.png"),
     dark_image=Image.open(f"{ASSET_DIR}\\icon_settings.png"), size=(20, 20))
 icon_add = ctk.CTkImage(
     light_image=Image.open(f"{ASSET_DIR}\\icon_add.png"),
     dark_image=Image.open(f"{ASSET_DIR}\\icon_add.png"), size=(20, 20))
 icon_info = ctk.CTkImage(
-    light_image=Image.open(f"{ASSET_DIR}\\icon_info.png"),
+    light_image=Image.open(f"{ASSET_DIR}\\icon_info_light.png"),
     dark_image=Image.open(f"{ASSET_DIR}\\icon_info.png"), size=(20, 20))
 icon_attack = ctk.CTkImage(
     light_image=Image.open(f"{ASSET_DIR}\\icon_attack.png"),
     dark_image=Image.open(f"{ASSET_DIR}\\icon_attack.png"), size=(20, 20))
+icon_reload = ctk.CTkImage(
+    light_image=Image.open(f"{ASSET_DIR}\\icon_reload.png"),
+    dark_image=Image.open(f"{ASSET_DIR}\\icon_reload.png"), size=(20, 20))
 intercept_off_image = ctk.CTkImage(light_image=Image.open(f"{ASSET_DIR}\\intercept_off_light.png"),
                                    dark_image=Image.open(f"{ASSET_DIR}\\intercept_off.png"),
                                    size=(87, 129))
@@ -119,9 +126,104 @@ intercept_on_image = ctk.CTkImage(light_image=Image.open(f"{ASSET_DIR}\\intercep
                                   dark_image=Image.open(f"{ASSET_DIR}\\intercept_on.png"), size=(87, 129))
 
 
+# TODO FRONTEND: Add theme support, after settings implemented.
+# TODO FRONTEND: Add lang support only EN and PL.
 #
 # Common functions
 #
+def load_config():
+    # TODO OTHER: Actual implmentation of config logic in the app
+    default_config = {
+        "theme": "system",
+        "lang": "en",
+        "proxy_host_address": "127.0.0.1",
+        "proxy_port": 8082,
+        "BACK_FRONT_HISTORYREQUESTS_PORT": 65432,
+        "BACK_FRONT_SCOPEREQUESTS_PORT": 65433,
+        "FRONT_BACK_DROPREQUEST_PORT": 65434,
+        "FRONT_BACK_SCOPEUPDATE_PORT": 65430,
+        "FRONT_BACK_FORWARDBUTTON_PORT": 65436,
+        "FRONT_BACK_INTERCEPTBUTTON_PORT": 65437,
+        "REPEATER_BACK_SENDHTTPMESSAGE_PORT": 65438,
+        "FRONT_BACK_SENDTOREPEATER_PORT": 65439,
+        "BACK_REPEATER_FLOWSEND_PORT": 65440,
+        "BACK_REPEATER_RESPONSESEND_PORT": 65441,
+        "debug_mode": False,
+        "proxy_console": False
+    }
+    config = default_config.copy()
+    try:
+        with open("app.conf", "r") as file:
+            for line in file:
+                line = line.strip()
+                if line and not line.startswith("#"):
+                    key, value = line.split("=", 1)
+                    if "#" in value:
+                        value, _ = value.split("#", 1)
+                    value = value.strip().lower()
+                    key = key.strip().lower()
+
+                    if key.endswith("port"):
+                        try:
+                            value = int(value)
+                        except ValueError:
+                            print("CONFIG ERROR: Incorrect value given, where int expected.")
+                            continue
+
+                    if key in ("debug_mode", "proxy_console"):
+                        if value not in (1, 0, "1", "0", "true", "false"):
+                            print("CONFIG ERROR: Incorrect value given, where bool expected (false, true, 0 or 1).")
+                            continue
+
+                    if value in (1, "1", "true"):
+                        value = True
+                    if value in (0, "0", "false"):
+                        value = False
+
+                    config[key] = value
+    except FileNotFoundError:
+        print("CONFIG ERROR: App config file could not be open. Default settings have been loaded.")
+    return config
+
+
+RUNNING_CONFIG = load_config()
+if RUNNING_CONFIG["debug_mode"]:
+    print("Debug mode on.")
+    print("Running config")
+    for key, value in RUNNING_CONFIG.items():
+        print(f"\t{key}: {value}")
+
+
+def save_config(config):
+    try:
+        with open("app.conf", "r") as file:
+            lines = file.readlines()
+
+        updated_lines = []
+        keys_found = set()
+        for line in lines:
+            if line.strip() and not line.strip().startswith("#"):
+                key, value = line.split("=", 1)
+                key = key.strip()
+                if key in config:
+                    updated_lines.append(f"{key} = {config[key]}\n")
+                    keys_found.add(key)
+                else:
+                    updated_lines.append(line)
+            else:
+                updated_lines.append(line)
+
+        for key, value in config.items():
+            if key not in keys_found:
+                updated_lines.append(f"{key} = {value}\n")
+
+        with open("app.conf", "w") as file:
+            file.writelines(updated_lines)
+            load_config()
+    except Exception as e:
+        print(f"Error during saving a config: {e}")
+
+
 def center_window(root_window, window, width, height):
     """
     Centers TopLevel window relatively to its parent.
@@ -138,29 +240,25 @@ def center_window(root_window, window, width, height):
 
 
 class ActionButton(ctk.CTkButton):
+    # TODO FRONTEND: Find a solution for flickering - it's caused by configuring its disabled state when lists r empty
     """
     A preset action button based on CTkButton.
     """
-    # TODO FRONTEND: Stop flickering!
     def __init__(self, parent, *args, **kwargs):
         super().__init__(parent, *args, **kwargs)
-        if "font" not in kwargs:
-            kwargs['font'] = ctk.CTkFont(family="Calibri", size=14)
-            self.configure(font=kwargs['font'])
         if "corner_radius" not in kwargs:
             self.configure(corner_radius=10)
-        text_width = kwargs["font"].measure(kwargs["text"])
-        self.button_width = text_width + 10
-        if self.button_width < 100:
-            self.button_width = 100
-        self.configure(width=self.button_width)
+        if "width" not in kwargs:
+            self.configure(width=120)
+
+    def toggle_state(self, state="normal"):
+        self.configure(state=state)
 
 
 class NavButton(ctk.CTkFrame):
     """
     A preset tab navigation button based on CTkButton.
     """
-    # TODO FRONTEND: Stop flickering!
     def __init__(self, master, text, command, icon=None, compound="left", font=None, background=color_bg, background_selected=color_bg_br):
         super().__init__(master)
 

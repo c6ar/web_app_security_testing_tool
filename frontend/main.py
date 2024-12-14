@@ -5,61 +5,9 @@ from intruder import *
 from repeater import *
 from logs import *
 from selenium import webdriver
+# noinspection PyUnresolvedReferences
+from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.chrome.options import Options
-
-# TODO FRONTEND: Add theme support, after settings implemented.
-# TODO FRONTEND: Add lang support only EN and PL.
-
-
-def load_config():
-    # TODO OTHER: Actual implmentation of config logic in the app, probably moving to main.py or separate file.
-    default_config = {
-        "host_address": "127.0.0.1",
-        "port": 8082
-    }
-    config = default_config.copy()
-    try:
-        with open("app.conf", "r") as file:
-            for line in file:
-                line = line.strip()
-                if line and not line.startswith("#"):
-                    key, value = line.split("=", 1)
-                    if "#" in value:
-                        value, _ = value.split("#", 1)
-                    config[key.strip()] = value.strip()
-    except FileNotFoundError:
-        print("App config file could not be open. Default settings loaded.")
-    return config
-
-
-def save_config(config):
-    try:
-        with open("app.conf", "r") as file:
-            lines = file.readlines()
-
-        updated_lines = []
-        keys_found = set()
-        for line in lines:
-            if line.strip() and not line.strip().startswith("#"):
-                key, value = line.split("=", 1)
-                key = key.strip()
-                if key in config:
-                    updated_lines.append(f"{key} = {config[key]}\n")
-                    keys_found.add(key)
-                else:
-                    updated_lines.append(line)
-            else:
-                updated_lines.append(line)
-
-        for key, value in config.items():
-            if key not in keys_found:
-                updated_lines.append(f"{key} = {value}\n")
-
-        with open("app.conf", "w") as file:
-            file.writelines(updated_lines)
-            load_config()
-    except Exception as e:
-        print(f"Error during saving a config: {e}")
 
 
 class GUI(ctk.CTk):
@@ -72,15 +20,15 @@ class GUI(ctk.CTk):
         self.configure(fg_color=color_bg, bg_color=color_bg)
         self.iconbitmap(f"{ASSET_DIR}\\wastt.ico")
 
-        self.running_conf = load_config()
         self.browser_opened = False
         self.browser = None
         self.requests = None
         self.proxy_process = None
+        self.stop_threads = False
         self.intercepting = False
 
         self.tab_nav = ctk.CTkFrame(self, fg_color=color_bg, bg_color=color_bg)
-        self.tab_nav.pack(side="top", fill="x", padx=10, pady=(5, 0))
+        self.tab_nav.pack(side="top", fill="x", padx=15, pady=(5, 0))
 
         self.about_button = NavButton(self.tab_nav, text="ABOUT", icon=icon_info, command=self.show_about)
         self.about_button.pack(side="right")
@@ -91,7 +39,7 @@ class GUI(ctk.CTk):
         self.settings_window = None
         self.settings_entries = {}
 
-        self.tab_content = ctk.CTkFrame(self, fg_color=color_bg_br, bg_color=color_bg_br)
+        self.tab_content = ctk.CTkFrame(self, fg_color="transparent", bg_color="transparent", corner_radius=10)
         self.tab_content.pack(side="top", fill="both", expand=True)
 
         self.proxy_tab = GUIProxy(self.tab_content, self)
@@ -111,6 +59,7 @@ class GUI(ctk.CTk):
             self.tab_nav_buttons[name].pack(side=tk.LEFT)
 
         self.show_tab("Proxy")
+        print("INFO: Starting the WASTT app.")
 
     def show_tab(self, tab_name):
         for name, tab in self.tabs.items():
@@ -158,7 +107,7 @@ class GUI(ctk.CTk):
 
     def show_settings(self):
         if self.settings_window is None or not self.settings_window.winfo_exists():
-            # TODO OTHER: Actual implmentation of config logic in the app, probably moving to main.py or separate file.
+            # TODO OTHER: Actual implmentation of config logic in the app
             # Settings ideas, appearance (theme), language (EN or PL), Proxy rerun, show Proxy log, turn on Debug mode for the app DEBUG PRINTOUTS
             self.settings_window = ctk.CTkToplevel(self)
             self.settings_window.title("Proxy Settings")
@@ -166,13 +115,13 @@ class GUI(ctk.CTk):
             center_window(self, self.settings_window, 500, 650)
             self.settings_window.configure()
 
-            wrapper = ctk.CTkScrollableFrame(self.settings_window, fg_color=color_bg_br, bg_color="transparent")
+            wrapper = ctk.CTkScrollableFrame(self.settings_window, fg_color=color_bg, bg_color="transparent")
             wrapper.pack(fill=tk.BOTH, expand=True, padx=0, pady=0)
 
-            for key, value in self.running_conf.items():
+            for key, value in RUNNING_CONFIG.items():
                 frame = ctk.CTkFrame(wrapper, fg_color=color_bg, bg_color="transparent")
                 frame.pack(fill=tk.X, padx=10, pady=(10, 5))
-                label = ctk.CTkLabel(frame, text=key, width=100)
+                label = ctk.CTkLabel(frame, text=key, width=100, anchor="w")
                 label.pack(side=tk.LEFT, padx=10, pady=10)
                 entry = TextEntry(frame, width=250)
                 entry.insert(0, value)
@@ -191,10 +140,11 @@ class GUI(ctk.CTk):
             cancel_button.pack(side=tk.RIGHT, padx=10, pady=10)
 
     def save_settings(self):
-        # TODO OTHER: Actual implmentation of config logic in the app, probably moving to main.py or separate file.
+        # TODO OTHER: Actual implmentation of config logic in the app
+        new_config = RUNNING_CONFIG.copy()
         for key, entry in self.settings_entries.items():
-            self.running_conf[key] = entry.get()
-        save_config(self.running_conf)
+            new_config[key] = entry.get()
+        save_config(new_config)
         self.settings_window.destroy()
 
     def open_browser(self):
@@ -204,47 +154,50 @@ class GUI(ctk.CTk):
         options = Options()
         options.add_argument("--enable-logging")
         options.add_argument("--log-level=0")
-        # TODO OTHER: Get certificates stuff working so we can access https with proxy, perhaps from BURP?
-        options.add_argument(f"--proxy-server=localhost:8082")
         options.add_argument("--disable-infobars")
         options.add_argument("--disable-notifications")
+        options.add_argument(f"--proxy-server=localhost:8082")
+        options.add_argument("--ignore-certificate-errors")
         options.add_experimental_option("excludeSwitches", ["enable-logging"])
         options.set_capability("goog:loggingPrefs", {"performance": "ALL"})
 
         self.browser = webdriver.Chrome(options=options)
-        self.browser.get("http://www.example.com")
+        self.browser.get("https://www.example.com")
+
+        time.sleep(2)
+
+        user32 = ctypes.windll.user32
+        user32.ShowWindow(user32.GetForegroundWindow(), 5)
+        user32.SetForegroundWindow(user32.GetForegroundWindow())
 
         try:
-            while self.browser_opened:
+            while self.browser_opened and not self.stop_threads:
                 # self.requests = driver.get_log('performance')
                 if len(self.browser.window_handles) == 0:
                     self.browser_opened = False
         finally:
-            self.proxy_tab.browser_button_update()
-            print("Closing Browser Window")
-            self.browser.quit()
+            if self.browser is not None:
+                self.browser.quit()
             self.browser = None
+
+            self.proxy_tab.browser_button_update()
+            print("INFO: Closing web browser.")
 
     def start_browser_thread(self):
         """
         Starting thread of the GUI.open_browser().
         """
         if self.browser is None:
-            print("Opening Browser Window")
             self.browser_opened = True
-            browser_thread = threading.Thread(target=self.open_browser)
-            browser_thread.start()
+            threading.Thread(target=self.open_browser).start()
+
             self.proxy_tab.browser_button_update()
-        else:
-            try:
-                self.browser.switch_to.window(self.browser.current_window_handle)
-                self.proxy_tab.browser_button_update()
-            except Exception as e:
-                print(f"Exception occured: {e}")
-                self.browser = None
-                self.browser_opened = False
-                time.sleep(1)
-                self.start_browser_thread()
+            print("INFO: Opening web browser.")
+
+        elif self.browser and self.browser_opened:
+            user32 = ctypes.windll.user32
+            user32.ShowWindow(user32.GetForegroundWindow(), 5)
+            user32.SetForegroundWindow(user32.GetForegroundWindow())
 
     def stop_proxy(self):
         """
@@ -253,20 +206,27 @@ class GUI(ctk.CTk):
         if self.proxy_tab.process:
             try:
                 self.proxy_tab.process.terminate()
-                # self.proxy_frame.process.wait()
-                print("Proxy process has been terminated succesfully.")
+                self.proxy_tab.process.wait()
+                print("INFO: Proxy process has been terminated succesfully.")
             except Exception as e:
                 print(f"Error while terminating proxy process: {e}")
 
     def on_close(self):
-        # TODO OTHER: Synching of threads(?) - closing app seems clunky.
+        # TODO OTHER: Finding other way to kill the mitdump.exe when closing the app.
         """
         Instructions run on GUI closure.
         """
-        self.stop_proxy()
+        self.stop_threads = True
         if self.browser is not None:
             self.browser.quit()
+        self.stop_proxy()
         self.destroy()
+        print("INFO: Closing the WASTT app.")
+
+    def ensure_exit(self):
+        """
+        Ensures all processes and threads are terminated before exiting the application.
+        """
 
 
 wastt = GUI()
