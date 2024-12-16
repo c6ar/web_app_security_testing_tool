@@ -85,13 +85,13 @@ def process_response(response):
     :param response: requests.Response
     :return: str, processed content or raw content
     """
-    print(response)
-    content_type = response.headers.get('Content-Type', '')
-    if 'html' in content_type or 'xml' in content_type:
-        soup = BeautifulSoup(response.content, 'html.parser')
-        return soup.prettify()  # Pretty-print the parsed HTML/XML
-    return response.content  # Return raw content for non-HTML/XML
-    #return "Bad Request"
+    if response.ok:
+        content_type = response.headers.get('Content-Type', '')
+        if 'html' in content_type or 'xml' in content_type:
+            soup = BeautifulSoup(response.content, 'html.parser')
+            return soup.prettify()  # Pretty-print the parsed HTML/XML
+        return response.content  # Return raw content for non-HTML/XML
+    return "Bad Request"
 
 # Example usage
 http_message_GET = """GET /Pe5gM9R0s-OCS2DfKecIG72P_fwfB8I2BSbC1obg0oM=.5716.jpg HTTP/2.0

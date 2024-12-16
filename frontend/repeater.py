@@ -165,7 +165,6 @@ class RepeaterFrame(ctk.CTkFrame):
 
 
 
-
     def update_number(self, id_number):
         self.id = id_number
         if self.id != 0:
@@ -206,9 +205,7 @@ class GUIRepeater(ctk.CTkFrame):
         self.frames = []
         self.nav = RepeaterNav(self, self.frames)
 
-    def add_request_to_repeater_tab(self, request, url=None):
-        self.request_url = url
-        # TODO Łukasz, tworzenie pierwszej zakładki z parametrem url (jak frontend/repeater.py:224)
+    def add_request_to_repeater_tab(self, request):
         for frame in self.frames:
             if frame.is_empty:
                 frame.request_textbox.insert_text(request)
