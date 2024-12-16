@@ -1,5 +1,5 @@
 from common import *
-
+from backend.intruder import *
 
 def load_payload(payloads_text):
     file_path = filedialog.askopenfilename(filetypes=[("Text files", "*.txt")])
@@ -29,7 +29,7 @@ class IntruderTab(ctk.CTkFrame):
         self.gui = master
         self.id = id_number
 
-        self.payloads = None
+        self.payloads = {}
 
         self.top_bar = ctk.CTkFrame(self, fg_color="transparent")
         self.top_bar.pack(side=tk.TOP, fill=tk.X, padx=10, pady=10)
@@ -89,6 +89,8 @@ class IntruderTab(ctk.CTkFrame):
                                                 justify="left")
         self.payload_placeholder.pack(fill=tk.X, padx=10, pady=10)
 
+
+
     def update_number(self, id_number):
         self.id = id_number
         if self.id != 0:
@@ -97,7 +99,23 @@ class IntruderTab(ctk.CTkFrame):
             )
 
     def start_attack(self):
-        print(f"Starting an attack...\nCurrent payloads:\n\t{self.payloads}")
+        # TODO FRONT: choose ram/sniper
+        payloads = {}
+        for var, textbox in self.payloads.items():
+            payloads[var] = textbox.get_text()
+
+        tags = self.positions_text.tag_names()
+        positions = {}
+        for tag in tags:
+            ranges = self.positions_text.tag_ranges(tag)
+            for start, end in zip(ranges[0::2], ranges[1::2]):
+                print(f"  Range: {start} to {end}")
+                positions[str(start)] = str(end)
+
+
+        sniper_attack(payloads, self.positions_text.get_text(), positions)
+
+        #print(f"Starting an attack...\nCurrent payloads:\n\t{self.payloads}")
 
     def get_cursor_position(self):
         return self.positions_text.index(tk.INSERT)
@@ -292,6 +310,8 @@ class IntruderTab(ctk.CTkFrame):
         clear_button.pack(side="top", padx=0, pady=5)
 
         self.payloads_frames[new_var] = payloads_frame
+        self.payloads[new_var] = payloads_text
+
 
 
 class GUIIntruder(ctk.CTkFrame):
@@ -319,6 +339,8 @@ class GUIIntruder(ctk.CTkFrame):
         self.tab_add_button.pack(side="right")
         self.tabs.append(IntruderTab(self, 0))
         self.show_tab(self.current_tab)
+
+        self.tab_flag = True
 
     def add_tab(self):
         new_tab_id = len(self.tab_nav_buttons)
@@ -358,3 +380,15 @@ class GUIIntruder(ctk.CTkFrame):
         for i, button in enumerate(self.tab_nav_buttons):
             button.main_button.configure(text=str(i + 1), command=lambda t=i: self.show_tab(t))
             self.tabs[i].update_number(i)
+
+    def add_request_to_intruder_tab(self,  reqeust, url):
+        if  self.tab_flag:
+            self.tabs[0].positions_text.delete("1.0", tk.END)
+            self.tabs[0].positions_text.insert("0.0", reqeust)
+            self.tab_flag = False
+
+        else:
+            self.add_tab()
+            self.tabs[-1].positions_text.delete("1.0", tk.END)
+            self.tabs[-1].positions_text.insert("0.0", reqeust)
+

@@ -404,12 +404,7 @@ class GUIProxy(ctk.CTkFrame):
             threading.Thread(target=self.read_stdout, daemon=True).start()
             threading.Thread(target=self.read_stderr, daemon=True).start()
 
-            # TODO Confirm if this was important, cuz' the option above lets you get printouts in real time.
-            # stdout, stderr = self.process.communicate()
-            # if stdout:
-            #     print(f"Mitmdump stdout:\n{stdout.decode('utf-8', errors='ignore')}")
-            # if stderr:
-            #     print(f"Mitmdump stderr:\n{stderr.decode('utf-8', errors='ignore')}")
+
         except Exception as e:
             print(f"Error while starting the HTTP(S) proxy process: {e}")
         finally:
@@ -776,11 +771,17 @@ class GUIProxy(ctk.CTkFrame):
         self.root.repeater_tab.add_request_to_repeater_tab(request_content, url=url)
 
     def send_to_intruder(self, request_textbox, requests_list):
-        """
-        Proxy GUI:
-            Sends a request from given textbox and list to the Intruder.
-        """
-        pass
+        request_content = request_textbox.get_text()
+        request_lines = request_content.split("\n")
+        selected_item = requests_list.selection()[0]
+        if not any(line.startswith("Host:") for line in request_lines):
+            host_string = requests_list.item(selected_item)['values'][0]
+            request_lines.insert(1, f"Host: {host_string}")
+            request_content = "\n".join(request_lines)
+
+        # print(f"Debug Proxy/Send to repeater:\n{request_content}")
+        url = self.htt_request_list.item(selected_item)['values'][-1]
+        self.root.intruder_tab.add_request_to_intruder_tab(request_content, url)
 
     def generate_random_request(self, request_list):
         """
