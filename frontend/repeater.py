@@ -1,87 +1,10 @@
-from head import *
-from functools import partial
-import customtkinter as ctk
-from proxy import RequestTextBox
-from backend.Request import Request2
-from backend.global_setup import *
-import pickle
-import asyncio
-import threading
-from utils.request_methods import *
+from common import *
 
 
-class RepeaterNav(ctk.CTkFrame):
-    def __init__(self, master, frames):
+class RepeaterTab(ctk.CTkFrame):
+    def __init__(self, master, id_number=0, request=None, hosturl=None):
         super().__init__(master)
-        self.configure(fg_color="transparent")
-        self.gui = master
-        self.frames = frames
-        self.current_frame = 0
-        self.buttons = []
-        self.buttons.append(NavButton(self,
-                                      text="1",
-                                      command=partial(self.show_frame, 0),
-                                      font=ctk.CTkFont(family="Calibri", size=14, weight="normal"),
-                                      background=color_bg_br,
-                                      background_selected=color_bg))
-        self.buttons[0].pack(side="left")
-        self.pack(side="top", fill="x", padx=15, pady=(10, 0))
-        self.frames.append(RepeaterFrame(self.master, 0, self))
-        self.show_frame(0)
-
-    def show_frame(self, n):
-        self.current_frame = n
-        # print(f"Debug Intruder: Showing frame: {n + 1}")
-        for i, frame in enumerate(self.frames):
-            if i == n:
-                self.buttons[i].set_selected(True)
-                frame.pack(side="top", fill="both", expand=True, padx=5, pady=(0, 5))
-            else:
-                self.buttons[i].set_selected(False)
-                frame.pack_forget()
-
-    def add_frame(self, new_frame=None):
-        new_id = len(self.buttons)
-        # print(f"Debug Intruder: Adding frame: {new_id + 1}")
-        new_frame_button = NavButton(self,
-                                     text=str(new_id + 1),
-                                     command=partial(self.show_frame, new_id),
-                                     font=ctk.CTkFont(family="Calibri", size=14, weight="normal"),
-                                     background=color_bg_br,
-                                     background_selected=color_bg
-                                     )
-        self.buttons.append(new_frame_button)
-        new_frame_button.pack(side="left", padx=(10, 0))
-
-        if new_frame is None:
-            new_frame = RepeaterFrame(self.master, new_id, self)
-            self.frames.append(new_frame)
-        else:
-            self.frames.append(new_frame)
-
-    def delete_frame(self, n):
-        # print(f"Debug Intruder: Deleting frame: {n + 1}")
-        if self.current_frame == n:
-            self.show_frame(n - 1)
-
-        self.frames[n].pack_forget()
-        self.frames.pop(n)
-        self.buttons[n].pack_forget()
-        self.buttons.pop(n)
-
-        self.update_numbering()
-
-    def update_numbering(self):
-        for i, button in enumerate(self.buttons):
-            button.main_button.configure(text=str(i + 1), command=partial(self.show_frame, i))
-            self.frames[i].update_number(i)
-
-
-class RepeaterFrame(ctk.CTkFrame):
-    def __init__(self, master, id_number, nav, request=None, url=None):
-        super().__init__(master)
-        # url neded to make possible working with requests without 'host' in header
-        self.url=url
+        self.hosturl = hosturl
         self.configure(
             fg_color=color_bg,
             corner_radius=10,
@@ -93,124 +16,242 @@ class RepeaterFrame(ctk.CTkFrame):
             self.is_empty = True
         else:
             self.is_empty = False
-        self.nav = nav
 
         self.top_bar = ctk.CTkFrame(self, fg_color="transparent")
         self.top_bar.grid(row=0, column=0, columnspan=2, padx=10, pady=10, sticky="ew")
 
-        icon_send = ctk.CTkImage(
-            light_image=Image.open(f"{ASSET_DIR}\\icon_arrow_up.png"),
-            dark_image=Image.open(f"{ASSET_DIR}\\icon_arrow_up.png"), size=(20, 20))
+        self.hosturl_label = ctk.CTkLabel(self.top_bar, text="Host URL")
+        self.hosturl_label.pack(padx=10, pady=10, side="left")
 
-        self.send_button = ctk.CTkButton(
+        self.hosturl_entry = TextEntry(self.top_bar, width=350)
+        if self.hosturl is not None:
+            self.hosturl_entry.insert(0, self.hosturl)
+        self.hosturl_entry.pack(padx=(0, 10), pady=10, side="left")
+        self.hosturl_entry.bind("<KeyRelease>", self.on_request_textbox_change)
+
+        self.send_button = ActionButton(
             self.top_bar,
             text="Send",
-            width=30,
-            image=icon_send,
+            image=icon_arrow_up,
             command=self.send_request_from_repeater,
-            compound="left",
-            corner_radius=32
+            state=tk.DISABLED
         )
         self.send_button.pack(padx=10, pady=10, side="left")
 
-        icon_delete = ctk.CTkImage(
-            light_image=Image.open(f"{ASSET_DIR}\\icon_delete.png"),
-            dark_image=Image.open(f"{ASSET_DIR}\\icon_delete.png"), size=(20, 20))
-        
-        if self.id != 0:
-            self.delete_frame_button = ctk.CTkButton(
-                self.top_bar,
-                text="Delete the card",
-                width=30,
-                image=icon_delete,
-                command=partial(self.nav.delete_frame, self.id),
-                compound="left",
-                corner_radius=32
-            )
-            self.delete_frame_button.pack(padx=10, pady=10, side="right")
+        self.tab_iterations = {}
+        self.tab_iteration_keys = []
+        self.current_iteration_index = 0
 
-        self.clear_request_button = ctk.CTkButton(
+        self.prev_button = ActionButton(
             self.top_bar,
-            text="Clear request",
-            width=30,
-            image=icon_delete,
-            command=self.clear_request,
-            compound="left",
-            corner_radius=32,
+            text="<",
+            command=self.prev_iteration,
             state=tk.DISABLED
         )
-        self.clear_request_button.pack(padx=10, pady=10, side="right")
+        self.prev_button.pack(padx=10, pady=10, side="left")
+        self.prev_button.configure(width=20)
+
+        self.iteration_label = ctk.CTkLabel(self.top_bar, text="")
+        self.iteration_label.configure(width=150)
+        self.iteration_label.pack(side="left")
+
+        self.next_button = ActionButton(
+            self.top_bar,
+            text=">",
+            command=self.next_iteration,
+            state=tk.DISABLED
+        )
+        self.next_button.configure(width=20)
+        self.next_button.pack(padx=10, pady=10, side="left")
+
+        if self.id != 0:
+            self.delete_tab_button = ActionButton(
+                self.top_bar,
+                text="Delete the card",
+                image=icon_delete,
+                command=lambda: self.gui.delete_tab(self.id),
+            )
+            self.delete_tab_button.pack(padx=10, pady=10, side="right")
 
         self.request_header = HeaderTitle(self, text="Request")
         self.request_header.grid(row=1, column=0, padx=10, pady=(5, 0), sticky="w")
 
-        self.request_textbox = RequestTextBox(self, self.master, text="")
-        self.request_textbox.grid(row=2, column=0, padx=10, pady=(0, 10), sticky="nsew")
+        self.request_textbox = TextBox(self, text="Enter request here.")
+        self.request_textbox.configure(font=self.request_textbox.monoscape_font_italic)
+        self.request_textbox.grid(row=2, column=0, padx=(20, 10), pady=(0, 20), sticky="nsew")
         if request is not None:
             self.request_textbox.insert_text(request)
             self.is_empty = False
-            self.clear_request_button.configure(state=tk.NORMAL)
         self.request_textbox.bind("<<Modified>>", self.on_request_textbox_change)
 
         self.response_header = HeaderTitle(self, text="Response")
         self.response_header.grid(row=1, column=1, padx=10, pady=(5, 0), sticky="w")
 
-        self.response_textbox = RequestTextBox(self, self.master, text="Response will appear here.")
-        self.response_textbox.configure(state="disabled")
-        self.response_textbox.grid(row=2, column=1, padx=10, pady=(0, 10), sticky="nsew")
+        self.response_textbox = TextBox(self, text="Response will appear here.")
+        self.response_textbox.configure(state="disabled", font=self.response_textbox.monoscape_font_italic)
+        self.response_textbox.grid(row=2, column=1, padx=(10, 20), pady=(0, 20), sticky="nsew")
 
         self.grid_columnconfigure(0, weight=1)
         self.grid_columnconfigure(1, weight=1)
         self.grid_rowconfigure(2, weight=1)
 
-
-
     def update_number(self, id_number):
         self.id = id_number
         if self.id != 0:
-            self.delete_frame_button.configure(
-                command=partial(self.nav.delete_frame, self.id)
+            self.delete_tab_button.configure(
+                command=lambda: self.gui.delete_tab(self.id)
             )
 
     def on_request_textbox_change(self, event):
         self._reset_request_modified_flag()
-        if len(self.request_textbox.get_text()) > 0:
+        if len(self.request_textbox.get_text()) > 0 and self.request_textbox.get_text() != "Enter request here.":
             self.is_empty = False
-            self.clear_request_button.configure(state=tk.NORMAL)
-
-    def clear_request(self):
-        self._reset_request_modified_flag()
-        self.request_textbox.delete("1.0", tk.END)
-        self.is_empty = True
-        self.clear_request_button.configure(state=tk.DISABLED)
+            self.request_textbox.configure(font=self.request_textbox.monoscape_font)
+            if len(self.hosturl_entry.get()) > 0:
+                self.send_button.configure(state=tk.NORMAL)
+            else:
+                self.send_button.configure(state=tk.DISABLED)
+        else:
+            self.is_empty = True
+            self.request_textbox.configure(font=self.request_textbox.monoscape_font_italic)
+            self.send_button.configure(state=tk.DISABLED)
 
     def _reset_request_modified_flag(self):
         self.request_textbox.edit_modified(False)
 
     def send_request_from_repeater(self):
-        response = send_http_message(self.request_textbox.get_text(), self.url)
-        self.add_response_to_repeater_tab(process_response(response))
+        request_text = self.request_textbox.get_text()
+        request_host = self.hosturl_entry.get()
+        if len(request_text) > 0 and len(request_host) > 0:
+            response = send_http_message(request_text, request_host)
+
+            response_text = process_response(response)
+            self.add_response_to_repeater_tab(response_text)
+
+            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+            self.tab_iterations[timestamp] = [request_text, response_text]
+            self.tab_iteration_keys.insert(-1, timestamp)
+            self.current_iteration_index = len(self.tab_iteration_keys) - 1
+            self.update_chronology_controls()
 
     def add_response_to_repeater_tab(self, response):
         self.response_textbox.configure(state="normal")
         self.response_textbox.insert_text(response)
         self.response_textbox.configure(state="disabled")
 
+    def update_chronology_controls(self):
+        if self.current_iteration_index > 0:
+            self.prev_button.configure(state=tk.NORMAL)
+        else:
+            self.prev_button.configure(state=tk.DISABLED)
+
+        if self.current_iteration_index < len(self.tab_iteration_keys) - 1:
+            self.next_button.configure(state=tk.NORMAL)
+        else:
+            self.next_button.configure(state=tk.DISABLED)
+
+        iteration_name = self.tab_iteration_keys[self.current_iteration_index]
+        self.iteration_label.configure(text=iteration_name)
+
+    def prev_iteration(self):
+        if self.current_iteration_index > 0:
+            self.current_iteration_index -= 1
+            self.load_iteration(self.current_iteration_index)
+            self.update_chronology_controls()
+
+    def next_iteration(self):
+        if self.current_iteration_index < len(self.tab_iteration_keys) - 1:
+            self.current_iteration_index += 1
+            self.load_iteration(self.current_iteration_index)
+            self.update_chronology_controls()
+
+    def load_iteration(self, index):
+        iteration_name = self.tab_iteration_keys[index]
+        request_text, response_text = self.tab_iterations[iteration_name]
+        self.request_textbox.configure(state=tk.NORMAL)
+        self.response_textbox.configure(state=tk.NORMAL)
+        self.request_textbox.delete("1.0", tk.END)
+        self.request_textbox.insert_text(request_text)
+        self.response_textbox.delete("1.0", tk.END)
+        self.response_textbox.insert_text(response_text)
+        self.response_textbox.configure(state=tk.DISABLED)
+
 
 class GUIRepeater(ctk.CTkFrame):
     def __init__(self, master, root):
         super().__init__(master)
-        self.configure(fg_color="transparent")
+        self.configure(fg_color=color_bg_br, bg_color="transparent", corner_radius=10)
         self.root = root
-        self.frames = []
-        self.nav = RepeaterNav(self, self.frames)
 
-    def add_request_to_repeater_tab(self, request):
-        for frame in self.frames:
-            if frame.is_empty:
-                frame.request_textbox.insert_text(request)
-                frame.is_empty = False
+        self.tabs = []
+        self.tab_nav = ctk.CTkFrame(self, fg_color="transparent")
+        self.tab_nav.pack(side="top", fill="x", padx=15, pady=(10, 0))
+        self.current_tab = 0
+        self.tab_nav_buttons = []
+        first_tab_button = NavButton(self.tab_nav, text="1",
+                                     command=lambda: self.show_tab(0),
+                                     background=color_bg_br,
+                                     background_selected=color_bg)
+        self.tab_nav_buttons.append(first_tab_button)
+        first_tab_button.pack(side="left")
+        self.tab_add_button = NavButton(self.tab_nav, text="",
+                                        icon=icon_add,
+                                        command=self.add_tab,
+                                        background=color_bg_br,
+                                        background_selected=color_bg)
+        self.tab_add_button.pack(side="right")
+        self.tabs.append(RepeaterTab(self, 0))
+        self.show_tab(self.current_tab)
+
+    def add_tab(self, new_tab=None):
+        new_tab_id = len(self.tab_nav_buttons)
+        new_tab_nav_button = NavButton(self.tab_nav, text=str(new_tab_id + 1),
+                                       command=lambda: self.show_tab(new_tab_id),
+                                       background=color_bg_br,
+                                       background_selected=color_bg
+                                       )
+        self.tab_nav_buttons.append(new_tab_nav_button)
+        new_tab_nav_button.pack(side="left", padx=(10, 0))
+
+        if new_tab is None:
+            new_tab = RepeaterTab(self, new_tab_id)
+        self.tabs.append(new_tab)
+        self.show_tab(new_tab_id)
+
+    def show_tab(self, tab_id):
+        self.current_tab = tab_id
+        for i, tab in enumerate(self.tabs):
+            if i == tab_id:
+                self.tab_nav_buttons[i].set_selected(True)
+                tab.pack(side="top", fill="both", expand=True, padx=5, pady=(0, 5))
+            else:
+                self.tab_nav_buttons[i].set_selected(False)
+                tab.pack_forget()
+
+    def delete_tab(self, tab_id):
+        if self.current_tab == tab_id:
+            self.show_tab(tab_id - 1)
+
+        self.tabs.pop(tab_id)
+        self.tab_nav_buttons[tab_id].pack_forget()
+        self.tab_nav_buttons.pop(tab_id)
+
+        self.update_tab_numbering()
+
+    def update_tab_numbering(self):
+        for i, button in enumerate(self.tab_nav_buttons):
+            button.main_button.configure(text=str(i + 1), command=lambda t=i: self.show_tab(t))
+            self.tabs[i].update_number(i)
+
+    def add_request_to_repeater_tab(self, request, url=None):
+        for tab in self.tabs:
+            if tab.is_empty:
+                tab.hosturl = url
+                tab.hosturl_entry.insert(0, url)
+                tab.request_textbox.insert_text(request)
+                tab.is_empty = False
                 return
         else:
-            new_frame = RepeaterFrame(self, len(self.nav.buttons), self.nav, request, url=url)
-            self.nav.add_frame(new_frame)
+            new_frame = RepeaterTab(self, len(self.tab_nav_buttons), request, url)
+            self.add_tab(new_frame)
