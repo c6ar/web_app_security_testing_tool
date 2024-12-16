@@ -766,22 +766,21 @@ class GUIProxy(ctk.CTkFrame):
             Sends a request from given textbox and list to the Repeater.
         """
         request_content = request_textbox.get_text()
-        request_lines = request_content.split("\n")
         selected_item = requests_list.selection()[0]
-        if not any(line.startswith("Host:") for line in request_lines):
-            host_string = requests_list.item(selected_item)['values'][0]
-            request_lines.insert(1, f"Host: {host_string}")
-            request_content = "\n".join(request_lines)
-
-        # print(f"Debug Proxy/Send to repeater:\n{request_content}")
-        url = self.htt_request_list.item(selected_item)['values'][-1]
-        self.root.repeater_tab.add_request_to_repeater_tab(request_content, url=url)
+        hostname = self.htt_request_list.item(selected_item)['values'][-1]
+        print(f"DEBUG/FRONTEND/PROXY/Sending to repeater:\n\tHostname:{hostname}\n\tRequest:\n\t\t{request_content}")
+        self.root.repeater_tab.add_request_to_repeater_tab(request_content, host=hostname)
 
     def send_to_intruder(self, request_textbox, requests_list):
         """
         Proxy GUI:
             Sends a request from given textbox and list to the Intruder.
         """
+        request_content = request_textbox.get_text()
+        selected_item = requests_list.selection()[0]
+        hostname = self.htt_request_list.item(selected_item)['values'][-1]
+        print(f"DEBUG/FRONTEND/PROXY/Sending to intruder:\n\tHostname:{hostname}\n\tRequest:\n\t\t{request_content}")
+        self.root.intruder_tab.add_request_to_intruder_tab(request_content, host=hostname)
         pass
 
     def generate_random_request(self, request_list):

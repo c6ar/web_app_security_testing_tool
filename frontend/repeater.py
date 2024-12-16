@@ -2,7 +2,7 @@ from common import *
 
 
 class RepeaterTab(ctk.CTkFrame):
-    def __init__(self, master, id_number=0, request=None, hosturl=None):
+    def __init__(self, master, id_number=0, content=None, hosturl=None):
         super().__init__(master)
         self.hosturl = hosturl
         self.configure(
@@ -12,10 +12,7 @@ class RepeaterTab(ctk.CTkFrame):
         )
         self.gui = master
         self.id = id_number
-        if self.id == 0:
-            self.is_empty = True
-        else:
-            self.is_empty = False
+        self.is_empty = True
 
         self.top_bar = ctk.CTkFrame(self, fg_color="transparent")
         self.top_bar.grid(row=0, column=0, columnspan=2, padx=10, pady=10, sticky="ew")
@@ -79,8 +76,8 @@ class RepeaterTab(ctk.CTkFrame):
         self.request_textbox = TextBox(self, text="Enter request here.")
         self.request_textbox.configure(font=self.request_textbox.monoscape_font_italic)
         self.request_textbox.grid(row=2, column=0, padx=(20, 10), pady=(0, 20), sticky="nsew")
-        if request is not None:
-            self.request_textbox.insert_text(request)
+        if content is not None:
+            self.request_textbox.insert_text(content)
             self.is_empty = False
         self.request_textbox.bind("<<Modified>>", self.on_request_textbox_change)
 
@@ -244,14 +241,14 @@ class GUIRepeater(ctk.CTkFrame):
             button.main_button.configure(text=str(i + 1), command=lambda t=i: self.show_tab(t))
             self.tabs[i].update_number(i)
 
-    def add_request_to_repeater_tab(self, request, url=None):
+    def add_request_to_repeater_tab(self, content, host=None):
         for tab in self.tabs:
             if tab.is_empty:
-                tab.hosturl = url
-                tab.hosturl_entry.insert(0, url)
-                tab.request_textbox.insert_text(request)
+                tab.hosturl = host
+                tab.hosturl_entry.insert(0, host)
+                tab.request_textbox.insert_text(content)
                 tab.is_empty = False
                 return
         else:
-            new_frame = RepeaterTab(self, len(self.tab_nav_buttons), request, url)
-            self.add_tab(new_frame)
+            new_tab = RepeaterTab(self, len(self.tab_nav_buttons), content, host)
+            self.add_tab(new_tab)
