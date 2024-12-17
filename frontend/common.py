@@ -96,6 +96,12 @@ icon_arrow_up = ctk.CTkImage(
 icon_arrow_down = ctk.CTkImage(
     light_image=Image.open(f"{ASSET_DIR}\\icon_arrow_down.png"),
     dark_image=Image.open(f"{ASSET_DIR}\\icon_arrow_down.png"), size=(20, 20))
+icon_arrow_left = ctk.CTkImage(
+    light_image=Image.open(f"{ASSET_DIR}\\icon_arrow_left.png"),
+    dark_image=Image.open(f"{ASSET_DIR}\\icon_arrow_left.png"), size=(20, 20))
+icon_arrow_right = ctk.CTkImage(
+    light_image=Image.open(f"{ASSET_DIR}\\icon_arrow_right.png"),
+    dark_image=Image.open(f"{ASSET_DIR}\\icon_arrow_right.png"), size=(20, 20))
 icon_random = ctk.CTkImage(
     light_image=Image.open(f"{ASSET_DIR}\\icon_random.png"),
     dark_image=Image.open(f"{ASSET_DIR}\\icon_random.png"), size=(20, 20))
@@ -251,6 +257,8 @@ class ActionButton(ctk.CTkButton):
             self.configure(corner_radius=10)
         if "width" not in kwargs:
             self.configure(width=120)
+        if "text_color_disabled" not in kwargs:
+            self.configure(text_color_disabled="white")
 
     def toggle_state(self, state="normal"):
         self.configure(state=state)

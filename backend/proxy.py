@@ -2,13 +2,11 @@ import pickle
 import mitmproxy.http
 import socket
 from mitmproxy import ctx
-
 # from mitmproxy.connection import ServerConnection
 from mitmproxy.http import Request, Response, HTTPFlow
 import asyncio
 import threading
 from utils.get_domain import extract_domain
-from mitmproxy import ctx
 from global_setup import *
 
 
@@ -35,9 +33,10 @@ class WebRequestInterceptor:
         flow.intercept()
         #self.repeater_flow = flow.copy()
         self.repeater_backup_flow = flow.copy()
-
+        # TODO BACKEND P1: Fix scope or intercept or forward request stuff that I broke - sorry
         # TODO BACKEND P1: Add logic that if len(self.scope) == 0 it intercepts any request
-        # TODO BACKEND P1: Expand telemetry for other browsers?
+        # TODO BACKEND P3: Expand telemetry for other browsers?
+
         if "mozilla.org" in request.host:
             """
             Filters out telemetry 
@@ -53,6 +52,9 @@ class WebRequestInterceptor:
             if flow.intercepted:
                 flow.resume()
         else:
+            print(f"INTERCEPTED REQUEST TO {request.host}"
+                  f"\nHostname from the request: {extract_domain(request.host)}"
+                  f"\nHostnames in the current scope: {self.scope}")
             self.send_request2_to_scope_tab(request)
             self.recieve_request_from_scope_forward_button(flow)
 
@@ -120,19 +122,21 @@ class WebRequestInterceptor:
             operation, *hostnames = pickle.loads(data)
             if operation == "add":
                 for hostname in hostnames:
-                    hostname = extract_domain(hostname)
-                    self.backup.append(hostname)
-                    print(f"Host {hostname} added to the scope.")
+                    domain = extract_domain(hostname)
+                    self.backup.append(domain)
+                    print(f"Host {domain} added to the scope.")
             elif operation == "remove":
                 for hostname in hostnames:
+                    domain = extract_domain(hostname)
                     try:
-                        self.backup.remove(hostname)
-                        print(f"Host {hostname} removed from scope.")
+                        self.backup.remove(domain)
+                        print(f"Host {domain} removed from scope.")
                     except ValueError:
-                        print(f"Attempted to remove {hostname} from scope, but could not be found there.")
+                        print(f"Attempted to remove {domain} from scope, but could not be found there.")
             elif operation == "clear":
                 self.backup.clear()
                 print("Scope cleared.")
+        print(f"Current scope: {self.backup}")
         writer.close()
         await writer.wait_closed()
 
@@ -272,9 +276,15 @@ class WebRequestInterceptor:
             with conn:
                 serialized_reqeust = conn.recv(4096)
                 if serialized_reqeust:
-                    deserialize_reqeust = pickle.loads(serialized_reqeust)
-                    flow.request.data = deserialize_reqeust.data
-                    print(deserialize_reqeust.data)
+                    deserialized_request = pickle.loads(serialized_reqeust)
+                    flow.request.data = deserialized_request.data
+                    if not flow.request.host:
+                        flow.request.host = deserialized_request.host
+                    if not flow.request.path:
+                        flow.request.path = deserialized_request.path
+                    if not flow.request.scheme:
+                        flow.request.scheme = deserialized_request.scheme
+                    print(f"Request data after pressing forward button: {flow.request}")
                     if flow.intercepted:
                         flow.resume()
 

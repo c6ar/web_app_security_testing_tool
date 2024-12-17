@@ -1,35 +1,90 @@
+import pickle
 import re
+import time
 from operator import index
-from utils.request_methods import replace_values
+import socket
+from backend.global_setup import *
+from utils.request_methods import *
+import re
 
 
-#{'var0': 's\nh\nf', 'stuff': 'sdf\nsdf\nsdf'}
-# values = ['var0', 'var1', 'var2']
-#linia.litera
-def ram_attack(dict, request, positions):
-        print("ram attack")
-        pass
+def replace_between_symbols(input_string, new_substring):
+    pattern = re.compile(r'§.*?§')
+    return re.sub(pattern, new_substring, input_string)
 
-def sniper_attack(dict, request):
-        pass
+def replace_word(request, word, position):
+    """
+    Replaces characters between position parameters
+    ('start_line.start_column:end_line.end_column) with word
+    """
+    lines = request.split('\n')
+    start_line, start_col = map(int, position.split(':')[0].split('.'))
+    end_line, end_col = map(int, position.split(':')[1].split('.'))
 
+    start_line -= 1
+    end_line -= 1
 
-# request = r"""POST / HTTP/1.1
-# Host: natas6.natas.labs.overthewire.org
-# User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:134.0) Gecko/20100101 Firefox/134.0
-# Accept: text/html,applicaten-US;q=0ion/xhtml+xml,application/xml;q=0.9,/;q=0.8
-# Accept-Language: pl,.7,en;q=0.3
-# Accept-Encoding: gzip, deflate
-# Content-Type: application/x-www-form-urlencoded
-# Content-Length: 36
-# Origin: http://natas6.natas.labs.overthewire.org/
-# Authorization: Basic bmF0YXM2OjBSb0p3SGRTS1dGVFlSNVd1aUFld2F1U3VOYUJYbmVk
-# Connection: keep-alive
-# Referer: http://natas6.natas.labs.overthewire.org/
-# Upgrade-Insecure-Requests: 1
-# Priority: u=0, i
-# Content-Length: 36
-#
-# secret=§var0§&token=§custom1§
-# """
+    if start_line == end_line:
+        lines[start_line] = lines[start_line][:start_col] + word + lines[start_line][end_col:]
+    else:
+        lines[start_line] = lines[start_line][:start_col] + word + lines[end_line][end_col:]
+        for i in range(start_line + 1, end_line):
+            lines[i] = ''
+
+    request = '\n'.join(lines)
+    pattern = re.compile(r'§var\d§')
+    request = re.sub(pattern, '', request)
+
+    return request.replace('§','')
+
+def sniper_attack(worldlist, request, positions):
+    # TODO BACKEND: cooldown between requests
+    flow ={}
+    words = worldlist.split('\n')
+    position_list = [f"{key}: {value}" for key, value in positions.items()]
+
+    for word in words:
+        for position in position_list:
+            data = {}
+            modified_request = replace_word(request, word, position)
+            response = send_http_message(modified_request)
+            data['position'] = str(position_list.index(position) + 1)
+            data['payload'] = word
+            data['status_code'] = response.status_code
+            data['resp_rec'] = '0'
+            data['error'] = 'False'
+            data['timeout'] = 'False'
+            data['req_con'] = modified_request
+            data['res_con'] = process_response(response)
+            serialized_flow = pickle.dumps(data)
+            try:
+                with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                    s.connect((HOST, BACK_FRONT_INTRUDERRESPONSES))
+                    s.sendall(serialized_flow)
+            except Exception as e:
+                print(f"\nError while sending request to IntruderResult tab: {e}")
+
+def ram_attack(wrold_list, request):
+    # TODO BACKEND: cooldown between requests
+    words = wrold_list.split('\n')
+    for word in words:
+        data = {}
+        modified_request = replace_between_symbols(request, word)
+        response = send_http_message(modified_request)
+
+        data['position'] = 'all'
+        data['payload'] = word
+        data['status_code'] = response.status_code
+        data['resp_rec'] = '0'
+        data['error'] = 'False'
+        data['timeout'] = 'False'
+        data['req_con'] = modified_request
+        data['res_con'] = process_response(response)
+        serialized_flow = pickle.dumps(data)
+        try:
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                s.connect((HOST, BACK_FRONT_INTRUDERRESPONSES))
+                s.sendall(serialized_flow)
+        except Exception as e:
+            print(f"\nError while sending request to IntruderResult tab: {e}")
 

@@ -653,7 +653,6 @@ class GUIProxy(ctk.CTkFrame):
         Intercept Tab:
             Hides request info and HTTP message after dropping, forwarding it.
         """
-
         self.it_request_wrapper_header.configure(text="")
         self.it_request_wrapper_header.pack_forget()
         self.it_request_textbox.insert_text("")
@@ -672,7 +671,6 @@ class GUIProxy(ctk.CTkFrame):
 
         if len(request_content) > 0:
             request2 = Request2.from_http_message(request_content)
-            print(request_content)
             request = request2.to_request()
             serialized_reqeust = pickle.dumps(request)
 
@@ -680,16 +678,17 @@ class GUIProxy(ctk.CTkFrame):
                 with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
                     s.connect((HOST, FRONT_BACK_FORWARDBUTTON_PORT))
                     s.sendall(serialized_reqeust)
+                    self.it_current_request = None
             except Exception as e:
                 print(f"Error while sending after Forward button: {e}")
 
-            index = self.it_request_list.index(self.it_current_request)
-            self.it_request_list.pop(index)
+            self.it_request_list.pop(0)
 
             if len(self.it_request_list) > 0:
                 self.it_current_request = self.it_request_list[0]
                 self.it_show_request()
             else:
+                self.it_current_request = None
                 self.it_request_list_empty = True
                 self.it_remove_request()
 

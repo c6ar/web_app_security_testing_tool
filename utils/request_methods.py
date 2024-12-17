@@ -71,6 +71,7 @@ def send_http_message(http_message, real_url=None):
         url = f"{base_url}{path}"
     else: url = real_url
 
+    # TODO timeouts in request (for intruder list)
     if method.upper() == "GET":
         response = requests.get(url, headers=headers)
     elif method.upper() == "POST":
@@ -155,21 +156,21 @@ secret=&submit=Wy%C5%9Blij+zapytanie"""
 # print(output)
 
 
-print(replace_values(['jeden', 'dwa'], """POST / HTTP/1.1
-Host: natas6.natas.labs.overthewire.org
-User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:134.0) Gecko/20100101 Firefox/134.0
-Accept: text/html,application/xhtml+xml,application/xml;q=0.9,/;q=0.8
-Accept-Language: pl,en-US;q=0.7,en;q=0.3
-Accept-Encoding: gzip, deflate
-Content-Type: application/x-www-form-urlencoded
-Content-Length: 36
-Origin: http://natas6.natas.labs.overthewire.org/
-Authorization: Basic bmF0YXM2OjBSb0p3SGRTS1dGVFlSNVd1aUFld2F1U3VOYUJYbmVk
-Connection: keep-alive
-Referer: http://natas6.natas.labs.overthewire.org/
-Upgrade-Insecure-Requests: 1
-Priority: u=0, i
-Content-Length: 36
-
-
-secret=§var0§&submit=§var0§"""))
+# print(replace_values(['jeden', 'dwa'], """POST / HTTP/1.1
+# Host: natas6.natas.labs.overthewire.org
+# User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:134.0) Gecko/20100101 Firefox/134.0
+# Accept: text/html,application/xhtml+xml,application/xml;q=0.9,/;q=0.8
+# Accept-Language: pl,en-US;q=0.7,en;q=0.3
+# Accept-Encoding: gzip, deflate
+# Content-Type: application/x-www-form-urlencoded
+# Content-Length: 36
+# Origin: http://natas6.natas.labs.overthewire.org/
+# Authorization: Basic bmF0YXM2OjBSb0p3SGRTS1dGVFlSNVd1aUFld2F1U3VOYUJYbmVk
+# Connection: keep-alive
+# Referer: http://natas6.natas.labs.overthewire.org/
+# Upgrade-Insecure-Requests: 1
+# Priority: u=0, i
+# Content-Length: 36
+#
+#
+# secret=§var0§&submit=§var0§"""))

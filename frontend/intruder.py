@@ -1,3 +1,7 @@
+import pickle
+import socket
+import asyncio
+import threading
 from common import *
 from backend.intruder import *
 
@@ -22,6 +26,9 @@ def clear_payload(payloads_text):
 class IntruderResult(ctk.CTkToplevel):
     def __init__(self, master, gui, hostname, positions, payloads, timestamp, **kwargs):
         super().__init__(master, **kwargs)
+        self.loop = asyncio.new_event_loop()
+        self.start_async_servers()
+
         self.title("Intruder Attack's Results")
         self.intruder_tab = master
         self.root = gui.gui_root
@@ -148,6 +155,11 @@ class IntruderResult(ctk.CTkToplevel):
 
         self.show_tab("Results")
 
+        self.flow = None
+        """
+        Asyncs servers to catch respones
+        """
+
         # TODO FRONTEND P2: Give out confirm dialog with 3 options: to stop the attack and close the window,
         #  to stop the attack and save it in the chronology or to keep attack running in the background.
         self.protocol("WM_DELETE_WINDOW", self.hide_window)
@@ -206,6 +218,54 @@ class IntruderResult(ctk.CTkToplevel):
         self.attack_request_list.insert("", tk.END, values=random_request)
         if len(self.attack_request_list.selection()) == 0:
             self.attack_request_list.selection_add(self.attack_request_list.get_children()[0])
+
+    def add_attack_flow(self, data):
+        rn = len(self.attack_request_list.get_children()) + 1
+        pos = data['position']
+        payload = data['payload']
+        status_code = data['status_code']
+        resp_rec = data['resp_rec']
+        error = data['error']
+        timeout = data['timeout']
+        req_con = data['req_con']
+        res_con = data['res_con']
+        length = len(res_con)
+        request = [rn, pos, payload, status_code, resp_rec, error, timeout, length, req_con, res_con]
+
+        self.attack_request_list.insert("", tk.END, values=request)
+        if len(self.attack_request_list.selection()) == 0:
+            self.attack_request_list.selection_add(self.attack_request_list.get_children()[0])
+
+    def start_async_servers(self):
+        """
+        Starts the asyncio servers in a separate thread to handle scope updates and flow killing asynchronously.
+        """
+
+        def run_servers():
+            asyncio.set_event_loop(self.loop)
+            tasks = [
+                self.listen_for_responses(),
+
+            ]
+            self.loop.run_until_complete(asyncio.gather(*tasks))
+
+        thread = threading.Thread(target=run_servers, daemon=True)
+        thread.start()
+
+    async def listen_for_responses(self):
+        server = await asyncio.start_server(
+            self.handle_responses, HOST, BACK_FRONT_INTRUDERRESPONSES
+        )
+        async with server:
+            await server.serve_forever()
+
+    async def handle_responses(self, reader, writer):
+        data = await reader.read(4096)
+        if data:
+            self.flow = pickle.loads(data)
+            self.add_attack_flow(self.flow)
+        writer.close()
+        await writer.wait_closed()
 
 
 class IntruderTab(ctk.CTkFrame):
@@ -377,11 +437,26 @@ class IntruderTab(ctk.CTkFrame):
             else:
                 for var, textbox in self.payloads_textboxes.items():
                     payloads[var] = textbox.get_text()
+
             timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             print(f"Starting a {timestamp} attack on {self.hostname_entry.get()}\nCurrent payloads:\n\t{payloads}")
             # attack(self.payloads_frames, self.positions_text.get_text())
-            self.show_results(timestamp)
+
+            tags = self.positions_textbox.tag_names()
+            positions = {}
+            for tag in tags:
+                ranges = self.positions_textbox.tag_ranges(tag)
+                for start, end in zip(ranges[0::2], ranges[1::2]):
+                    positions[str(start)] = str(end)
             self.last_timestamp = timestamp
+            self.show_results(timestamp)
+            if self.attack_type == 0:
+                sniper_attack(payloads, self.positions_textbox.get_text(), positions)
+            elif self.attack_type == 1:
+                ram_attack(payloads, self.positions_textbox.get_text())
+            else:
+                # TODO BACKEND: 3rd option of an attack
+                pass
 
     def show_last_ongoing(self):
         if len(self.attack_result) > 0:
