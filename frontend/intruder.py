@@ -112,8 +112,9 @@ class IntruderTab(ctk.CTkFrame):
                 print(f"  Range: {start} to {end}")
                 positions[str(start)] = str(end)
 
-
-        sniper_attack(payloads, self.positions_text.get_text(), positions)
+        print(positions)
+        # ram_attack(payloads, self.positions_text.get_text())
+        # sniper_attack(payloads, self.positions_text.get_text(), positions)
 
         #print(f"Starting an attack...\nCurrent payloads:\n\t{self.payloads}")
 

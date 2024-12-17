@@ -14,27 +14,17 @@ def replace_between_symbols(input_string, new_substring):
     return re.sub(pattern, new_substring, input_string)
 
 
-import re
+def sniper_attack(dict_wrold_list, request, position):
+        first_key = next(iter(dict_wrold_list))
+        first_value = dict_wrold_list[first_key]
+        words = first_value.split('\n')
+        for word in words:
+                
 
 
-# Funkcja do zamiany wszystkich wystąpień tekstu pomiędzy znakami '§'
-def replace_all_between_symbols(input_string, new_substrings):
-        pattern = re.compile(r'§.*?§')
-        matches = pattern.findall(input_string)
-
-        if len(matches) != len(new_substrings):
-                raise ValueError("Liczba nowych podciągów musi odpowiadać liczbie wystąpień wzorca.")
-
-        for match, new_substring in zip(matches, new_substrings):
-                input_string = input_string.replace(match, new_substring, 1)
-
-        return input_string
-
-
-
-def sniper_attack(dict, request):
-        first_key = next(iter(dict))
-        first_value = dict[first_key]
+def ram_attack(dict_wrold_list, request):
+        first_key = next(iter(dict_wrold_list))
+        first_value = dict_wrold_list[first_key]
         words = first_value.split('\n')
         for word in words:
                 new_request = replace_between_symbols(request, word)
@@ -43,17 +33,7 @@ def sniper_attack(dict, request):
                 print(response_text)
 
 
-def ram_attack(dictionary, request):
-        keys = list(dictionary.keys())
-        values = [dictionary[key].split('\n') for key in keys]
-
-        for value_set in zip(*values):
-                new_request = replace_all_between_symbols(request, value_set)
-                response = send_http_message(new_request)
-                response_text = process_response(response)
-                print(response_text)
-
-# request = r"""POST / HTTP/1.1
+# request = """POST / HTTP/1.1
 # Host: natas6.natas.labs.overthewire.org
 # User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:134.0) Gecko/20100101 Firefox/134.0
 # Accept: text/html,applicaten-US;q=0ion/xhtml+xml,application/xml;q=0.9,/;q=0.8
