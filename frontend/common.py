@@ -125,7 +125,8 @@ intercept_off_image = ctk.CTkImage(light_image=Image.open(f"{ASSET_DIR}\\interce
 intercept_on_image = ctk.CTkImage(light_image=Image.open(f"{ASSET_DIR}\\intercept_on_light.png"),
                                   dark_image=Image.open(f"{ASSET_DIR}\\intercept_on.png"), size=(87, 129))
 
-
+# TODO FRONTEND P3: Add confirm dialog to close the app with data getting lost.
+#  - Option to disable the dialog in the config.
 # TODO FRONTEND P3: Add translation support only for locales: EN and PL.
 #
 # Common functions
