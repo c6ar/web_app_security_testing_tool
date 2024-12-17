@@ -12,3 +12,4 @@ REPEATER_BACK_SENDHTTPMESSAGE_PORT = 65438  # repeater -> back, send button
 FRONT_BACK_SENDTOREPEATER_PORT = 65439  # front -> back,  send flag to proxy.py
 BACK_REPEATER_FLOWSEND_PORT = 65440  # back-> repeater, send flow to Gui repeater
 BACK_REPEATER_RESPONSESEND_PORT = 65441  # back -> repeater, send response to repeater
+BACK_FRONT_INTRUDERRESPONSES = 65442     # back.intruder -> intruder, send responses and reqeust

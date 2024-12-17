@@ -621,10 +621,10 @@ class GUIProxy(ctk.CTkFrame):
                         try:
                             deserialized_request = pickle.loads(serialized_reqeust)
                             request2 = Request2.from_request(deserialized_request)
-
                             self.it_request_list.append(request2)
                             self.it_request_list_empty = False
                             if self.it_current_request is None:
+                                print('*'*100)
                                 self.it_current_request = request2
                                 self.it_show_request()
                         except Exception as e:
@@ -675,7 +675,6 @@ class GUIProxy(ctk.CTkFrame):
 
         if len(request_content) > 0:
             request2 = Request2.from_http_message(request_content)
-            print(request_content)
             request = request2.to_request()
             serialized_reqeust = pickle.dumps(request)
 
@@ -683,6 +682,7 @@ class GUIProxy(ctk.CTkFrame):
                 with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
                     s.connect((HOST, FRONT_BACK_FORWARDBUTTON_PORT))
                     s.sendall(serialized_reqeust)
+                    self.it_current_request = None
             except Exception as e:
                 print(f"Error while sending after Forward button: {e}")
 

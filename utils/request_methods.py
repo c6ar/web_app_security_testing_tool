@@ -3,7 +3,6 @@ import requests
 from bs4 import BeautifulSoup
 import re
 
-
 def extract_key_value_pairs(data):
     """
     Extracts key-value pairs from a string formatted as key=value&key2=value2 and returns a dictionary.
@@ -71,6 +70,7 @@ def send_http_message(http_message, real_url=None):
         url = f"{base_url}{path}"
     else: url = real_url
 
+    # TODO timeouts in request (for intruder list)
     if method.upper() == "GET":
         response = requests.get(url, headers=headers)
     elif method.upper() == "POST":
