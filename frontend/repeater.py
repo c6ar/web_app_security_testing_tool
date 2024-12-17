@@ -48,6 +48,7 @@ class RepeaterTab(ctk.CTkFrame):
         self.prev_button.pack(padx=10, pady=10, side="left")
         self.prev_button.configure(width=20)
 
+        # TODO FRONTEND P2: Dropdown option menu instead of label?
         self.iteration_label = ctk.CTkLabel(self.top_bar, text="")
         self.iteration_label.configure(width=150)
         self.iteration_label.pack(side="left")

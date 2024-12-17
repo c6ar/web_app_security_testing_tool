@@ -1,8 +1,5 @@
 from common import *
 
-# TODO Confirm if this is important or needed anywhere, otherwise delete it
-i = 0
-
 
 def change_intercept_state():
     """
@@ -111,6 +108,7 @@ class GUIProxy(ctk.CTkFrame):
         self.htt_top_pane = ctk.CTkFrame(self.htt_paned_window, corner_radius=10, fg_color=color_bg, bg_color="transparent")
         self.htt_paned_window.add(self.htt_top_pane, height=350)
 
+        # TODO FRONTEND P2: Sorting and filtering of the list.
         htt_columns = ("Host", "URL", "Method", "Request", "Status code", "Title", "Length", "Response", "RealURL")
         self.htt_request_list = ItemList(self.htt_top_pane, columns=htt_columns, show="headings", style="Treeview")
         self.htt_request_list.bind("<<TreeviewSelect>>", self.htt_show_request_content)
@@ -180,6 +178,7 @@ class GUIProxy(ctk.CTkFrame):
         self.htt_response_frame = ctk.CTkFrame(self.htt_bottom_pane, fg_color=color_bg, bg_color="transparent")
         self.htt_response_frame.grid(row=0, column=1, sticky="nsew", padx=10, pady=10)
 
+        # TODO FRONTEND P3: Render option for the response or opening the response in the browser's tab
         self.htt_response_header = HeaderTitle(self.htt_response_frame, "Response")
         self.htt_response_header.pack(fill=tk.X)
 
@@ -190,7 +189,6 @@ class GUIProxy(ctk.CTkFrame):
         """
          > INTERCEPT TAB
         """
-        # TODO OTHER: Burp's behavior, that when intercept on and filter empty, every request is intercepted?
         self.it_top_bar = ctk.CTkFrame(self.intercept_tab, height=50, corner_radius=10, fg_color=color_bg, bg_color="transparent")
         self.it_top_bar.pack(side=tk.TOP, fill=tk.X, pady=(0, 5), padx=5)
 
@@ -220,6 +218,7 @@ class GUIProxy(ctk.CTkFrame):
         self.it_top_pane = ctk.CTkFrame(self.it_paned_window, corner_radius=10, fg_color=color_bg, bg_color="transparent")
         self.it_paned_window.add(self.it_top_pane, height=350)
 
+        # TODO FRONTEND P2: Removing Intercept list since there is only one request intercepted at a time.
         it_columns = ("Host", "URL", "Method", "Content", "RealURL")
         self.it_request_list = ItemList(self.it_top_pane, columns=it_columns, show="headings", style="Treeview", selectmode="none")
         self.it_request_list.bind("<<TreeviewSelect>>", self.it_show_request_content)
@@ -406,13 +405,6 @@ class GUIProxy(ctk.CTkFrame):
             )
             threading.Thread(target=self.read_stdout, daemon=True).start()
             threading.Thread(target=self.read_stderr, daemon=True).start()
-
-            # TODO Confirm if this was important, cuz' the option above lets you get printouts in real time.
-            # stdout, stderr = self.process.communicate()
-            # if stdout:
-            #     print(f"Mitmdump stdout:\n{stdout.decode('utf-8', errors='ignore')}")
-            # if stderr:
-            #     print(f"Mitmdump stderr:\n{stderr.decode('utf-8', errors='ignore')}")
         except Exception as e:
             print(f"Error while starting the HTTP(S) proxy process: {e}")
         finally:
@@ -768,7 +760,7 @@ class GUIProxy(ctk.CTkFrame):
         request_content = request_textbox.get_text()
         selected_item = requests_list.selection()[0]
         hostname = self.htt_request_list.item(selected_item)['values'][-1]
-        print(f"DEBUG/FRONTEND/PROXY/Sending to repeater:\n\tHostname:{hostname}\n\tRequest:\n\t\t{request_content}")
+        # print(f"DEBUG/FRONTEND/PROXY/Sending to repeater:\n\tHostname:{hostname}\n\tRequest:\n\t\t{request_content}")
         self.root.repeater_tab.add_request_to_repeater_tab(request_content, host=hostname)
 
     def send_to_intruder(self, request_textbox, requests_list):
@@ -779,7 +771,7 @@ class GUIProxy(ctk.CTkFrame):
         request_content = request_textbox.get_text()
         selected_item = requests_list.selection()[0]
         hostname = self.htt_request_list.item(selected_item)['values'][-1]
-        print(f"DEBUG/FRONTEND/PROXY/Sending to intruder:\n\tHostname:{hostname}\n\tRequest:\n\t\t{request_content}")
+        # print(f"DEBUG/FRONTEND/PROXY/Sending to intruder:\n\tHostname:{hostname}\n\tRequest:\n\t\t{request_content}")
         self.root.intruder_tab.add_request_to_intruder_tab(request_content, host=hostname)
         pass
 

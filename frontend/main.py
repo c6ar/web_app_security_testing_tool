@@ -14,9 +14,12 @@ class GUI(ctk.CTk):
     def __init__(self):
         super().__init__()
         self.title("WASTT | Web App Security Testing Tool")
-        self.initial_width = 1200
-        self.initial_height = 900
-        self.geometry(f"{self.initial_width}x{self.initial_height}+10+20")
+        screen_width = self.winfo_screenwidth()
+        screen_height = self.winfo_screenheight()
+        self.initial_width = int(screen_width * 0.9)
+        self.initial_height = int(screen_height * 0.9)
+        center_x = (screen_width // 2) - (self.initial_width // 2)
+        self.geometry(f"{self.initial_width}x{self.initial_height}+{center_x}+10")
         self.configure(fg_color=color_bg, bg_color=color_bg)
         self.iconbitmap(f"{ASSET_DIR}\\wastt.ico")
 
@@ -107,7 +110,7 @@ class GUI(ctk.CTk):
 
     def show_settings(self):
         if self.settings_window is None or not self.settings_window.winfo_exists():
-            # TODO OTHER: Actual implmentation of config logic in the app
+            # TODO OTHER P2: Actual implmentation of config logic in the app
             # Settings ideas, appearance (theme), language (EN or PL), Proxy rerun, show Proxy log, turn on Debug mode for the app DEBUG PRINTOUTS
             self.settings_window = ctk.CTkToplevel(self)
             self.settings_window.title("Proxy Settings")
@@ -140,7 +143,7 @@ class GUI(ctk.CTk):
             cancel_button.pack(side=tk.RIGHT, padx=10, pady=10)
 
     def save_settings(self):
-        # TODO OTHER: Actual implmentation of config logic in the app
+        # TODO OTHER P2: Actual implmentation of config logic in the app
         new_config = RUNNING_CONFIG.copy()
         for key, entry in self.settings_entries.items():
             new_config[key] = entry.get()
@@ -212,7 +215,7 @@ class GUI(ctk.CTk):
                 print(f"Error while terminating proxy process: {e}")
 
     def on_close(self):
-        # TODO OTHER: Finding other way to kill the mitdump.exe when closing the app.
+        # TODO OTHER P3: Finding other way to kill the mitdump.exe when closing the app.
         """
         Instructions run on GUI closure.
         """
@@ -222,11 +225,6 @@ class GUI(ctk.CTk):
         self.stop_proxy()
         self.destroy()
         print("INFO: Closing the WASTT app.")
-
-    def ensure_exit(self):
-        """
-        Ensures all processes and threads are terminated before exiting the application.
-        """
 
 
 wastt = GUI()
