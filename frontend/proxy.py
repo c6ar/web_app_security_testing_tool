@@ -220,6 +220,7 @@ class GUIProxy(ctk.CTkFrame):
         self.it_current_request = None
         self.it_request_list_empty = True
 
+        # TODO FRONTEND P2: Add info what domains are currently intercepted. If scope is empty all domains are.
         self.it_intercept_info = ctk.CTkFrame(self.intercept_tab, fg_color=color_bg, bg_color="transparent", corner_radius=10)
         self.it_intercept_info.pack(side=tk.TOP, fill=tk.X, padx=5, pady=5)
 

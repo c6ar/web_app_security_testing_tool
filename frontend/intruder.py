@@ -58,7 +58,7 @@ class IntruderResult(ctk.CTkToplevel):
             self.tab_nav_buttons[name] = NavButton(self.tab_nav, text=name.upper(), command=lambda t=name: self.show_tab(t))
             self.tab_nav_buttons[name].pack(side=tk.LEFT)
 
-        # TODO FRONTEND P2: Add a button that aborts the attack.
+        # TODO FRONTEND P2: Add a button to abort the ongoing attack.
         self.add_random_button = NavButton(self.tab_nav, text="Add random request", icon=icon_random, command=self.generate_random_request)
         self.add_random_button.pack(side=tk.RIGHT)
 
@@ -136,18 +136,16 @@ class IntruderResult(ctk.CTkToplevel):
         self.payloads_header = HeaderTitle(self.wrapper, text="Sent payloads")
         self.payloads_header.grid(row=1, column=1, padx=10, pady=(5, 0), sticky="w")
 
-        self.payloads_frame = ctk.CTkScrollableFrame(self.wrapper, fg_color="transparent", bg_color="transparent")
-        self.payloads_frame.grid(row=2, column=1, padx=(10, 20), pady=(0, 20), sticky="nsew")
-
         if self.intruder_tab.attack_type == 2:
+            self.payloads_frame = ctk.CTkScrollableFrame(self.wrapper, fg_color="transparent", bg_color="transparent")
             for var, payloads in payloads.items():
                 payloads_label = ctk.CTkLabel(self.payloads_frame, text=f"Payloads for positions of \"{var}\"", anchor=tk.W, justify=tk.LEFT)
                 payloads_label.pack(fill=tk.X, padx=10, pady=(10, 0))
                 payloads_textbox = TextBox(self.payloads_frame, text=payloads.get_text(), height=150)
                 payloads_textbox.pack(fill=tk.X, padx=10, pady=(10, 0))
         else:
-            payloads_textbox = TextBox(self.payloads_frame, text=payloads.get(0).get_text())
-            payloads_textbox.pack(fill=tk.BOTH, expand=True, padx=0, pady=0)
+            self.payloads_textbox = TextBox(self.wrapper, text=payloads.get(0).get_text())
+            self.payloads_textbox.grid(row=2, column=1, padx=(10, 20), pady=(0, 20), sticky="nsew")
 
         self.wrapper.grid_columnconfigure(0, weight=1)
         self.wrapper.grid_columnconfigure(1, weight=1)
@@ -409,6 +407,9 @@ class IntruderTab(ctk.CTkFrame):
                         frame.pack(side="top", fill=tk.BOTH, expand=True, padx=10, pady=5)
                     else:
                         frame.pack_forget()
+
+            self.payload_placeholder.pack_forget()
+
         elif self.attack_type == 2:
             if self.payloads_frames.get(0) is not None and self.payloads_frames[0].winfo_ismapped():
                 self.payloads_frames[0].pack_forget()
@@ -422,9 +423,9 @@ class IntruderTab(ctk.CTkFrame):
                 else:
                     self.add_payload(name)
 
-            if len(self.payloads_frames) == 0 or (
-                    len(self.payloads_frames) == 1 and self.payloads_frames.get(0) is not None):
-                self.payload_placeholder.pack(fill=tk.X, padx=10, pady=10)
+            if (len(self.payloads_frames) == 0 or
+                    (len(self.payloads_frames) == 1 and self.payloads_frames.get(0) is not None)):
+                self.payload_placeholder.pack(fill=tk.X, padx=10, pady=5)
 
     def _reset_positions_modified_flag(self):
         self.positions_textbox.edit_modified(False)
@@ -649,7 +650,7 @@ class IntruderTab(ctk.CTkFrame):
 
             payloads_text = TextBox(payloads_frame, height=112)
         else:
-            payloads_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=0)
+            payloads_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
 
             payloads_text = TextBox(payloads_frame)
 
