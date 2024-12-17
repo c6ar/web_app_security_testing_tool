@@ -1,6 +1,5 @@
-import tkinter
-
 from common import *
+from backend.intruder import *
 
 
 def load_payload(payloads_text):
@@ -238,7 +237,7 @@ class IntruderTab(ctk.CTkFrame):
         self.attack_type_label.pack(padx=(10, 5), pady=10, side="left")
 
         self.attack_type_options = ["Sniper attack", "Battering ram attack", "Pitchfork attack"]
-        selected_option = tkinter.StringVar(value=self.attack_type_options[0])
+        selected_option = tk.StringVar(value=self.attack_type_options[0])
         self.attack_type_dropdown = ctk.CTkOptionMenu(self.top_bar, width=200, corner_radius=10, variable=selected_option,
                                                       values=self.attack_type_options, command=self.on_attack_option_select)
         self.attack_type_dropdown.pack(padx=(0, 10), pady=10, side="left")

@@ -1,6 +1,7 @@
 import urllib
 import requests
 from bs4 import BeautifulSoup
+import re
 
 
 def extract_key_value_pairs(data):
@@ -63,10 +64,10 @@ def send_http_message(http_message, real_url=None):
     :return: requests.Response, the response object
     """
     method, path, headers, data = parse_http_message(http_message)
-    base_url = extract_base_url(http_message)
 
     # TODO backup url not working, may not be needed if  all repeater tabs will have url from mitmproxy requests
     if real_url is None:
+        base_url = extract_base_url(http_message)
         url = f"{base_url}{path}"
     else: url = real_url
 
@@ -85,14 +86,36 @@ def process_response(response):
     :param response: requests.Response
     :return: str, processed content or raw content
     """
-    print(response)
-    content_type = response.headers.get('Content-Type', '')
-    if 'html' in content_type or 'xml' in content_type:
-        soup = BeautifulSoup(response.content, 'html.parser')
-        return soup.prettify()  # Pretty-print the parsed HTML/XML
-    return response.content  # Return raw content for non-HTML/XML
-    #return "Bad Request"
+    if response.ok:
+        content_type = response.headers.get('Content-Type', '')
+        if 'html' in content_type or 'xml' in content_type:
+            soup = BeautifulSoup(response.content, 'html.parser')
+            return soup.prettify()  # Pretty-print the parsed HTML/XML
+        return response.content  # Return raw content for non-HTML/XML
+    return "Bad Request"
 
+def replace_values(values, http_message=str):
+    """
+       Replaces placeholder variables in the HTTP message marked with §var_name§ with values from the `values` list.
+
+       Args:
+           values (list): List of strings to replace the placeholders.
+           http_message (str): HTTP request message with placeholders.
+
+       Returns:
+           str: The modified HTTP message with placeholders replaced.
+    """
+
+    placeholders = re.findall(r'\§(.*?)\§', http_message)
+
+    if len(placeholders) > len(values):
+        raise ValueError("Not enough values provided to replace all placeholders.")
+
+    for i, placeholder in enumerate(placeholders):
+        if i < len(values):
+            http_message = http_message.replace(f'\u00a7{placeholder}\u00a7', values[i], 1)
+
+    return http_message
 # Example usage
 http_message_GET = """GET /Pe5gM9R0s-OCS2DfKecIG72P_fwfB8I2BSbC1obg0oM=.5716.jpg HTTP/2.0
 user-agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:133.0) Gecko/20100101 Firefox/133.0
@@ -130,3 +153,23 @@ secret=&submit=Wy%C5%9Blij+zapytanie"""
 # # Process the response
 # output = process_response(response)
 # print(output)
+
+
+print(replace_values(['jeden', 'dwa'], """POST / HTTP/1.1
+Host: natas6.natas.labs.overthewire.org
+User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:134.0) Gecko/20100101 Firefox/134.0
+Accept: text/html,application/xhtml+xml,application/xml;q=0.9,/;q=0.8
+Accept-Language: pl,en-US;q=0.7,en;q=0.3
+Accept-Encoding: gzip, deflate
+Content-Type: application/x-www-form-urlencoded
+Content-Length: 36
+Origin: http://natas6.natas.labs.overthewire.org/
+Authorization: Basic bmF0YXM2OjBSb0p3SGRTS1dGVFlSNVd1aUFld2F1U3VOYUJYbmVk
+Connection: keep-alive
+Referer: http://natas6.natas.labs.overthewire.org/
+Upgrade-Insecure-Requests: 1
+Priority: u=0, i
+Content-Length: 36
+
+
+secret=§var0§&submit=§var0§"""))

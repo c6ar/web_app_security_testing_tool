@@ -14,6 +14,7 @@ from global_setup import *
 
 class WebRequestInterceptor:
     def __init__(self):
+        # TODO BACKEND: filter with subdomains, not with domain only
         self.scope = []
         self.loop = asyncio.new_event_loop()  # Tworzymy pętlę asyncio dla tego obiektu
         self.start_async_servers()
@@ -273,6 +274,7 @@ class WebRequestInterceptor:
                 if serialized_reqeust:
                     deserialize_reqeust = pickle.loads(serialized_reqeust)
                     flow.request.data = deserialize_reqeust.data
+                    print(deserialize_reqeust.data)
                     if flow.intercepted:
                         flow.resume()
 

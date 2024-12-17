@@ -51,6 +51,7 @@ from tkinter import filedialog
 from utils.request_methods import *
 # noinspection PyUnresolvedReferences
 from utils.get_domain import *
+import tkinterweb
 
 #
 # Global settings and variables
@@ -342,7 +343,7 @@ class HeaderTitle(ctk.CTkLabel):
             height=height,
             fg_color="transparent",
             bg_color="transparent",
-            corner_radius=0
+            corner_radius=10
         )
 
 

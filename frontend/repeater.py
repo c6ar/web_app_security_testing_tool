@@ -45,10 +45,20 @@ class RepeaterTab(ctk.CTkFrame):
             command=self.prev_iteration,
             state=tk.DISABLED
         )
-        self.prev_button.pack(padx=10, pady=10, side="left")
         self.prev_button.configure(width=20)
+        self.prev_button.pack(padx=10, pady=10, side="left")
 
-        # TODO FRONTEND P2: Dropdown option menu instead of label?
+        self.iteration_var = tk.StringVar(self.top_bar)
+        self.iteration_var.set("Select Iteration")
+
+        # self.iteration_dropdown = ctk.CTkOptionMenu(
+        #     self.top_bar,
+        #     variable=self.iteration_var,
+        #     command=self.select_iteration,
+        #     state=tk.DISABLED
+        # )
+        # self.iteration_dropdown.pack(side="left", padx=10, pady=10)
+
         self.iteration_label = ctk.CTkLabel(self.top_bar, text="")
         self.iteration_label.configure(width=150)
         self.iteration_label.pack(side="left")
@@ -121,7 +131,7 @@ class RepeaterTab(ctk.CTkFrame):
         request_text = self.request_textbox.get_text()
         request_host = self.hosturl_entry.get()
         if len(request_text) > 0 and len(request_host) > 0:
-            response = send_http_message(request_text, request_host)
+            response = send_http_message(request_text, real_url=request_host)
 
             response_text = process_response(response)
             self.add_response_to_repeater_tab(response_text)
@@ -132,11 +142,12 @@ class RepeaterTab(ctk.CTkFrame):
             self.tab_iteration_keys.insert(-1, timestamp)
             self.current_iteration_index = len(self.tab_iteration_keys) - 1
             self.update_chronology_controls()
+            # self.update_dropdown_menu()
 
     def add_response_to_repeater_tab(self, response):
-        self.response_textbox.configure(state="normal")
+        self.response_textbox.configure(state=tk.NORMAL)
         self.response_textbox.insert_text(response)
-        self.response_textbox.configure(state="disabled")
+        self.response_textbox.configure(state=tk.DISABLED)
 
     def update_chronology_controls(self):
         if self.current_iteration_index > 0:
@@ -151,6 +162,21 @@ class RepeaterTab(ctk.CTkFrame):
 
         iteration_name = self.tab_iteration_keys[self.current_iteration_index]
         self.iteration_label.configure(text=iteration_name)
+        # self.iteration_var.set(iteration_name)
+
+    def update_dropdown_menu(self):
+        # menu = self.iteration_dropdown.children["menu"]
+        # menu.delete(0, "end")
+        # for key in self.tab_iteration_keys:
+        #     menu.add_command(label=key, command=lambda k=key: self.select_iteration(k))
+        # self.iteration_dropdown.configure(state=tk.NORMAL)
+        pass
+
+    def select_iteration(self, iteration_name):
+        if iteration_name in self.tab_iteration_keys:
+            self.current_iteration_index = self.tab_iteration_keys.index(iteration_name)
+            self.load_iteration(self.current_iteration_index)
+            self.update_chronology_controls()
 
     def prev_iteration(self):
         if self.current_iteration_index > 0:
