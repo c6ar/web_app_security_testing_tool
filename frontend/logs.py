@@ -1,5 +1,7 @@
 from common import *
 
+# TODO OTHER P3: Logs/Reporting
+
 
 class GUILogs(ctk.CTkFrame):
     def __init__(self, master, root):

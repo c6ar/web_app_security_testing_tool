@@ -36,6 +36,8 @@ class WebRequestInterceptor:
         #self.repeater_flow = flow.copy()
         self.repeater_backup_flow = flow.copy()
 
+        # TODO BACKEND P1: Add logic that if len(self.scope) == 0 it intercepts any request
+        # TODO BACKEND P1: Expand telemetry for other browsers?
         if "mozilla.org" in request.host:
             """
             Filters out telemetry 
@@ -272,6 +274,7 @@ class WebRequestInterceptor:
                 if serialized_reqeust:
                     deserialize_reqeust = pickle.loads(serialized_reqeust)
                     flow.request.data = deserialize_reqeust.data
+                    print(deserialize_reqeust.data)
                     if flow.intercepted:
                         flow.resume()
 

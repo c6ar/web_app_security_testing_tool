@@ -64,10 +64,10 @@ def send_http_message(http_message, real_url=None):
     :return: requests.Response, the response object
     """
     method, path, headers, data = parse_http_message(http_message)
-    base_url = extract_base_url(http_message)
 
     # TODO backup url not working, may not be needed if  all repeater tabs will have url from mitmproxy requests
     if real_url is None:
+        base_url = extract_base_url(http_message)
         url = f"{base_url}{path}"
     else: url = real_url
 

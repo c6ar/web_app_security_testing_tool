@@ -2,7 +2,7 @@ from common import *
 
 
 class RepeaterTab(ctk.CTkFrame):
-    def __init__(self, master, id_number=0, request=None, hosturl=None):
+    def __init__(self, master, id_number=0, content=None, hosturl=None):
         super().__init__(master)
         self.hosturl = hosturl
         self.configure(
@@ -12,10 +12,7 @@ class RepeaterTab(ctk.CTkFrame):
         )
         self.gui = master
         self.id = id_number
-        if self.id == 0:
-            self.is_empty = True
-        else:
-            self.is_empty = False
+        self.is_empty = True
 
         self.top_bar = ctk.CTkFrame(self, fg_color="transparent")
         self.top_bar.grid(row=0, column=0, columnspan=2, padx=10, pady=10, sticky="ew")
@@ -48,8 +45,19 @@ class RepeaterTab(ctk.CTkFrame):
             command=self.prev_iteration,
             state=tk.DISABLED
         )
-        self.prev_button.pack(padx=10, pady=10, side="left")
         self.prev_button.configure(width=20)
+        self.prev_button.pack(padx=10, pady=10, side="left")
+
+        self.iteration_var = tk.StringVar(self.top_bar)
+        self.iteration_var.set("Select Iteration")
+
+        # self.iteration_dropdown = ctk.CTkOptionMenu(
+        #     self.top_bar,
+        #     variable=self.iteration_var,
+        #     command=self.select_iteration,
+        #     state=tk.DISABLED
+        # )
+        # self.iteration_dropdown.pack(side="left", padx=10, pady=10)
 
         self.iteration_label = ctk.CTkLabel(self.top_bar, text="")
         self.iteration_label.configure(width=150)
@@ -79,8 +87,8 @@ class RepeaterTab(ctk.CTkFrame):
         self.request_textbox = TextBox(self, text="Enter request here.")
         self.request_textbox.configure(font=self.request_textbox.monoscape_font_italic)
         self.request_textbox.grid(row=2, column=0, padx=(20, 10), pady=(0, 20), sticky="nsew")
-        if request is not None:
-            self.request_textbox.insert_text(request)
+        if content is not None:
+            self.request_textbox.insert_text(content)
             self.is_empty = False
         self.request_textbox.bind("<<Modified>>", self.on_request_textbox_change)
 
@@ -123,7 +131,7 @@ class RepeaterTab(ctk.CTkFrame):
         request_text = self.request_textbox.get_text()
         request_host = self.hosturl_entry.get()
         if len(request_text) > 0 and len(request_host) > 0:
-            response = send_http_message(request_text, request_host)
+            response = send_http_message(request_text, real_url=request_host)
 
             response_text = process_response(response)
             self.add_response_to_repeater_tab(response_text)
@@ -134,11 +142,12 @@ class RepeaterTab(ctk.CTkFrame):
             self.tab_iteration_keys.insert(-1, timestamp)
             self.current_iteration_index = len(self.tab_iteration_keys) - 1
             self.update_chronology_controls()
+            # self.update_dropdown_menu()
 
     def add_response_to_repeater_tab(self, response):
-        self.response_textbox.configure(state="normal")
+        self.response_textbox.configure(state=tk.NORMAL)
         self.response_textbox.insert_text(response)
-        self.response_textbox.configure(state="disabled")
+        self.response_textbox.configure(state=tk.DISABLED)
 
     def update_chronology_controls(self):
         if self.current_iteration_index > 0:
@@ -153,6 +162,21 @@ class RepeaterTab(ctk.CTkFrame):
 
         iteration_name = self.tab_iteration_keys[self.current_iteration_index]
         self.iteration_label.configure(text=iteration_name)
+        # self.iteration_var.set(iteration_name)
+
+    def update_dropdown_menu(self):
+        # menu = self.iteration_dropdown.children["menu"]
+        # menu.delete(0, "end")
+        # for key in self.tab_iteration_keys:
+        #     menu.add_command(label=key, command=lambda k=key: self.select_iteration(k))
+        # self.iteration_dropdown.configure(state=tk.NORMAL)
+        pass
+
+    def select_iteration(self, iteration_name):
+        if iteration_name in self.tab_iteration_keys:
+            self.current_iteration_index = self.tab_iteration_keys.index(iteration_name)
+            self.load_iteration(self.current_iteration_index)
+            self.update_chronology_controls()
 
     def prev_iteration(self):
         if self.current_iteration_index > 0:
@@ -244,14 +268,14 @@ class GUIRepeater(ctk.CTkFrame):
             button.main_button.configure(text=str(i + 1), command=lambda t=i: self.show_tab(t))
             self.tabs[i].update_number(i)
 
-    def add_request_to_repeater_tab(self, request, url=None):
+    def add_request_to_repeater_tab(self, content, host=None):
         for tab in self.tabs:
             if tab.is_empty:
-                tab.hosturl = url
-                tab.hosturl_entry.insert(0, url)
-                tab.request_textbox.insert_text(request)
+                tab.hosturl = host
+                tab.hosturl_entry.insert(0, host)
+                tab.request_textbox.insert_text(content)
                 tab.is_empty = False
                 return
         else:
-            new_frame = RepeaterTab(self, len(self.tab_nav_buttons), request, url)
-            self.add_tab(new_frame)
+            new_tab = RepeaterTab(self, len(self.tab_nav_buttons), content, host)
+            self.add_tab(new_tab)

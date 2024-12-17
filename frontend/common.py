@@ -51,6 +51,7 @@ from tkinter import filedialog
 from utils.request_methods import *
 # noinspection PyUnresolvedReferences
 from utils.get_domain import *
+import tkinterweb
 
 #
 # Global settings and variables
@@ -125,14 +126,14 @@ intercept_off_image = ctk.CTkImage(light_image=Image.open(f"{ASSET_DIR}\\interce
 intercept_on_image = ctk.CTkImage(light_image=Image.open(f"{ASSET_DIR}\\intercept_on_light.png"),
                                   dark_image=Image.open(f"{ASSET_DIR}\\intercept_on.png"), size=(87, 129))
 
-
-# TODO FRONTEND: Add theme support, after settings implemented.
-# TODO FRONTEND: Add lang support only EN and PL.
+# TODO FRONTEND P3: Add confirm dialog to close the app with data getting lost.
+#  - Option to disable the dialog in the config.
+# TODO FRONTEND P3: Add translation support only for locales: EN and PL.
 #
 # Common functions
 #
 def load_config():
-    # TODO OTHER: Actual implmentation of config logic in the app
+    # TODO OTHER P2: Actual implmentation of config logic in the app
     default_config = {
         "theme": "system",
         "lang": "en",
@@ -240,7 +241,7 @@ def center_window(root_window, window, width, height):
 
 
 class ActionButton(ctk.CTkButton):
-    # TODO FRONTEND: Find a solution for flickering - it's caused by configuring its disabled state when lists r empty
+    # TODO FRONTEND P4: Find a solution for flickering - it's caused by configuring its disabled state when lists r empty
     """
     A preset action button based on CTkButton.
     """
@@ -295,7 +296,10 @@ class NavButton(ctk.CTkFrame):
             font=font
         )
         if icon is not None:
-            icon.configure(size=(15, 15))
+            try:
+                icon.configure(size=(15, 15))
+            except Exception as e:
+                print(e)
             self.main_button.configure(
                 image=icon,
                 compound=compound
@@ -339,7 +343,7 @@ class HeaderTitle(ctk.CTkLabel):
             height=height,
             fg_color="transparent",
             bg_color="transparent",
-            corner_radius=0
+            corner_radius=10
         )
 
 

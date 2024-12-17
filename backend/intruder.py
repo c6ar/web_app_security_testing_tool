@@ -19,7 +19,7 @@ def sniper_attack(dict_wrold_list, request, position):
         first_value = dict_wrold_list[first_key]
         words = first_value.split('\n')
         for word in words:
-                
+                pass
 
 
 def ram_attack(dict_wrold_list, request):
