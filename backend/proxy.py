@@ -254,6 +254,7 @@ class WebRequestInterceptor:
         Serializes request and sends it to GUI scope tab.
         """
         try:
+            print(f"\n\nSending intercepted request to Frontend:\n{request.data}")
             serialized_request2 = pickle.dumps(request)
         except Exception as e:
             print(f"\nError while serialization before sending to scope tab: {e}")
@@ -278,13 +279,7 @@ class WebRequestInterceptor:
                 if serialized_reqeust:
                     deserialized_request = pickle.loads(serialized_reqeust)
                     flow.request.data = deserialized_request.data
-                    if not flow.request.host:
-                        flow.request.host = deserialized_request.host
-                    if not flow.request.path:
-                        flow.request.path = deserialized_request.path
-                    if not flow.request.scheme:
-                        flow.request.scheme = deserialized_request.scheme
-                    print(f"Request data after pressing forward button: {flow.request}")
+                    print(f"\n\nForwarding intercepted request from Frontend:\n{flow.request.data}")
                     if flow.intercepted:
                         flow.resume()
 

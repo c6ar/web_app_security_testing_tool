@@ -512,3 +512,15 @@ class TextEntry(ctk.CTkEntry):
                        text_color=color_text,
                        fg_color=color_bg_br,
                        bg_color="transparent")
+
+
+class Label(ctk.CTkLabel):
+    """
+    Custom Label class
+    """
+    def __init__(self, parent, *args, **kwargs):
+        super().__init__(parent, *args, **kwargs)
+        self.configure(corner_radius=10,
+                       text_color=color_text,
+                       fg_color="transparent",
+                       bg_color="transparent")

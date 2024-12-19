@@ -215,7 +215,19 @@ class GUIProxy(ctk.CTkFrame):
         self.it_browser_button = ActionButton(
             self.it_top_bar, text="Open browser", image=icon_browser, command=self.root.start_browser_thread)
 
-        self.it_top_pane = ctk.CTkFrame(self.intercept_tab, corner_radius=10, fg_color=color_bg, bg_color="transparent")
+        self.it_top_bar_buttons = [
+            self.it_drop_button,
+            self.it_forward_button,
+            self.it_send_to_intruder_button,
+            self.it_send_to_repeater_button
+        ]
+        self.it_toggle_intercept_button.pack(side=tk.LEFT, padx=(10, 15), pady=15)
+        for button in self.it_top_bar_buttons:
+            button.pack(side=tk.LEFT, padx=5, pady=15)
+        self.it_browser_button.pack(side=tk.RIGHT, padx=(5, 10), pady=15)
+
+        self.it_intercepted_request = None
+
         self.it_request_list = []
         self.it_current_request = None
         self.it_request_list_empty = True
@@ -232,18 +244,31 @@ class GUIProxy(ctk.CTkFrame):
         self.it_request_wrapper = ctk.CTkFrame(self.intercept_tab, fg_color=color_bg, bg_color="transparent", corner_radius=10)
         self.it_request_wrapper.pack(fill="both", expand=True, padx=5, pady=5)
 
-        self.it_request_wrapper_header = ctk.CTkLabel(self.it_request_wrapper, text="")
+        self.it_request_fields = ctk.CTkFrame(self.it_request_wrapper, fg_color="transparent", bg_color="transparent", corner_radius=10)
+        self.it_request_info = Label(self.it_request_fields, text="")
+        self.it_request_info.pack(side=tk.LEFT, padx=10, pady=5)
+
+        self.it_request_host_label = Label(self.it_request_fields, text="Host")
+        self.it_request_host_label.pack(side=tk.LEFT, padx=(10, 5), pady=5)
+        self.it_request_host_entry = TextEntry(self.it_request_fields, width=200)
+        self.it_request_host_entry.pack(side=tk.LEFT, padx=(0, 10), pady=5)
+
+        self.it_request_port_label = Label(self.it_request_fields, text="Port")
+        self.it_request_port_label.pack(side=tk.LEFT, padx=(10, 5), pady=5)
+        self.it_request_port_entry = TextEntry(self.it_request_fields, width=200)
+        self.it_request_port_entry.pack(side=tk.LEFT, padx=(0, 10), pady=5)
+
+        self.it_request_scheme_label = Label(self.it_request_fields, text="Scheme")
+        self.it_request_scheme_label.pack(side=tk.LEFT, padx=(10, 5), pady=5)
+        self.it_request_scheme_entry = TextEntry(self.it_request_fields, width=200)
+        self.it_request_scheme_entry.pack(side=tk.LEFT, padx=(0, 10), pady=5)
+
+        self.it_request_authority_label = Label(self.it_request_fields, text="Authority")
+        self.it_request_authority_label.pack(side=tk.LEFT, padx=(10, 5), pady=5)
+        self.it_request_authority_entry = TextEntry(self.it_request_fields, width=200)
+        self.it_request_authority_entry.pack(side=tk.LEFT, padx=(0, 10), pady=5)
+
         self.it_request_textbox = TextBox(self.it_request_wrapper, "")
-        self.it_top_bar_buttons = [
-            self.it_drop_button,
-            self.it_forward_button,
-            self.it_send_to_intruder_button,
-            self.it_send_to_repeater_button
-        ]
-        self.it_toggle_intercept_button.pack(side=tk.LEFT, padx=(10, 15), pady=15)
-        for button in self.it_top_bar_buttons:
-            button.pack(side=tk.LEFT, padx=5, pady=15)
-        self.it_browser_button.pack(side=tk.RIGHT, padx=(5, 10), pady=15)
 
         """
          > SCOPE TAB:
@@ -603,7 +628,7 @@ class GUIProxy(ctk.CTkFrame):
     def it_receive_request(self):
         """
         Intercept Tab:
-            Receives request from flow.request and adds it to scope tab.
+            Receives request from flow.request and adds it to intercept tab.
             and runs self.htt_add_request_to_list with received tab
         """
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
@@ -620,11 +645,9 @@ class GUIProxy(ctk.CTkFrame):
                             deserialized_request = pickle.loads(serialized_reqeust)
                             request2 = Request2.from_request(deserialized_request)
 
-                            self.it_request_list.append(request2)
-                            self.it_request_list_empty = False
-                            if self.it_current_request is None:
-                                self.it_current_request = request2
-                                self.it_show_request()
+                            self.it_intercepted_request = request2
+                            self.it_show_request()
+
                         except Exception as e:
                             print(f"Error while deserialization recieved in scope: {e}")
 
@@ -633,45 +656,60 @@ class GUIProxy(ctk.CTkFrame):
         Intercept Tab:
             Shows info and HTTP message of an intercepted request.
         """
-        host = self.it_current_request.host
-        url = self.it_current_request.path
-        method = self.it_current_request.method
-        request_info = f"{method} request to {host} ({host+url})"
-        request_content = self.it_current_request.return_http_message()
+        version = self.it_intercepted_request.http_version
+        host = self.it_intercepted_request.host
+        port = self.it_intercepted_request.port
+        scheme = self.it_intercepted_request.scheme
+        authority = self.it_intercepted_request.authority
+        request_content = self.it_intercepted_request.return_http_message()
 
-        self.it_request_wrapper_header.configure(text=request_info)
-        self.it_request_wrapper_header.pack(fill=tk.X, padx=10, pady=10)
+        self.it_request_info.configure(text=f"{version} request")
+        self.it_request_host_entry.insert("0", host)
+        self.it_request_port_entry.insert("0", port)
+        self.it_request_scheme_entry.insert("0", scheme)
+        self.it_request_authority_entry.insert("0", authority)
+        self.it_request_fields.pack(fill=tk.X, padx=10, pady=10)
         self.it_request_textbox.insert_text(request_content)
         self.it_request_textbox.pack(pady=10, padx=10, fill="both", expand=True)
 
-        if not self.it_request_list_empty:
-            for button in self.it_top_bar_buttons:
-                if str(button.cget("state") != "normal"):
-                    button.configure(state="normal")
+        for button in self.it_top_bar_buttons:
+            if str(button.cget("state") != "normal"):
+                button.configure(state="normal")
 
     def it_remove_request(self):
         """
         Intercept Tab:
             Hides request info and HTTP message after dropping, forwarding it.
         """
-        self.it_request_wrapper_header.configure(text="")
-        self.it_request_wrapper_header.pack_forget()
+        self.it_intercepted_request = None
+
+        self.it_request_info.configure(text="")
+        self.it_request_host_entry.delete("0", tk.END)
+        self.it_request_port_entry.delete("0", tk.END)
+        self.it_request_scheme_entry.delete("0", tk.END)
+        self.it_request_authority_entry.delete("0", tk.END)
+        self.it_request_fields.pack_forget()
         self.it_request_textbox.insert_text("")
         self.it_request_textbox.pack_forget()
-        if self.it_request_list_empty:
-            for button in self.it_top_bar_buttons:
-                if str(button.cget("state") != "disabled"):
-                    button.configure(state="disabled")
+
+        for button in self.it_top_bar_buttons:
+            if str(button.cget("state") != "disabled"):
+                button.configure(state="disabled")
 
     def it_forward_request(self):
         """
         Intercept Tab:
             Sends a request from Intercept tab textbox, request is forwarded to web browser.
         """
-        request_content = self.it_request_textbox.get_text()
+        request_content = self.it_request_textbox.get_text().replace("\r", "")
 
         if len(request_content) > 0:
             request2 = Request2.from_http_message(request_content)
+            request2.host = self.it_intercepted_request.host
+            request2.port = self.it_intercepted_request.port
+            request2.scheme = self.it_intercepted_request.scheme
+            request2.authority = self.it_intercepted_request.authority
+
             request = request2.to_request()
             serialized_reqeust = pickle.dumps(request)
 
@@ -679,19 +717,9 @@ class GUIProxy(ctk.CTkFrame):
                 with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
                     s.connect((HOST, FRONT_BACK_FORWARDBUTTON_PORT))
                     s.sendall(serialized_reqeust)
-                    self.it_current_request = None
+                    self.it_remove_request()
             except Exception as e:
-                print(f"Error while sending after Forward button: {e}")
-
-            self.it_request_list.pop(0)
-
-            if len(self.it_request_list) > 0:
-                self.it_current_request = self.it_request_list[0]
-                self.it_show_request()
-            else:
-                self.it_current_request = None
-                self.it_request_list_empty = True
-                self.it_remove_request()
+                print(f"ERROR/FRONTEND/PROXY: Forwarding intercepted request failed: {e}")
 
     def it_drop_request(self):
         """
@@ -707,27 +735,18 @@ class GUIProxy(ctk.CTkFrame):
                     s.connect((HOST, FRONT_BACK_DROPREQUEST_PORT))
                     serialized_flag = flag.encode("utf-8")
                     s.sendall(serialized_flag)
+                    self.it_remove_request()
             except Exception as e:
-                print(f"Error while sending flag to kill process: {e}")
+                print(f"ERROR/FRONTEND/PROXY: Droping intercepted request failed: {e}")
 
             try:
                 if self.root.browser is not None:
-                    self.root.browser.quit()
-                    # if len(self.root.browser.window_handles) > 0:
-                    #     self.root.browser.execute_script(
-                    #         "alert('WASTT: Request has been dropped by user. Please close this page.');")
+                    # self.root.browser.quit()
+                    if len(self.root.browser.window_handles) > 0:
+                        self.root.browser.execute_script(
+                            "alert('WASTT: Request has been dropped by user. Please close this page.');")
             except Exception as e:
                 print(f"Error while letting know about dropped request: {e}")
-
-            index = self.it_request_list.index(self.it_current_request)
-            self.it_request_list.pop(index)
-
-            if len(self.it_request_list) > 0:
-                self.it_current_request = self.it_request_list[0]
-                self.it_show_request()
-            else:
-                self.it_request_list_empty = True
-                self.it_remove_request()
 
     def it_send_request(self, dest):
         request_content = self.it_request_textbox.get_text()
@@ -803,7 +822,8 @@ class GUIProxy(ctk.CTkFrame):
         Scope Tab:
             Submit the provided custom URL in the dialog.
         """
-        if len(url) > 0 and re.match(r"^[a-zA-Z0-9-]+\.[a-zA-Z]{1,3}$", url):
+        pattern = r"^(?:[a-zA-Z0-9-]+\.)*[a-zA-Z0-9-]+\.[a-zA-Z]{1,3}$"
+        if len(url) > 0 and re.match(pattern, url):
             self.st_add_url(url)
             self.st_add_url_dialog.destroy()
 
@@ -824,7 +844,7 @@ class GUIProxy(ctk.CTkFrame):
                 serialized_data = pickle.dumps(data_to_send)
                 s.connect((HOST, FRONT_BACK_SCOPEUPDATE_PORT))
                 s.sendall(serialized_data)
-                self.st_url_list.insert("", tk.END, values=(True, extract_domain(hostname)))
+                self.st_url_list.insert("", tk.END, values=(True, hostname))
         except Exception as e:
             print(f"Error while sendind request to filter: {e}")
 
