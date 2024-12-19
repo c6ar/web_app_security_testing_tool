@@ -619,7 +619,6 @@ class GUIProxy(ctk.CTkFrame):
                         try:
                             deserialized_request = pickle.loads(serialized_reqeust)
                             request2 = Request2.from_request(deserialized_request)
-
                             self.it_request_list.append(request2)
                             self.it_request_list_empty = False
                             if self.it_current_request is None:
@@ -668,10 +667,14 @@ class GUIProxy(ctk.CTkFrame):
         Intercept Tab:
             Sends a request from Intercept tab textbox, request is forwarded to web browser.
         """
-        request_content = self.it_request_textbox.get_text()
-
+        request_content = self.it_request_textbox.get_text().replace("\r", "")
         if len(request_content) > 0:
             request2 = Request2.from_http_message(request_content)
+            request2.host = self.it_current_request.host
+            request2.port = self.it_current_request.port
+            request2.scheme = self.it_current_request.scheme
+            request2.authority = self.it_current_request.authority
+
             request = request2.to_request()
             serialized_reqeust = pickle.dumps(request)
 
@@ -712,10 +715,10 @@ class GUIProxy(ctk.CTkFrame):
 
             try:
                 if self.root.browser is not None:
-                    self.root.browser.quit()
-                    # if len(self.root.browser.window_handles) > 0:
-                    #     self.root.browser.execute_script(
-                    #         "alert('WASTT: Request has been dropped by user. Please close this page.');")
+                    # self.root.browser.quit()
+                    if len(self.root.browser.window_handles) > 0:
+                        self.root.browser.execute_script(
+                            "alert('WASTT: Request has been dropped by user. Please close this page.');")
             except Exception as e:
                 print(f"Error while letting know about dropped request: {e}")
 
@@ -803,7 +806,8 @@ class GUIProxy(ctk.CTkFrame):
         Scope Tab:
             Submit the provided custom URL in the dialog.
         """
-        if len(url) > 0 and re.match(r"^[a-zA-Z0-9-]+\.[a-zA-Z]{1,3}$", url):
+        pattern = r"^(?:[a-zA-Z0-9-]+\.)*[a-zA-Z0-9-]+\.[a-zA-Z]{1,3}$"
+        if len(url) > 0 and re.match(pattern, url):
             self.st_add_url(url)
             self.st_add_url_dialog.destroy()
 
@@ -824,7 +828,7 @@ class GUIProxy(ctk.CTkFrame):
                 serialized_data = pickle.dumps(data_to_send)
                 s.connect((HOST, FRONT_BACK_SCOPEUPDATE_PORT))
                 s.sendall(serialized_data)
-                self.st_url_list.insert("", tk.END, values=(True, extract_domain(hostname)))
+                self.st_url_list.insert("", tk.END, values=(True, hostname))
         except Exception as e:
             print(f"Error while sendind request to filter: {e}")
 
