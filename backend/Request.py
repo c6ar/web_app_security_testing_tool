@@ -29,7 +29,6 @@ class Request2(Request):
             'trailers': self.trailers,
             'timestamp_start': self.timestamp_start,
             'timestamp_end': self.timestamp_end,
-            'forward_flag': self.forward_flag
         }
 
     @classmethod

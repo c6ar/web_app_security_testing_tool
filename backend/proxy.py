@@ -14,7 +14,7 @@ class WebRequestInterceptor:
     def __init__(self):
         # TODO BACKEND: filter with subdomains, not with domain only
         self.scope = []
-        self.loop = asyncio.new_event_loop()  # Tworzymy pętlę asyncio dla tego obiektu
+        self.loop = asyncio.new_event_loop()
         self.start_async_servers()
         self.current_flow = None
         self.intercept_state = False
@@ -31,9 +31,7 @@ class WebRequestInterceptor:
         request = flow.request
         self.current_flow = flow
         flow.intercept()
-        #self.repeater_flow = flow.copy()
         self.repeater_backup_flow = flow.copy()
-        # TODO BACKEND P1: Fix scope or intercept or forward request stuff that I broke - sorry
         # TODO BACKEND P1: Add logic that if len(self.scope) == 0 it intercepts any request
         # TODO BACKEND P3: Expand telemetry for other browsers?
 
@@ -90,15 +88,15 @@ class WebRequestInterceptor:
 
     async def handle_toggle_intercept(self, reader, writer):
         data = await reader.read(4096)
+        print(self.backup)
         if data:
             self.intercept_state = not self.intercept_state
             if not self.intercept_state:
-                self.backup = self.scope
                 self.scope = []
                 if self.current_flow.intercepted:
                     self.current_flow.resume()
             else:
-                self.scope = self.backup
+                self.scope = self.backup.copy()
         print(f"Intercepting state: {self.intercept_state}")
         writer.close()
         await writer.wait_closed()
@@ -157,15 +155,18 @@ class WebRequestInterceptor:
         data = await reader.read(4096)
         if data:
             bad_request = Request.make(
-                method="POST",
+                method="GET",
                 url="https://google.com",
                 content="",
                 headers={"Accept": "*/*"}
             )
-
-            self.current_flow.request.data = bad_request.data
+            self.current_flow.request.host = "google.com"
+            self.current_flow.request.url = "https://google.com"
+            self.current_flow.request.port = 443
+            self.current_flow.request.scheme = "https"
             self.current_flow.resume()
-            print(f"\nReceived request to kill flow")
+            if not self.current_flow.intercepted:
+                print(f"\nReceived request to kill flow")
         writer.close()
         await writer.wait_closed()
 
