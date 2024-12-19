@@ -84,6 +84,24 @@ ASSET_DIR = f"{Path.cwd()}\\assets"
 #
 # Icon and image assets loading
 #
+icon_proxy = ctk.CTkImage(
+    light_image=Image.open(f"{ASSET_DIR}\\icon_proxy_light.png"),
+    dark_image=Image.open(f"{ASSET_DIR}\\icon_proxy.png"), size=(20, 20))
+icon_intruder = ctk.CTkImage(
+    light_image=Image.open(f"{ASSET_DIR}\\icon_intruder_light.png"),
+    dark_image=Image.open(f"{ASSET_DIR}\\icon_intruder.png"), size=(20, 20))
+icon_repeater = ctk.CTkImage(
+    light_image=Image.open(f"{ASSET_DIR}\\icon_repeater_light.png"),
+    dark_image=Image.open(f"{ASSET_DIR}\\icon_repeater.png"), size=(20, 20))
+icon_logs = ctk.CTkImage(
+    light_image=Image.open(f"{ASSET_DIR}\\icon_logs_light.png"),
+    dark_image=Image.open(f"{ASSET_DIR}\\icon_logs.png"), size=(20, 20))
+icon_settings = ctk.CTkImage(
+    light_image=Image.open(f"{ASSET_DIR}\\icon_settings_light.png"),
+    dark_image=Image.open(f"{ASSET_DIR}\\icon_settings.png"), size=(20, 20))
+icon_info = ctk.CTkImage(
+    light_image=Image.open(f"{ASSET_DIR}\\icon_info_light.png"),
+    dark_image=Image.open(f"{ASSET_DIR}\\icon_info.png"), size=(20, 20))
 icon_toggle_on = ctk.CTkImage(
     light_image=Image.open(f"{ASSET_DIR}\\icon_toggle_on.png"),
     dark_image=Image.open(f"{ASSET_DIR}\\icon_toggle_on.png"), size=(20, 20))
@@ -111,15 +129,12 @@ icon_browser = ctk.CTkImage(
 icon_delete = ctk.CTkImage(
     light_image=Image.open(f"{ASSET_DIR}\\icon_delete.png"),
     dark_image=Image.open(f"{ASSET_DIR}\\icon_delete.png"), size=(20, 20))
-icon_settings = ctk.CTkImage(
-    light_image=Image.open(f"{ASSET_DIR}\\icon_settings_light.png"),
-    dark_image=Image.open(f"{ASSET_DIR}\\icon_settings.png"), size=(20, 20))
+icon_load_file = ctk.CTkImage(
+    light_image=Image.open(f"{ASSET_DIR}\\icon_load_file.png"),
+    dark_image=Image.open(f"{ASSET_DIR}\\icon_load_file.png"), size=(20, 20))
 icon_add = ctk.CTkImage(
     light_image=Image.open(f"{ASSET_DIR}\\icon_add.png"),
     dark_image=Image.open(f"{ASSET_DIR}\\icon_add.png"), size=(20, 20))
-icon_info = ctk.CTkImage(
-    light_image=Image.open(f"{ASSET_DIR}\\icon_info_light.png"),
-    dark_image=Image.open(f"{ASSET_DIR}\\icon_info.png"), size=(20, 20))
 icon_attack = ctk.CTkImage(
     light_image=Image.open(f"{ASSET_DIR}\\icon_attack.png"),
     dark_image=Image.open(f"{ASSET_DIR}\\icon_attack.png"), size=(20, 20))
@@ -257,8 +272,6 @@ class ActionButton(ctk.CTkButton):
             self.configure(corner_radius=10)
         if "width" not in kwargs:
             self.configure(width=120)
-        if "text_color_disabled" not in kwargs:
-            self.configure(text_color_disabled="white")
 
     def toggle_state(self, state="normal"):
         self.configure(state=state)
