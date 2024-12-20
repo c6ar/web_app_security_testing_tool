@@ -251,17 +251,15 @@ class GUIProxy(ctk.CTkFrame):
         self.it_request_buttons.pack(fill=tk.X, padx=10, pady=(10, 5))
 
         self.it_drop_button = ActionButton(
-            self.it_request_buttons, text=f"Drop",  # image=icon_arrow_down,
-            command=self.it_drop_request, state=tk.DISABLED)
+            self.it_request_buttons, text=f"Drop", image=icon_arrow_down,
+            command=self.it_drop_request)
         self.it_forward_button = ActionButton(
-            self.it_request_buttons, text="Forward",  # image=icon_arrow_up,
-            command=self.it_forward_request, state=tk.DISABLED)
+            self.it_request_buttons, text="Forward", image=icon_arrow_up,
+            command=self.it_forward_request)
         self.it_send_to_intruder_button = ActionButton(
-            self.it_request_buttons, text=f"Send to intruder", command=lambda: self.it_send_request("intruder"),
-            state=tk.DISABLED)
+            self.it_request_buttons, text=f"Send to intruder", command=lambda: self.it_send_request("intruder"))
         self.it_send_to_repeater_button = ActionButton(
-            self.it_request_buttons, text=f"Send to repeater", command=lambda: self.it_send_request("repeater"),
-            state=tk.DISABLED)
+            self.it_request_buttons, text=f"Send to repeater", command=lambda: self.it_send_request("repeater"))
         self.it_top_bar_buttons = [
             self.it_drop_button,
             self.it_forward_button,
@@ -971,7 +969,6 @@ class GUIProxy(ctk.CTkFrame):
         if self.st_url_list_empty:
             self.toggle_list_actions(self.st_url_list, "normal")
             self.st_url_list_empty = False
-        print(self.st_url_list.item('I001'))
         self.it_interceptor_status_update()
 
     def st_remove_url(self, hostname_to_remove=None):

@@ -264,7 +264,6 @@ def center_window(root_window, window, width, height):
 
 
 class ActionButton(ctk.CTkButton):
-    # TODO FRONTEND P4: Find a solution for flickering - it's caused by configuring its disabled state when lists r empty
     """
     A preset action button based on CTkButton.
     """
