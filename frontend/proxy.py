@@ -1,22 +1,6 @@
 from common import *
 
 
-# TODO BACKEND/FRONTEND: Can we combine it with Intercept's Tab toggle method
-#  - also sending static True/False instead of toggle.
-def change_intercept_state():
-    """
-        Toggles intercepting at the backend
-    """
-    flag = "Change state"
-    try:
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-            s.connect((HOST, FRONT_BACK_INTERCEPTBUTTON_PORT))
-            serialized_flag = flag.encode("utf-8")
-            s.sendall(serialized_flag)
-    except Exception as e:
-        print(f"Error while sending change intercept state flag: {e}")
-
-
 class HTTPTrafficTab(ctk.CTkFrame):
     def __init__(self, master, root):
         super().__init__(master)
@@ -598,16 +582,21 @@ class InterceptTab(ctk.CTkFrame):
     def toggle_intercept(self):
         """
         Intercept Tab:
-            Toggles intercepting
+            Toggles intercepting on the frontend and sends flag to the backend.
         """
-        if self.gui.intercepting:
-            self.gui.intercepting = False
-            # print("DEBUG/FRONTEND/PROXY: Turning intercept off.")
-        else:
-            self.gui.intercepting = True
-            # print("DEBUG/FRONTEND/PROXY: Turning intercept on.")
+        self.gui.intercepting = not self.gui.intercepting
+        # print(f"DEBUG/FRONTEND/PROXY: Intercept state {self.gui.intercepting}.")
         self.interceptor_status_update()
-        change_intercept_state()
+
+        # TODO BACKEND: Can we have an actual bool state of self.gui.intercepting sent to backend instead of toggle flag?
+        flag = "Change state"
+        try:
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                s.connect((HOST, FRONT_BACK_INTERCEPTBUTTON_PORT))
+                serialized_flag = flag.encode("utf-8")
+                s.sendall(serialized_flag)
+        except Exception as e:
+            print(f"Error while sending change intercept state flag: {e}")
 
     def interceptor_status_update(self):
         if self.gui.intercepting:
