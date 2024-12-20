@@ -131,18 +131,20 @@ class RepeaterTab(ctk.CTkFrame):
         request_text = self.request_textbox.get_text()
         request_host = self.hosturl_entry.get()
         if len(request_text) > 0 and len(request_host) > 0:
-            response = send_http_message(request_text, real_url=request_host)
+            try:
+                response = send_http_message(request_text, real_url=request_host)
+                response_text = process_response(response)
+                self.add_response_to_repeater_tab(response_text)
 
-            response_text = process_response(response)
-            self.add_response_to_repeater_tab(response_text)
+                timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
-            self.tab_iterations[timestamp] = [request_text, response_text]
-            self.tab_iteration_keys.insert(0, timestamp)
-            self.current_iteration_index = 0
-            self.update_chronology_controls()
-            self.update_dropdown_menu()
+                self.tab_iterations[timestamp] = [request_text, response_text]
+                self.tab_iteration_keys.insert(0, timestamp)
+                self.current_iteration_index = 0
+                self.update_chronology_controls()
+                self.update_dropdown_menu()
+            except Exception as e:
+                dialog = ConfirmDialog(self, self.gui, prompt=e, action1="Ok", command1= lambda: dialog.destroy())
 
     def add_response_to_repeater_tab(self, response):
         self.response_textbox.configure(state=tk.NORMAL)

@@ -1,6 +1,8 @@
 from common import *
 
 
+# TODO BACKEND/FRONTEND: Can we combine it with Intercept's Tab toggle method
+#  - also sending static True/False instead of toggle.
 def change_intercept_state():
     """
         Toggles intercepting at the backend
@@ -14,7 +16,9 @@ def change_intercept_state():
     except Exception as e:
         print(f"Error while sending change intercept state flag: {e}")
 
-
+# TODO FRONTEND P2: Splitting the class into three classes: main GUI and two tab classes
+#  - too much methods and fields as for the one class. :/
+# TODO FRONTEND P2: Merge Scope Tab into Intercept Tab
 class GUIProxy(ctk.CTkFrame):
     """
         GUI for Proxy Tab of WASTT.
@@ -58,7 +62,7 @@ class GUIProxy(ctk.CTkFrame):
 
         self.htt_add_to_scope_button = ActionButton(
             self.htt_top_bar, text="Add to scope",  # image=icon_add,
-            command=self.st_add_url,
+            command=lambda: self.htt_update_scope(),
             state=tk.DISABLED)
         self.htt_send_requests_to_intruder_button = ActionButton(
             self.htt_top_bar, text="Send to intruder",  # image=icon_arrow_up,
@@ -68,25 +72,31 @@ class GUIProxy(ctk.CTkFrame):
             self.htt_top_bar, text="Send to repeater",  # image=icon_arrow_up,
             command=lambda: self.htt_send_request("repeater"),
             state=tk.DISABLED)
+        self.htt_filter_list_button = ActionButton(
+            self.htt_top_bar, text=f"Filter the list with scope", # image=icon_random,
+            command=self.htt_filter_list_with_scope)
         self.htt_delete_requests_button = ActionButton(
             self.htt_top_bar, text="Delete all requests",  # image=icon_delete,
             command=self.htt_remove_all_requests_from_list,
             state=tk.DISABLED,
             fg_color=color_acc3, hover_color=color_acc4)
+        self.htt_add_random_entry = ActionButton(
+            self.htt_top_bar, text=f"Random request", image=icon_random,
+            command=self.htt_generate_random_request)
         self.htt_browser_button = ActionButton(
             self.htt_top_bar, text="Open browser", image=icon_browser,
             command=self.root.start_browser_thread)
         self.htt_proxy_button = ActionButton(
             self.htt_top_bar, text="Re-run proxy", image=icon_reload,
             command=self.run_mitmdump)
-        self.htt_add_random_entry = ActionButton(
-            self.htt_top_bar, text=f"Random request", image=icon_random,
-            command=self.htt_generate_random_request)
+
+        self.htt_request_list_filtered = False
 
         self.htt_top_bar_buttons = [
             self.htt_add_to_scope_button,
             self.htt_send_requests_to_intruder_button,
             self.htt_send_requests_to_repeater_button,
+            self.htt_filter_list_button,
             self.htt_delete_requests_button
         ]
         for ind, button in enumerate(self.htt_top_bar_buttons):
@@ -111,13 +121,12 @@ class GUIProxy(ctk.CTkFrame):
                                          bg_color="transparent")
         self.htt_paned_window.add(self.htt_top_pane, height=350)
 
-        # TODO FRONTEND P2: Sorting and filtering of the list.
-        # TODO FRONTEND P2: Enable filter to sort only for hostnames in the scope.
         htt_columns = ("Host", "URL", "Method", "Request", "Status code", "Title", "Length", "Response", "RealURL")
         self.htt_request_list = ItemList(self.htt_top_pane, columns=htt_columns, show="headings", style="Treeview")
+        self.htt_request_list_backup = ItemList(self.htt_top_pane, columns=htt_columns)
         self.htt_request_list.bind("<<TreeviewSelect>>", self.htt_show_request_content)
         for col in htt_columns:
-            self.htt_request_list.heading(col, text=col)
+            self.htt_request_list.heading(col, text=col, command=lambda c=col: self.htt_sort_by_column(c, False))
             self.htt_request_list.column(col, width=100)
         self.htt_request_list.column("Request", width=0, stretch=tk.NO)
         self.htt_request_list.column("Response", width=0, stretch=tk.NO)
@@ -130,17 +139,17 @@ class GUIProxy(ctk.CTkFrame):
             command=self.htt_request_list.select_all)
         self.htt_request_list.popup_menu.add_command(
             label="Delete selected",
-            command=self.htt_remove_selected_request_from_list())
+            command=self.htt_remove_selected_request_from_list)
         self.htt_request_list.popup_menu.add_command(
             label="Delete all",
             command=self.htt_remove_all_requests_from_list)
         self.htt_request_list.popup_menu.add_separator()
         self.htt_request_list.popup_menu.add_command(
             label="Add url to the scope",
-            command=lambda: self.from_request_list_to_scope(self.htt_request_list, 0, "add"))
+            command=lambda: self.htt_update_scope("add"))
         self.htt_request_list.popup_menu.add_command(
             label="Remove url from the scope",
-            command=lambda: self.from_request_list_to_scope(self.htt_request_list, 0, "remove"))
+            command=lambda: self.htt_update_scope("remove"))
         self.htt_request_list.popup_menu.add_separator()
         self.htt_request_list.popup_menu.add_command(
             label="Send to intruder",
@@ -183,7 +192,6 @@ class GUIProxy(ctk.CTkFrame):
         self.htt_response_frame = ctk.CTkFrame(self.htt_bottom_pane, fg_color=color_bg, bg_color="transparent")
         self.htt_response_frame.grid(row=0, column=1, sticky="nsew", padx=10, pady=10)
 
-        # TODO FRONTEND P3: Render option for the response or opening the response in the browser's tab
         self.htt_response_header = HeaderTitle(self.htt_response_frame, "Response")
         self.htt_response_header.pack(fill=tk.X)
 
@@ -202,59 +210,70 @@ class GUIProxy(ctk.CTkFrame):
         """
          > INTERCEPT TAB
         """
-        self.it_top_bar = ctk.CTkFrame(self.intercept_tab, height=50, corner_radius=10, fg_color=color_bg,
+        # TODO FRONTEND P2: Layout redesign:
+        # Top-left corner Web Interceptor Widget: Web Interceptor Header, its icon, its toggle button and Open browser button.
+        # Top-right corner Scope Widget, what currently is a whole separate scope tab.
+        # Bottom pane is a Request Editor with buttons for dropping, forwarding and sending do other tabs at the top of it.
+        # Web Interceptor status again as a placeholder in the top pane if there is no Request intercepted.
+
+        self.it_interceptor_wrapper = ctk.CTkFrame(self.intercept_tab, fg_color=color_bg, bg_color="transparent",
+                                                   corner_radius=10)
+        self.it_interceptor_wrapper.pack(side=tk.TOP, fill=tk.X, padx=5, pady=(0, 10))
+
+        self.it_top_bar = ctk.CTkFrame(self.it_interceptor_wrapper, height=50, corner_radius=10, fg_color="transparent",
                                        bg_color="transparent")
-        self.it_top_bar.pack(side=tk.TOP, fill=tk.X, pady=(0, 5), padx=5)
+        self.it_top_bar.pack(side=tk.TOP, fill=tk.X, pady=(5, 0), padx=5)
 
         self.it_toggle_intercept_button = ActionButton(
             self.it_top_bar, text="Intercept off", image=icon_toggle_off, command=self.it_toggle_intercept,
             fg_color=color_green, hover_color=color_green_dk, width=150)
-        self.it_drop_button = ActionButton(
-            self.it_top_bar, text=f"Drop",  # image=icon_arrow_down,
-            command=self.it_drop_request, state=tk.DISABLED)
-        self.it_forward_button = ActionButton(
-            self.it_top_bar, text="Forward",  # image=icon_arrow_up,
-            command=self.it_forward_request, state=tk.DISABLED)
-        self.it_send_to_intruder_button = ActionButton(
-            self.it_top_bar, text=f"Send to intruder", command=lambda: self.it_send_request("intruder"),
-            state=tk.DISABLED)
-        self.it_send_to_repeater_button = ActionButton(
-            self.it_top_bar, text=f"Send to repeater", command=lambda: self.it_send_request("repeater"),
-            state=tk.DISABLED)
+        self.it_toggle_intercept_button.pack(side=tk.LEFT, padx=(10, 15), pady=15)
         self.it_browser_button = ActionButton(
             self.it_top_bar, text="Open browser", image=icon_browser, command=self.root.start_browser_thread)
+        self.it_browser_button.pack(side=tk.RIGHT, padx=(5, 10), pady=15)
 
+        self.it_intercepted_request = None
+
+        self.it_interceptor_image = ctk.CTkLabel(self.it_interceptor_wrapper, image=intercept_off_image, text="")
+        self.it_interceptor_image.pack(side=tk.LEFT, fill=tk.Y, padx=(35, 15), pady=10)
+        self.it_interceptor_info = ctk.CTkFrame(self.it_interceptor_wrapper, bg_color="transparent", corner_radius=10)
+        self.it_interceptor_info.pack(side=tk.LEFT, padx=10, pady=10)
+        self.it_interceptor_state_label = ctk.CTkLabel(self.it_interceptor_info, text="Web Interceptor is off.", justify="left", anchor="nw")
+        self.it_interceptor_state_label.pack(side=tk.TOP, fill=tk.X, padx=10, pady=10)
+        self.it_interceptor_scope_label = ctk.CTkLabel(self.it_interceptor_info, text="", justify="left", anchor="nw")
+        self.it_interceptor_scope_label.pack(side=tk.TOP, fill=tk.X, padx=10, pady=10)
+
+        self.it_request_wrapper = ctk.CTkFrame(self.intercept_tab, fg_color=color_bg, bg_color="transparent",
+                                               corner_radius=10)
+
+        self.it_request_buttons = ctk.CTkFrame(self.it_request_wrapper, fg_color="transparent", bg_color="transparent",
+                                              corner_radius=10)
+        self.it_request_buttons.pack(fill=tk.X, padx=10, pady=(10, 5))
+
+        self.it_drop_button = ActionButton(
+            self.it_request_buttons, text=f"Drop",  # image=icon_arrow_down,
+            command=self.it_drop_request, state=tk.DISABLED)
+        self.it_forward_button = ActionButton(
+            self.it_request_buttons, text="Forward",  # image=icon_arrow_up,
+            command=self.it_forward_request, state=tk.DISABLED)
+        self.it_send_to_intruder_button = ActionButton(
+            self.it_request_buttons, text=f"Send to intruder", command=lambda: self.it_send_request("intruder"),
+            state=tk.DISABLED)
+        self.it_send_to_repeater_button = ActionButton(
+            self.it_request_buttons, text=f"Send to repeater", command=lambda: self.it_send_request("repeater"),
+            state=tk.DISABLED)
         self.it_top_bar_buttons = [
             self.it_drop_button,
             self.it_forward_button,
             self.it_send_to_intruder_button,
             self.it_send_to_repeater_button
         ]
-        self.it_toggle_intercept_button.pack(side=tk.LEFT, padx=(10, 15), pady=15)
         for button in self.it_top_bar_buttons:
-            button.pack(side=tk.LEFT, padx=5, pady=15)
-        self.it_browser_button.pack(side=tk.RIGHT, padx=(5, 10), pady=15)
-
-        self.it_intercepted_request = None
-
-        # TODO FRONTEND P2: Add info what domains are currently intercepted. If scope is empty all domains are.
-        self.it_intercept_info = ctk.CTkFrame(self.intercept_tab, fg_color=color_bg, bg_color="transparent",
-                                              corner_radius=10)
-        self.it_intercept_info.pack(side=tk.TOP, fill=tk.X, padx=5, pady=5)
-
-        self.it_placeholder_image = ctk.CTkLabel(self.it_intercept_info, image=intercept_off_image, text="")
-        self.it_placeholder_image.pack(side=tk.LEFT, padx=(35, 15), pady=10)
-        self.it_placeholder_label = ctk.CTkLabel(self.it_intercept_info, text="", justify="left", anchor="w")
-        self.it_placeholder_label.pack(side=tk.LEFT, padx=10, pady=10)
-
-        self.it_request_wrapper = ctk.CTkFrame(self.intercept_tab, fg_color=color_bg, bg_color="transparent",
-                                               corner_radius=10)
-        self.it_request_wrapper.pack(fill="both", expand=True, padx=5, pady=5)
+            button.pack(side=tk.LEFT, padx=5, pady=(10, 5))
 
         self.it_request_fields = ctk.CTkFrame(self.it_request_wrapper, fg_color="transparent", bg_color="transparent",
                                               corner_radius=10)
-        self.it_request_info = Label(self.it_request_fields, text="")
-        self.it_request_info.pack(side=tk.LEFT, padx=10, pady=5)
+        self.it_request_fields.pack(fill=tk.X, padx=10, pady=5)
 
         self.it_request_host_label = Label(self.it_request_fields, text="Host")
         self.it_request_host_label.pack(side=tk.LEFT, padx=(10, 5), pady=5)
@@ -277,22 +296,24 @@ class GUIProxy(ctk.CTkFrame):
         self.it_request_authority_entry.pack(side=tk.LEFT, padx=(0, 10), pady=5)
 
         self.it_request_textbox = TextBox(self.it_request_wrapper, "")
+        self.it_request_textbox.pack(pady=(5, 10), padx=10, fill="both", expand=True)
 
         """
          > SCOPE TAB:
         """
+
         self.st_wrapper = ctk.CTkFrame(self.scope_tab, corner_radius=10, fg_color=color_bg, bg_color="transparent")
         self.st_wrapper.pack(fill=tk.X, padx=10, pady=0)
 
         self.st_header = HeaderTitle(self.st_wrapper, "Scope")
         self.st_header.pack(fill=tk.X, padx=10, pady=0)
-
-        # TODO FRONTEND P2: Make this widget color_bg_br
-        st_columns = ("Host",)
-        self.st_url_list = ItemList(
-            self.st_wrapper,
-            columns=st_columns, style="Treeview")
-        self.st_url_list.pack(side="left", fill=tk.BOTH, expand=True, padx=5, pady=5)
+        self.st_url_list_wrapper = ctk.CTkFrame(self.st_wrapper,
+                                                corner_radius=10, fg_color=color_bg_br, bg_color="transparent")
+        self.st_url_list_wrapper.pack(side="left", fill=tk.Y, expand=True, padx=10, pady=10)
+        self.st_url_list = ItemList(self.st_url_list_wrapper, columns="Host", style="Treeview2.Treeview")
+        self.st_url_list.pack(side="left", fill=tk.BOTH, expand=True, padx=10, pady=10)
+        self.st_url_list.heading("Host", text="Domain names in the scope")
+        self.st_url_list.column("#0", width=0, stretch=tk.NO)
         self.st_url_list_empty = True
 
         self.st_url_list.popup_menu.add_command(
@@ -307,7 +328,7 @@ class GUIProxy(ctk.CTkFrame):
         self.st_url_list.popup_menu.add_separator()
         self.st_url_list.popup_menu.add_command(
             label="Copy URL",
-            command=lambda: self.st_url_list.copy_value(1))
+            command=lambda: self.st_url_list.copy_value(0))
 
         self.st_buttons = ctk.CTkFrame(self.st_wrapper, fg_color="transparent")
         self.st_buttons.pack(side="right", fill=tk.Y, padx=(0, 10))
@@ -318,6 +339,7 @@ class GUIProxy(ctk.CTkFrame):
         )
         self.st_add_button.pack(side="top", fill=tk.X, padx=5, pady=10)
         self.st_add_url_dialog = None
+        self.st_add_url_dialog_notice = None
 
         self.st_remove_button = ActionButton(
             self.st_buttons, text="Remove domain", image=icon_delete,
@@ -336,6 +358,8 @@ class GUIProxy(ctk.CTkFrame):
             command=self.st_load_urls
         )
         self.st_clear_button.pack(side="top", fill=tk.X, padx=5, pady=10)
+
+        self.st_current_scope = set()
 
         """
          > BACKEND:
@@ -462,20 +486,24 @@ class GUIProxy(ctk.CTkFrame):
         for action in actions:
             item_list.popup_menu.entryconfig(action, state=state)
 
-    def from_request_list_to_scope(self, request_list, url_index=0, mode="add"):
+    def htt_update_scope(self, mode="add"):
         """
         Proxy GUI:
             Adds to / Removes from the scope selected url(s) from the given request list.
         """
-        if len(request_list.selection()) > 0:
-            for selected_item in request_list.selection():
-                url = request_list.item(selected_item)['values'][url_index]
+        if len(self.htt_request_list.selection()) > 0:
+            hostnames_to_update = set()
+
+            for item in self.htt_request_list.selection():
+                hostnames_to_update.add(self.htt_request_list.item(item)['values'][0])
+
+            if len(hostnames_to_update) > 0:
                 if mode == "add":
-                    # print(f"DEBUG/FRONTEND/PROXY: Adding {url} to the scope")
-                    self.st_add_url(url)
+                    self.st_add_url(hostnames_to_update)
+                    # print(f"DEBUG/FRONTEND/PROXY: Adding {hostnames_to_update} to the scope")
                 elif mode == "remove":
-                    # print(f"DEBUG/FRONTEND/PROXY: Removing {url} from the scope")
-                    self.st_remove_url(url)
+                    self.st_remove_url(hostnames_to_update)
+                    # print(f"DEBUG/FRONTEND/PROXY: Removing {hostnames_to_update} from the scope")
 
     def htt_receive_request(self):
         """
@@ -531,6 +559,7 @@ class GUIProxy(ctk.CTkFrame):
         values = (host, url, method, request_content, code, status, length, response_content, real_url)
 
         self.htt_request_list.insert("", tk.END, values=values)
+        self.htt_request_list_backup.insert("", tk.END, values=values)
 
         if len(self.htt_request_list.selection()) == 0:
             self.htt_request_list.selection_add(self.htt_request_list.get_children()[0])
@@ -601,6 +630,10 @@ class GUIProxy(ctk.CTkFrame):
             self.send_to_repeater(hostname_url, request_content)
 
     def htt_remove_selected_request_from_list(self):
+        print(self.htt_request_list.selection())
+        for item in self.htt_request_list.selection():
+            self.htt_request_list_backup.delete(item)
+            print(f"deleted {item} from backup list")
         self.htt_request_list.delete_selected()
         if len(self.htt_request_list.get_children()) == 0 and not self.htt_request_list_empty:
             self.toggle_list_actions(self.htt_request_list, "disabled")
@@ -608,10 +641,43 @@ class GUIProxy(ctk.CTkFrame):
 
     def htt_remove_all_requests_from_list(self):
         self.htt_request_list.delete_all()
+        self.htt_request_list_backup.delete_all()
         if not self.htt_request_list_empty:
-            # print("DEBUG/FRONTEND/PROXY/HTTP TRAFFIC: Deleting all of the requests from the list.")
+            # print("DEBUG/FRONTEND/PROXY/HTTP TRAFFIC: Deleting all the requests from the list.")
             self.toggle_list_actions(self.htt_request_list, "disabled")
             self.htt_request_list_empty = True
+
+    def htt_sort_by_column(self, col, reverse):
+        l = [(self.htt_request_list.set(k, col), k) for k in self.htt_request_list.get_children('')]
+        l.sort(reverse=reverse)
+
+        for index, (val, k) in enumerate(l):
+            self.htt_request_list.move(k, '', index)
+
+        self.htt_request_list.heading(col, command=lambda: self.htt_sort_by_column(col, not reverse))
+
+    def htt_filter_list_with_scope(self):
+        if len(self.st_current_scope) > 0:
+            if self.htt_request_list_filtered:
+                self.htt_filter_list_button.configure(text="Filter the list with scope")
+
+                self.htt_request_list.delete_all()
+
+                for item in self.htt_request_list_backup.get_children():
+                    values = list(self.htt_request_list_backup.item(item)['values'])
+                    self.htt_request_list.insert("", tk.END, values=values)
+
+                self.htt_request_list_filtered = False
+            else:
+                self.htt_filter_list_button.configure(text="Remove filtering")
+
+                for item in self.htt_request_list.get_children():
+                    if self.htt_request_list.set(item, "Host") not in self.st_current_scope:
+                        self.htt_request_list.detach(item)
+                    else:
+                        self.htt_request_list.reattach(item, '', tk.END)
+
+                self.htt_request_list_filtered = True
 
     def it_toggle_intercept(self):
         """
@@ -619,21 +685,37 @@ class GUIProxy(ctk.CTkFrame):
             Toggles intercepting
         """
         if self.root.intercepting:
-            self.it_toggle_intercept_button.configure(text="Intercept off", image=icon_toggle_off,
-                                                      fg_color=color_green, hover_color=color_green_dk)
             self.root.intercepting = False
-            self.it_placeholder_label.configure(text="Intercept is off.")
-            self.it_placeholder_image.configure(image=intercept_off_image)
             # print("DEBUG/FRONTEND/PROXY: Turning intercept off.")
-            change_intercept_state()
         else:
+            self.root.intercepting = True
+            # print("DEBUG/FRONTEND/PROXY: Turning intercept on.")
+        self.it_interceptor_status_update()
+        change_intercept_state()
+
+    def it_interceptor_status_update(self):
+        if self.root.intercepting:
             self.it_toggle_intercept_button.configure(text="Intercept on", image=icon_toggle_on,
                                                       fg_color=color_red, hover_color=color_red_dk)
-            self.root.intercepting = True
-            self.it_placeholder_label.configure(text="Intercept is on.")
-            self.it_placeholder_image.configure(image=intercept_on_image)
-            # print("DEBUG/FRONTEND/PROXY: Turning intercept on.")
-            change_intercept_state()
+            self.it_interceptor_state_label.configure(text="Web Interceptor is on.", justify="left", anchor="nw")
+            scope = self.st_url_list.get_children()
+            scope_list = []
+            if len(scope) > 0:
+                for item in scope:
+                    scope_list.append(self.st_url_list.item(item)['values'][0])
+                scope_string = ", ".join(scope_list)
+                self.it_interceptor_scope_label.configure(text=f"There are domains in Web Interceptor scope.\n"
+                                                               f"Requests to the following domains will be intercepted:\n"
+                                                               f"{scope_string}", justify="left", anchor="nw")
+            else:
+                self.it_interceptor_scope_label.configure(text="Scope of Web Interceptor is empty. All web requests will be intercepted.", anchor="nw")
+            self.it_interceptor_image.configure(image=intercept_on_image)
+        else:
+            self.it_toggle_intercept_button.configure(text="Intercept off", image=icon_toggle_off,
+                                                      fg_color=color_green, hover_color=color_green_dk)
+            self.it_interceptor_state_label.configure(text="Web Interceptor is off.", justify="left", anchor="nw")
+            self.it_interceptor_scope_label.configure(text="", justify="left", anchor="nw")
+            self.it_interceptor_image.configure(image=intercept_off_image)
 
     def it_receive_request(self):
         """
@@ -666,21 +748,19 @@ class GUIProxy(ctk.CTkFrame):
         Intercept Tab:
             Shows info and HTTP message of an intercepted request.
         """
-        version = self.it_intercepted_request.http_version
+        # version = self.it_intercepted_request.http_version
         host = self.it_intercepted_request.host
         port = self.it_intercepted_request.port
         scheme = self.it_intercepted_request.scheme
         authority = self.it_intercepted_request.authority
         request_content = self.it_intercepted_request.return_http_message()
 
-        self.it_request_info.configure(text=f"{version} request")
         self.it_request_host_entry.insert("0", host)
         self.it_request_port_entry.insert("0", port)
         self.it_request_scheme_entry.insert("0", scheme)
         self.it_request_authority_entry.insert("0", authority)
-        self.it_request_fields.pack(fill=tk.X, padx=10, pady=10)
         self.it_request_textbox.insert_text(request_content)
-        self.it_request_textbox.pack(pady=10, padx=10, fill="both", expand=True)
+        self.it_request_wrapper.pack(fill="both", expand=True, padx=5, pady=5)
 
         for button in self.it_top_bar_buttons:
             if str(button.cget("state") != "normal"):
@@ -693,14 +773,12 @@ class GUIProxy(ctk.CTkFrame):
         """
         self.it_intercepted_request = None
 
-        self.it_request_info.configure(text="")
         self.it_request_host_entry.delete("0", tk.END)
         self.it_request_port_entry.delete("0", tk.END)
         self.it_request_scheme_entry.delete("0", tk.END)
         self.it_request_authority_entry.delete("0", tk.END)
-        self.it_request_fields.pack_forget()
         self.it_request_textbox.insert_text("")
-        self.it_request_textbox.pack_forget()
+        self.it_request_wrapper.pack_forget()
 
         for button in self.it_top_bar_buttons:
             if str(button.cget("state") != "disabled"):
@@ -790,7 +868,7 @@ class GUIProxy(ctk.CTkFrame):
         Proxy GUI:
             Generates a random fake request and adds it to the request lists.
         """
-        url = f"http://{random.choice(['example', 'test', 'check', 'domain'])}.{random.choice(['org', 'com', 'pl', 'eu'])}"
+        url = f"{random.choice(['example', 'test', 'check', 'domain'])}.{random.choice(['org', 'com', 'pl', 'eu'])}"
         path = f"/{random.choice(['entry', 'page', '', 'test', 'subpage'])}"
         method = random.choice(["GET", "POST", "PUT", "DELETE"])
         request_content = f'{method} {path} HTTP/1.1\nHost: {url}\nProxy-Connection: keep-alive\nrandom stuff here'
@@ -801,6 +879,7 @@ class GUIProxy(ctk.CTkFrame):
         random_request = [url, path, method, request_content, status_code, title, length, response_content, url]
 
         self.htt_request_list.insert("", tk.END, values=random_request)
+        self.htt_request_list_backup.insert("", tk.END, values=random_request)
         self.htt_request_list.selection_remove(self.htt_request_list.get_children())
         self.htt_request_list.selection_add(self.htt_request_list.get_children()[-1])
 
@@ -814,21 +893,26 @@ class GUIProxy(ctk.CTkFrame):
             Opens an Add custom URL to Scope dialog window.
         """
         self.st_add_url_dialog = ctk.CTkToplevel(self)
-        self.st_add_url_dialog.title("Add URL to Scope")
+        self.st_add_url_dialog.title("Add hostname to the Scope")
         self.st_add_url_dialog.geometry("300x150")
         self.st_add_url_dialog.attributes("-topmost", True)
         center_window(self.root, self.st_add_url_dialog, 300, 150)
 
-        url_label = ctk.CTkLabel(self.st_add_url_dialog, text="Enter URL:", anchor="w")
+        url_label = ctk.CTkLabel(self.st_add_url_dialog, text="Enter domain URL", anchor="w")
         url_label.pack(pady=(10, 5), padx=10, fill="x")
 
         url_entry = TextEntry(self.st_add_url_dialog)
-        url_entry.pack(pady=(5, 10), padx=10, fill="x")
+        url_entry.pack(pady=5, padx=10, fill="x")
         url_entry.bind("<Return>", lambda event: self.st_submit_url(url_entry.get()))
+
+        self.st_add_url_dialog_notice = ctk.CTkLabel(self.st_add_url_dialog, text="",
+                                                     text_color=color_text_warn,
+                                                     wraplength=250)
+        self.st_add_url_dialog_notice.pack(pady=0, padx=10, fill=tk.X)
 
         submit_button = ctk.CTkButton(self.st_add_url_dialog, text="Submit",
                                       command=lambda: self.st_submit_url(url_entry.get()))
-        submit_button.pack(pady=10)
+        submit_button.pack(pady=(5, 10))
         submit_button.bind("<Return>", lambda event: self.st_submit_url(url_entry.get()))
 
     def st_submit_url(self, url):
@@ -837,20 +921,19 @@ class GUIProxy(ctk.CTkFrame):
             Submit the provided custom URL in the dialog.
         """
         pattern = r"^(?:[a-zA-Z0-9-]+\.)*[a-zA-Z0-9-]+\.[a-zA-Z]{1,3}$"
-        # TODO FRONTEND P1: Change printout into the notices below input entry in dialog
         if len(url) > 0:
             if re.match(pattern, url):
                 for item in self.st_url_list.get_children():
                     if self.st_url_list.item(item)['values'][0] == url:
-                        print(f"Oy! Domain {url} is already added to the scope!")
+                        self.st_add_url_dialog_notice.configure(text=f"Oy! Domain {url} is already added to the scope!")
                         break
                 else:
                     self.st_add_url(url)
                     self.st_add_url_dialog.destroy()
             else:
-                print("Oy! Your domain url does not match valid pattern!")
+                self.st_add_url_dialog_notice.configure(text="Oy! Your domain url does not match valid pattern!")
         else:
-            print("Oy! Cannot pass empty URL!")
+            self.st_add_url_dialog_notice.configure(text="Oy! Cannot pass empty URL!")
 
     def st_add_url(self, hostnames=None):
         """
@@ -860,6 +943,7 @@ class GUIProxy(ctk.CTkFrame):
             If hostname is not given, it gets it from the last selected item in the HTTP Traffic.
         """
         hostnames_to_add = set()
+
         if hostnames is None:
             if len(self.htt_request_list.selection()) > 0:
                 selected_item = self.htt_request_list.selection()[-1]
@@ -869,6 +953,8 @@ class GUIProxy(ctk.CTkFrame):
         else:
             hostnames_to_add = hostnames
 
+        hostnames_to_add -= self.st_current_scope
+
         if len(hostnames_to_add) > 0:
             try:
                 with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
@@ -877,13 +963,16 @@ class GUIProxy(ctk.CTkFrame):
                     s.connect((HOST, FRONT_BACK_SCOPEUPDATE_PORT))
                     s.sendall(serialized_data)
                     for hostname in hostnames_to_add:
-                        self.st_url_list.insert("", tk.END, values=(hostname,))
+                        self.st_url_list.insert("", tk.END, values=hostname)
+                        self.st_current_scope.add(hostname)
             except Exception as e:
                 print(f"Error while sendind request to filter: {e}")
 
         if self.st_url_list_empty:
             self.toggle_list_actions(self.st_url_list, "normal")
             self.st_url_list_empty = False
+        print(self.st_url_list.item('I001'))
+        self.it_interceptor_status_update()
 
     def st_remove_url(self, hostname_to_remove=None):
         """
@@ -896,10 +985,17 @@ class GUIProxy(ctk.CTkFrame):
         if hostname_to_remove is None:
             if len(self.st_url_list.selection()) > 0:
                 for selected_item in self.st_url_list.selection():
-                    hostnames_to_remove.add(self.st_url_list.item(selected_item)['values'][0])
+                    hostname = self.st_url_list.item(selected_item)['values'][0]
+                    hostnames_to_remove.add(hostname)
+                    self.st_current_scope.remove(hostname)
                     self.st_url_list.delete(selected_item)
+        if isinstance(hostname_to_remove, set):
+            hostnames_to_remove = hostname_to_remove
+            self.st_current_scope -= hostname_to_remove
         else:
             hostnames_to_remove.add(hostname_to_remove)
+            if hostname_to_remove in self.st_current_scope:
+                self.st_current_scope.remove(hostname_to_remove)
             for item in self.st_url_list.get_children():
                 if hostname_to_remove == self.st_url_list.item(item)['values'][0]:
                     self.st_url_list.delete(item)
@@ -917,6 +1013,7 @@ class GUIProxy(ctk.CTkFrame):
         if len(self.st_url_list.get_children()) == 0 and not self.st_url_list_empty:
             self.toggle_list_actions(self.st_url_list, "disabled")
             self.st_url_list_empty = True
+        self.it_interceptor_status_update()
 
     def st_clear_all(self):
         """
@@ -931,14 +1028,15 @@ class GUIProxy(ctk.CTkFrame):
                 serialized_data = pickle.dumps(data_to_send)
                 s.connect((HOST, FRONT_BACK_SCOPEUPDATE_PORT))
                 s.sendall(serialized_data)
-                for item in self.st_url_list.get_children():
-                    self.st_url_list.delete(item)
+                self.st_url_list.delete_all()
+                self.st_current_scope.clear()
         except Exception as e:
             print(f"Error while sendind request to filter: {e}")
 
         if not self.st_url_list_empty:
             self.toggle_list_actions(self.st_url_list, "disabled")
             self.st_url_list_empty = True
+        self.it_interceptor_status_update()
 
     def st_load_urls(self):
         """
