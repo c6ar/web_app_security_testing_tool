@@ -183,7 +183,7 @@ class GUI(ctk.CTk):
                 self.browser.quit()
             self.browser = None
 
-            self.proxy_tab.browser_button_update()
+            self.proxy_tab.update_browser_buttons()
             print("INFO: Closing web browser.")
 
     def start_browser_thread(self):
@@ -194,7 +194,7 @@ class GUI(ctk.CTk):
             self.browser_opened = True
             threading.Thread(target=self.open_browser).start()
 
-            self.proxy_tab.browser_button_update()
+            self.proxy_tab.update_browser_buttons()
             print("INFO: Opening web browser.")
 
         elif self.browser and self.browser_opened:

@@ -89,6 +89,9 @@ ASSET_DIR = f"{Path.cwd()}\\assets"
 icon_proxy = ctk.CTkImage(
     light_image=Image.open(f"{ASSET_DIR}\\icon_proxy_light.png"),
     dark_image=Image.open(f"{ASSET_DIR}\\icon_proxy.png"), size=(20, 20))
+icon_intercept = ctk.CTkImage(
+    light_image=Image.open(f"{ASSET_DIR}\\icon_traffic_light.png"),
+    dark_image=Image.open(f"{ASSET_DIR}\\icon_traffic.png"), size=(60, 60))
 icon_intruder = ctk.CTkImage(
     light_image=Image.open(f"{ASSET_DIR}\\icon_intruder_light.png"),
     dark_image=Image.open(f"{ASSET_DIR}\\icon_intruder.png"), size=(20, 20))
