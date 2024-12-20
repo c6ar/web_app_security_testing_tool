@@ -111,7 +111,7 @@ class GUI(ctk.CTk):
     def show_settings(self):
         if self.settings_window is None or not self.settings_window.winfo_exists():
             # TODO OTHER P2: Actual implmentation of config logic in the app
-            # Settings ideas, appearance (theme), language (EN or PL), Proxy rerun, show Proxy log, turn on Debug mode for the app DEBUG PRINTOUTS
+            #  Settings ideas, appearance (theme), language (EN or PL), Proxy rerun, show Proxy log, turn on Debug mode for the app DEBUG PRINTOUTS
             self.settings_window = ctk.CTkToplevel(self)
             self.settings_window.title("Proxy Settings")
             self.settings_window.attributes("-topmost", True)

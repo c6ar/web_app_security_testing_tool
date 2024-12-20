@@ -211,10 +211,10 @@ class GUIProxy(ctk.CTkFrame):
          > INTERCEPT TAB
         """
         # TODO FRONTEND P2: Layout redesign:
-        # Top-left corner Web Interceptor Widget: Web Interceptor Header, its icon, its toggle button and Open browser button.
-        # Top-right corner Scope Widget, what currently is a whole separate scope tab.
-        # Bottom pane is a Request Editor with buttons for dropping, forwarding and sending do other tabs at the top of it.
-        # Web Interceptor status again as a placeholder in the top pane if there is no Request intercepted.
+        #  Top-left corner Web Interceptor Widget: Web Interceptor Header, its icon, its toggle button and Open browser button.
+        #  Top-right corner Scope Widget, what currently is a whole separate scope tab.
+        #  Bottom pane is a Request Editor with buttons for dropping, forwarding and sending do other tabs at the top of it.
+        #  Web Interceptor status again as a placeholder in the top pane if there is no Request intercepted.
 
         self.it_interceptor_wrapper = ctk.CTkFrame(self.intercept_tab, fg_color=color_bg, bg_color="transparent",
                                                    corner_radius=10)

@@ -58,7 +58,8 @@ class IntruderResult(ctk.CTkToplevel):
             self.tab_nav_buttons[name] = NavButton(self.tab_nav, text=name.upper(), command=lambda t=name: self.show_tab(t))
             self.tab_nav_buttons[name].pack(side=tk.LEFT)
 
-        # TODO FRONTEND P2: Add a button to abort the ongoing attack.
+        # TODO FRONTEND P2: Add a button to abort the ongoing attack. It doesn't quit the result window
+        #  - but halts the attack. Then it could change to resume the attack? And once attack is finished changed to, retry it?
         self.add_random_button = NavButton(self.tab_nav, text="Add random request", icon=icon_random, command=self.generate_random_request)
         self.add_random_button.pack(side=tk.RIGHT)
 
@@ -301,6 +302,8 @@ class IntruderTab(ctk.CTkFrame):
         self.attack_type_dropdown.pack(padx=(0, 10), pady=10, side="left")
         self.attack_type = 0
 
+        # TODO FRONTEND P1: Implement correct functionality
+        #  - if there is currently attac going, it gives popout asking if we want to abort it.
         self.start_attack_button = ActionButton(
             self.top_bar,
             text="Start attack",
@@ -310,7 +313,7 @@ class IntruderTab(ctk.CTkFrame):
         )
         self.start_attack_button.pack(padx=10, pady=10, side="left")
 
-        # TODO FRONTEND P2: Add a dropdown with saved and ongoing attacks.
+        # TODO FRONTEND P1: Implement correct functionality
         self.show_last_ongoing_button = ActionButton(
             self.top_bar,
             text="Show last ongoing attack",
@@ -441,7 +444,6 @@ class IntruderTab(ctk.CTkFrame):
 
             timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             print(f"Starting a {timestamp} attack on {self.hostname_entry.get()}\nCurrent payloads:\n\t{payloads}")
-            # attack(self.payloads_frames, self.positions_text.get_text())
 
             tags = self.positions_textbox.tag_names()
             positions = {}
@@ -587,7 +589,7 @@ class IntruderTab(ctk.CTkFrame):
                         del self.payloads_frames[tag]
                         tag_found = True
                         break
-            # Case 2: Cursor is outside of any tag, remove all the tags.
+            # Case 2: Cursor is outside any tag, remove all the tags.
             if not tag_found:
                 self.clear_all_positions_confirm()
         else:
