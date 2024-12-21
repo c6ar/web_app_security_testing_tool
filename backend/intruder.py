@@ -1,5 +1,6 @@
 import pickle
 import re
+import threading
 import time
 from operator import index
 import socket
@@ -37,18 +38,49 @@ def replace_word(request, word, position):
 
     return request.replace('§','')
 
-def sniper_attack(worldlist, request, positions):
-    # TODO BACKEND: cooldown between requests
-    flow ={}
-    words = worldlist.split('\n')
-    position_list = [f"{key}: {value}" for key, value in positions.items()]
 
-    for word in words:
-        for position in position_list:
+def sniper_attack(q, worldlist, request, positions):
+    """
+    Performs a Sniper attack with an interval of 1 seconds between requests.
+    The results are sent sequentially to the GUI.
+    """
+    def attack():
+        words = worldlist.split('\n')
+        position_list = [f"{key}: {value}" for key, value in positions.items()]
+
+        for word in words:
+            for position in position_list:
+                data = {}
+                modified_request = replace_word(request, word, position)
+                response = send_http_message(modified_request)
+                data['position'] = str(position_list.index(position) + 1)
+                data['payload'] = word
+                data['status_code'] = response.status_code
+                data['resp_rec'] = '0'
+                data['error'] = 'False'
+                data['timeout'] = 'False'
+                data['req_con'] = modified_request
+                data['res_con'] = process_response(response)
+                q.put(data)
+                time.sleep(1)
+
+    attack_thread = threading.Thread(target=attack, daemon=True)
+    attack_thread.start()
+
+
+def ram_attack(q, worldlist, request):
+    """
+    Performs a Ram attack with an interval of 1 seconds between requests.
+    The results are sent sequentially to the GUI.
+    """
+    def attack():
+        words = worldlist.split('\n')
+        for word in words:
             data = {}
-            modified_request = replace_word(request, word, position)
+            modified_request = replace_between_symbols(request, word)
             response = send_http_message(modified_request)
-            data['position'] = str(position_list.index(position) + 1)
+
+            data['position'] = 'all'
             data['payload'] = word
             data['status_code'] = response.status_code
             data['resp_rec'] = '0'
@@ -56,35 +88,9 @@ def sniper_attack(worldlist, request, positions):
             data['timeout'] = 'False'
             data['req_con'] = modified_request
             data['res_con'] = process_response(response)
-            serialized_flow = pickle.dumps(data)
-            try:
-                with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-                    s.connect((HOST, BACK_FRONT_INTRUDERRESPONSES))
-                    s.sendall(serialized_flow)
-            except Exception as e:
-                print(f"\nError while sending request to IntruderResult tab: {e}")
+            q.put(data)
+            time.sleep(1)
 
-def ram_attack(wrold_list, request):
-    # TODO BACKEND: cooldown between requests
-    words = wrold_list.split('\n')
-    for word in words:
-        data = {}
-        modified_request = replace_between_symbols(request, word)
-        response = send_http_message(modified_request)
-
-        data['position'] = 'all'
-        data['payload'] = word
-        data['status_code'] = response.status_code
-        data['resp_rec'] = '0'
-        data['error'] = 'False'
-        data['timeout'] = 'False'
-        data['req_con'] = modified_request
-        data['res_con'] = process_response(response)
-        serialized_flow = pickle.dumps(data)
-        try:
-            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-                s.connect((HOST, BACK_FRONT_INTRUDERRESPONSES))
-                s.sendall(serialized_flow)
-        except Exception as e:
-            print(f"\nError while sending request to IntruderResult tab: {e}")
+    attack_thread = threading.Thread(target=attack, daemon=True)
+    attack_thread.start()
 

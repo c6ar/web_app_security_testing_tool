@@ -1,9 +1,8 @@
-import pickle
-import socket
-import asyncio
-import threading
+from threading import Thread
 from common import *
 from backend.intruder import *
+import queue
+
 def load_payload(payloads_text):
     file_path = filedialog.askopenfilename(filetypes=[("Text files", "*.txt")])
 
@@ -16,20 +15,17 @@ def load_payload(payloads_text):
         except Exception as e:
             print(f"Error reading the file: {e}")
 
-
 def clear_payload(payloads_text):
     payloads_text.delete("1.0", tk.END)
 
-
 class IntruderResult(ctk.CTkToplevel):
-    def __init__(self, master, gui, hostname, positions, payloads, timestamp, **kwargs):
+    def __init__(self, master, gui, hostname, positions, payloads, timestamp, q, **kwargs):
         super().__init__(master, **kwargs)
-        self.loop = asyncio.new_event_loop()  # Tworzymy pętlę asyncio dla tego obiektu
-        self.start_async_servers()
-
+        self.queue = q
         self.title("Intruder Attack's Results")
         self.intruder_tab = master
         self.root = gui.gui_root
+        self.root.after(100, self.check_queue)
         self.configure(fg_color=color_bg, bg_color=color_bg)
         width = int(int(self.root.winfo_width()) * 0.9)
         height = int(int(self.root.winfo_height()) * 0.9)
@@ -56,7 +52,8 @@ class IntruderResult(ctk.CTkToplevel):
             self.tab_nav_buttons[name] = NavButton(self.tab_nav, text=name.upper(), command=lambda t=name: self.show_tab(t))
             self.tab_nav_buttons[name].pack(side=tk.LEFT)
 
-        # TODO FRONTEND P2: Add a button that aborts the attack.
+        # TODO FRONTEND P2: Add a button to abort the ongoing attack. It doesn't quit the result window
+        #  - but halts the attack. Then it could change to resume the attack? And once attack is finished changed to, retry it?
         self.add_random_button = NavButton(self.tab_nav, text="Add random request", icon=icon_random, command=self.generate_random_request)
         self.add_random_button.pack(side=tk.RIGHT)
 
@@ -134,25 +131,22 @@ class IntruderResult(ctk.CTkToplevel):
         self.payloads_header = HeaderTitle(self.wrapper, text="Sent payloads")
         self.payloads_header.grid(row=1, column=1, padx=10, pady=(5, 0), sticky="w")
 
-        self.payloads_frame = ctk.CTkScrollableFrame(self.wrapper, fg_color="transparent", bg_color="transparent")
-        self.payloads_frame.grid(row=2, column=1, padx=(10, 20), pady=(0, 20), sticky="nsew")
-
         if self.intruder_tab.attack_type == 2:
+            self.payloads_frame = ctk.CTkScrollableFrame(self.wrapper, fg_color="transparent", bg_color="transparent")
             for var, payloads in payloads.items():
                 payloads_label = ctk.CTkLabel(self.payloads_frame, text=f"Payloads for positions of \"{var}\"", anchor=tk.W, justify=tk.LEFT)
                 payloads_label.pack(fill=tk.X, padx=10, pady=(10, 0))
                 payloads_textbox = TextBox(self.payloads_frame, text=payloads.get_text(), height=150)
                 payloads_textbox.pack(fill=tk.X, padx=10, pady=(10, 0))
         else:
-            payloads_textbox = TextBox(self.payloads_frame, text=payloads.get(0).get_text())
-            payloads_textbox.pack(fill=tk.BOTH, expand=True, padx=0, pady=0)
+            self.payloads_textbox = TextBox(self.wrapper, text=payloads.get(0).get_text())
+            self.payloads_textbox.grid(row=2, column=1, padx=(10, 20), pady=(0, 20), sticky="nsew")
 
         self.wrapper.grid_columnconfigure(0, weight=1)
         self.wrapper.grid_columnconfigure(1, weight=1)
         self.wrapper.grid_rowconfigure(2, weight=1)
 
         self.show_tab("Results")
-
         self.flow = None
         """
         Asyncs servers to catch respones
@@ -234,37 +228,60 @@ class IntruderResult(ctk.CTkToplevel):
         if len(self.attack_request_list.selection()) == 0:
             self.attack_request_list.selection_add(self.attack_request_list.get_children()[0])
 
-    def start_async_servers(self):
-        """
-        Starts the asyncio servers in a separate thread to handle scope updates and flow killing asynchronously.
-        """
+    def check_queue(self):
+        while not self.queue.empty():
+            data = self.queue.get()
+            self.add_attack_flow(data)
+        self.root.after(100, self.check_queue)
 
-        def run_servers():
-            asyncio.set_event_loop(self.loop)
-            tasks = [
-                self.listen_for_responses(),
+class WindowManager:
+    def __init__(self):
+        self.queues = []
+        self.window_threads = []
+        self.logic_threads = []
+        self.window_counter = 0
 
-            ]
-            self.loop.run_until_complete(asyncio.gather(*tasks))
+    def create_intruder_result(self, intruder_tab, gui, hosturl, positions_textbox, payloads_textboxes, timestamp, q):
+        IntruderResult(intruder_tab, gui, hosturl, positions_textbox, payloads_textboxes, timestamp, q)
 
-        thread = threading.Thread(target=run_servers, daemon=True)
-        thread.start()
+    def add_window(self, intruder_tab, gui, hosturl, positions_textbox, payloads_textboxes, timestamp, attack_type, payloads, request_text, positions=None):
+        q = queue.Queue()
+        self.queues.append(q)
 
-    async def listen_for_responses(self):
-        server = await asyncio.start_server(
-            self.handle_responses, HOST, BACK_FRONT_INTRUDERRESPONSES
-        )
-        async with server:
-            await server.serve_forever()
+        if attack_type == 0:
+            producer = Thread(
+                target=sniper_attack(q, payloads, request_text, positions),
+                args=(q, self.window_counter)
+            )
+        elif attack_type == 1:
+            producer = Thread(
+                target=ram_attack(q, payloads, request_text),
+                args=(q, self.window_counter)
+            )
+        else:
+            # TODO BACKEND: 3rd option of an attack
+            pass
 
-    async def handle_responses(self, reader, writer):
-        data = await reader.read(4096)
-        if data:
-            self.flow = pickle.loads(data)
-            self.add_attack_flow(self.flow)
-        writer.close()
-        await writer.wait_closed()
+        consumer = Thread(target=self.create_intruder_result(
+            intruder_tab, gui, hosturl, positions_textbox, payloads_textboxes, timestamp, q),
+            args=(q, self.window_counter))
 
+        self.logic_threads.append(producer)
+        self.window_threads.append(consumer)
+
+        consumer.start()
+        producer.start()
+
+        self.window_counter += 1
+
+    def remove_window(self, index):
+        if index < len(self.window_threads):
+            self.window_threads[index].join(timeout=1)
+            self.logic_threads[index].join(timeout=1)
+
+            del self.queues[index]
+            del self.window_threads[index]
+            del self.logic_threads[index]
 
 class IntruderTab(ctk.CTkFrame):
     def __init__(self, master, id_number, content=None, host=None):
@@ -301,6 +318,8 @@ class IntruderTab(ctk.CTkFrame):
         self.attack_type_dropdown.pack(padx=(0, 10), pady=10, side="left")
         self.attack_type = 0
 
+        # TODO FRONTEND P1: Implement correct functionality
+        #  - if there is currently attac going, it gives popout asking if we want to abort it.
         self.start_attack_button = ActionButton(
             self.top_bar,
             text="Start attack",
@@ -310,7 +329,7 @@ class IntruderTab(ctk.CTkFrame):
         )
         self.start_attack_button.pack(padx=10, pady=10, side="left")
 
-        # TODO FRONTEND P2: Add a dropdown with saved and ongoing attacks.
+        # TODO FRONTEND P1: Implement correct functionality
         self.show_last_ongoing_button = ActionButton(
             self.top_bar,
             text="Show last ongoing attack",
@@ -374,6 +393,8 @@ class IntruderTab(ctk.CTkFrame):
         self.attack_result = {}
         self.last_timestamp = None
 
+        self.manager = WindowManager()
+
     def update_number(self, id_number):
         self.id = id_number
         if self.id != 0:
@@ -407,6 +428,9 @@ class IntruderTab(ctk.CTkFrame):
                         frame.pack(side="top", fill=tk.BOTH, expand=True, padx=10, pady=5)
                     else:
                         frame.pack_forget()
+
+            self.payload_placeholder.pack_forget()
+
         elif self.attack_type == 2:
             if self.payloads_frames.get(0) is not None and self.payloads_frames[0].winfo_ismapped():
                 self.payloads_frames[0].pack_forget()
@@ -420,9 +444,9 @@ class IntruderTab(ctk.CTkFrame):
                 else:
                     self.add_payload(name)
 
-            if len(self.payloads_frames) == 0 or (
-                    len(self.payloads_frames) == 1 and self.payloads_frames.get(0) is not None):
-                self.payload_placeholder.pack(fill=tk.X, padx=10, pady=10)
+            if (len(self.payloads_frames) == 0 or
+                    (len(self.payloads_frames) == 1 and self.payloads_frames.get(0) is not None)):
+                self.payload_placeholder.pack(fill=tk.X, padx=10, pady=5)
 
     def _reset_positions_modified_flag(self):
         self.positions_textbox.edit_modified(False)
@@ -437,24 +461,21 @@ class IntruderTab(ctk.CTkFrame):
                     payloads[var] = textbox.get_text()
 
             timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            print(f"Starting a {timestamp} attack on {self.hostname_entry.get()}\nCurrent payloads:\n\t{payloads}")
 
-            tags =  self.positions_textbox.tag_names()
+            tags = self.positions_textbox.tag_names()
             positions = {}
             for tag in tags:
                 ranges = self.positions_textbox.tag_ranges(tag)
                 for start, end in zip(ranges[0::2], ranges[1::2]):
                     positions[str(start)] = str(end)
             self.last_timestamp = timestamp
-            self.show_results(timestamp)
-            if self.attack_type == 0:
-                 sniper_attack(payloads, self.positions_textbox.get_text(),positions)
-            elif self.attack_type == 1:
-                 ram_attack(payloads, self.positions_textbox.get_text())
-            else:
-                #TODO 3rd option of attack
-                pass
 
+            # TODO safe delete attack_result
+            #self.attack_result[timestamp]
 
+            self.manager.add_window(intruder_tab=self, gui=self.gui, hosturl=self.hosturl, positions_textbox=self.positions_textbox, payloads_textboxes=self.payloads_textboxes, timestamp=timestamp,
+            attack_type=self.attack_type, payloads=payloads, request_text=self.positions_textbox.get_text(), positions=positions)
 
     def show_last_ongoing(self):
         if len(self.attack_result) > 0:
@@ -584,7 +605,7 @@ class IntruderTab(ctk.CTkFrame):
                         del self.payloads_frames[tag]
                         tag_found = True
                         break
-            # Case 2: Cursor is outside of any tag, remove all the tags.
+            # Case 2: Cursor is outside any tag, remove all the tags.
             if not tag_found:
                 self.clear_all_positions_confirm()
         else:
@@ -647,7 +668,7 @@ class IntruderTab(ctk.CTkFrame):
 
             payloads_text = TextBox(payloads_frame, height=112)
         else:
-            payloads_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=0)
+            payloads_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
 
             payloads_text = TextBox(payloads_frame)
 
