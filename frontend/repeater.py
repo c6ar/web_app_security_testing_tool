@@ -41,36 +41,36 @@ class RepeaterTab(ctk.CTkFrame):
 
         self.prev_button = ActionButton(
             self.top_bar,
-            text="<",
+            text="",
+            image=icon_arrow_left,
             command=self.prev_iteration,
-            state=tk.DISABLED
+            state=tk.DISABLED,
+            width=20
         )
-        self.prev_button.configure(width=20)
-        self.prev_button.pack(padx=10, pady=10, side="left")
+        self.prev_button.pack(padx=(10, 0), pady=10, side="left")
 
         self.iteration_var = tk.StringVar(self.top_bar)
         self.iteration_var.set("Select Iteration")
 
-        # self.iteration_dropdown = ctk.CTkOptionMenu(
-        #     self.top_bar,
-        #     variable=self.iteration_var,
-        #     command=self.select_iteration,
-        #     state=tk.DISABLED
-        # )
-        # self.iteration_dropdown.pack(side="left", padx=10, pady=10)
-
-        self.iteration_label = ctk.CTkLabel(self.top_bar, text="")
-        self.iteration_label.configure(width=150)
-        self.iteration_label.pack(side="left")
+        self.iteration_dropdown = ctk.CTkOptionMenu(
+            self.top_bar,
+            variable=self.iteration_var,
+            values=[],
+            command=self.select_iteration,
+            state=tk.DISABLED,
+            width=200
+        )
+        self.iteration_dropdown.pack(side="left", padx=5, pady=10)
 
         self.next_button = ActionButton(
             self.top_bar,
-            text=">",
+            text="",
+            image=icon_arrow_right,
             command=self.next_iteration,
-            state=tk.DISABLED
+            state=tk.DISABLED,
+            width=20
         )
-        self.next_button.configure(width=20)
-        self.next_button.pack(padx=10, pady=10, side="left")
+        self.next_button.pack(padx=(0, 10), pady=10, side="left")
 
         if self.id != 0:
             self.delete_tab_button = ActionButton(
@@ -131,18 +131,20 @@ class RepeaterTab(ctk.CTkFrame):
         request_text = self.request_textbox.get_text()
         request_host = self.hosturl_entry.get()
         if len(request_text) > 0 and len(request_host) > 0:
-            response = send_http_message(request_text, real_url=request_host)
+            try:
+                response = send_http_message(request_text, real_url=request_host)
+                response_text = process_response(response)
+                self.add_response_to_repeater_tab(response_text)
 
-            response_text = process_response(response)
-            self.add_response_to_repeater_tab(response_text)
+                timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
-            self.tab_iterations[timestamp] = [request_text, response_text]
-            self.tab_iteration_keys.insert(-1, timestamp)
-            self.current_iteration_index = len(self.tab_iteration_keys) - 1
-            self.update_chronology_controls()
-            # self.update_dropdown_menu()
+                self.tab_iterations[timestamp] = [request_text, response_text]
+                self.tab_iteration_keys.insert(0, timestamp)
+                self.current_iteration_index = 0
+                self.update_chronology_controls()
+                self.update_dropdown_menu()
+            except Exception as e:
+                dialog = ConfirmDialog(self, self.gui, prompt=e, action1="Ok", command1= lambda: dialog.destroy())
 
     def add_response_to_repeater_tab(self, response):
         self.response_textbox.configure(state=tk.NORMAL)
@@ -161,16 +163,13 @@ class RepeaterTab(ctk.CTkFrame):
             self.next_button.configure(state=tk.DISABLED)
 
         iteration_name = self.tab_iteration_keys[self.current_iteration_index]
-        self.iteration_label.configure(text=iteration_name)
-        # self.iteration_var.set(iteration_name)
+        self.iteration_var.set(iteration_name)
 
     def update_dropdown_menu(self):
-        # menu = self.iteration_dropdown.children["menu"]
-        # menu.delete(0, "end")
-        # for key in self.tab_iteration_keys:
-        #     menu.add_command(label=key, command=lambda k=key: self.select_iteration(k))
-        # self.iteration_dropdown.configure(state=tk.NORMAL)
-        pass
+        self.iteration_dropdown.configure(values=self.tab_iteration_keys, state=tk.NORMAL)
+        if self.tab_iteration_keys:
+            recent_iteration = self.tab_iteration_keys[0]
+            self.iteration_var.set(recent_iteration)
 
     def select_iteration(self, iteration_name):
         if iteration_name in self.tab_iteration_keys:

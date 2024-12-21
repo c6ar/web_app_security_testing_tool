@@ -29,7 +29,6 @@ class Request2(Request):
             'trailers': self.trailers,
             'timestamp_start': self.timestamp_start,
             'timestamp_end': self.timestamp_end,
-            'forward_flag': self.forward_flag
         }
 
     @classmethod
@@ -131,12 +130,12 @@ class Request2(Request):
             Request2: A new Request2 object initialized with data from the HTTP message.
         """
         # Split headers and body
-        header_body_split = http_message.split("\r\n\r\n", 1)
+        header_body_split = http_message.split("\n\n", 1)
         headers_part = header_body_split[0]
         body = header_body_split[1] if len(header_body_split) > 1 else None
 
         # Split request line and headers
-        lines = headers_part.split("\r\n")
+        lines = headers_part.split("\n")
         request_line = lines[0]
         headers = lines[1:]
 

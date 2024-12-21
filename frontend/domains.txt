@@ -1,0 +1,6 @@
+example.com
+kurnik.pl
+wp.pl
+onet.pl
+overthewire.org
+wikipedia.org

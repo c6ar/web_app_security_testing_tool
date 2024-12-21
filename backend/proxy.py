@@ -2,13 +2,11 @@ import pickle
 import mitmproxy.http
 import socket
 from mitmproxy import ctx
-
 # from mitmproxy.connection import ServerConnection
 from mitmproxy.http import Request, Response, HTTPFlow
 import asyncio
 import threading
 from utils.get_domain import extract_domain
-from mitmproxy import ctx
 from global_setup import *
 
 
@@ -16,7 +14,7 @@ class WebRequestInterceptor:
     def __init__(self):
         # TODO BACKEND: filter with subdomains, not with domain only
         self.scope = []
-        self.loop = asyncio.new_event_loop()  # Tworzymy pętlę asyncio dla tego obiektu
+        self.loop = asyncio.new_event_loop()
         self.start_async_servers()
         self.current_flow = None
         self.intercept_state = False
@@ -33,10 +31,10 @@ class WebRequestInterceptor:
         request = flow.request
         self.current_flow = flow
         flow.intercept()
-        #self.repeater_flow = flow.copy()
         self.repeater_backup_flow = flow.copy()
-        # TODO BACKEND P1: Add logic that if len(self.scope) == 0 it intercepts any request
-        # TODO BACKEND P1: Expand telemetry for other browsers?
+        # TODO: Add logic that if len(self.scope) == 0 it intercepts any request
+        # TODO: Expand telemetry for other browsers?
+
         if "mozilla.org" in request.host:
             """
             Filters out telemetry 
@@ -52,6 +50,9 @@ class WebRequestInterceptor:
             if flow.intercepted:
                 flow.resume()
         else:
+            print(f"INTERCEPTED REQUEST TO {request.host}"
+                  f"\nHostname from the request: {extract_domain(request.host)}"
+                  f"\nHostnames in the current scope: {self.scope}")
             self.send_request2_to_scope_tab(request)
             self.recieve_request_from_scope_forward_button(flow)
 
@@ -85,6 +86,7 @@ class WebRequestInterceptor:
         async with server:
             await server.serve_forever()
 
+    # TODO: Proposing changing logic to receive True/False flag and switch the intercepting according to it
     async def handle_toggle_intercept(self, reader, writer):
         data = await reader.read(4096)
         if data:
@@ -95,11 +97,12 @@ class WebRequestInterceptor:
                 if self.current_flow.intercepted:
                     self.current_flow.resume()
             else:
-                self.scope = self.backup
+                self.scope = self.backup.copy()
         print(f"Intercepting state: {self.intercept_state}")
         writer.close()
         await writer.wait_closed()
 
+    # TODO: Proposing name change to listen_for_scope_update
     async def add_host_to_scope(self):
         """
         Asynchronously receives and adds hostname to scope.
@@ -119,19 +122,21 @@ class WebRequestInterceptor:
             operation, *hostnames = pickle.loads(data)
             if operation == "add":
                 for hostname in hostnames:
-                    hostname = extract_domain(hostname)
-                    self.backup.append(hostname)
-                    print(f"Host {hostname} added to the scope.")
+                    domain = extract_domain(hostname)
+                    self.backup.append(domain)
+                    print(f"Host {domain} added to the scope.")
             elif operation == "remove":
                 for hostname in hostnames:
+                    domain = extract_domain(hostname)
                     try:
-                        self.backup.remove(hostname)
-                        print(f"Host {hostname} removed from scope.")
+                        self.backup.remove(domain)
+                        print(f"Host {domain} removed from scope.")
                     except ValueError:
-                        print(f"Attempted to remove {hostname} from scope, but could not be found there.")
+                        print(f"Attempted to remove {domain} from scope, but could not be found there.")
             elif operation == "clear":
                 self.backup.clear()
                 print("Scope cleared.")
+        print(f"Current scope: {self.backup}")
         writer.close()
         await writer.wait_closed()
 
@@ -152,18 +157,23 @@ class WebRequestInterceptor:
         data = await reader.read(4096)
         if data:
             bad_request = Request.make(
-                method="POST",
+                method="GET",
                 url="https://google.com",
                 content="",
                 headers={"Accept": "*/*"}
             )
-
-            self.current_flow.request.data = bad_request.data
+            #TODO naprawić kill
+            self.current_flow.request.host = "google.com"
+            self.current_flow.request.url = "https://google.com"
+            self.current_flow.request.port = 443
+            self.current_flow.request.scheme = "https"
             self.current_flow.resume()
-            print(f"\nReceived request to kill flow")
+            if not self.current_flow.intercepted:
+                print(f"\nReceived request to kill flow")
         writer.close()
         await writer.wait_closed()
 
+    # TODO: Do we need repeater stuff in here?
     async def listen_for_repeater_flag(self):
         """
         Asynchronously listens for requests from repeater and creates a new flow.
@@ -174,6 +184,7 @@ class WebRequestInterceptor:
         async with server:
             await server.serve_forever()
 
+    # TODO: Do we need repeater stuff in here?
     async def handle_repeater_flag(self, reader, writer):
         """
         Handles "send to repeater" button press, copies flow and sends it to repeater tab.
@@ -194,7 +205,7 @@ class WebRequestInterceptor:
         writer.close()
         await writer.wait_closed()
 
-
+    # TODO: Do we need repeater stuff in here?
     # async def listen_for_repeater_http_message(self):
     #     """
     #     Asynchronously listens for requests from repeater and creates a new flow.
@@ -244,11 +255,13 @@ class WebRequestInterceptor:
         except Exception as e:
             print(f"\nError while sending request to http tab: {e}")
 
+    # TODO: Proposing name change to send_request_to_intercept_tab
     def send_request2_to_scope_tab(self, request):
         """
         Serializes request and sends it to GUI scope tab.
         """
         try:
+            print(f"\n\nSending intercepted request to Frontend:\n{request.data}")
             serialized_request2 = pickle.dumps(request)
         except Exception as e:
             print(f"\nError while serialization before sending to scope tab: {e}")
@@ -259,6 +272,7 @@ class WebRequestInterceptor:
         except Exception as e:
             print(f"\nError while sending request to scope tab: {e}")
 
+    # TODO: Proposing name change to receive_forwarded_request
     def recieve_request_from_scope_forward_button(self, flow):
         """
         Receives request from GUI when forward button in scope is pressed.
@@ -271,13 +285,13 @@ class WebRequestInterceptor:
             with conn:
                 serialized_reqeust = conn.recv(4096)
                 if serialized_reqeust:
-                    deserialize_reqeust = pickle.loads(serialized_reqeust)
-                    flow.request.data = deserialize_reqeust.data
-                    print(flow.request.data)
-                    # print(deserialize_reqeust.data)
+                    deserialized_request = pickle.loads(serialized_reqeust)
+                    flow.request.data = deserialized_request.data
+                    print(f"\n\nForwarding intercepted request from Frontend:\n{flow.request.data}")
                     if flow.intercepted:
                         flow.resume()
 
+    # TODO: Do we need repeater stuff in here?
     def send_flow_to_repeater(self):
         try:
             serialized_flow = pickle.dumps(self.repeater_flow)
@@ -290,6 +304,7 @@ class WebRequestInterceptor:
         except Exception as e:
             print(f"\nError while sending flow to repeater tab: {e}")
 
+    # TODO: Do we need repeater stuff in here?
     def send_response_to_repeater(self, response):
         """
         Sends response to repeater

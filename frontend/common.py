@@ -61,11 +61,13 @@ ctk.set_default_color_theme("dark-blue")
 if ctk.get_appearance_mode() == "Light":
     color_text = "#000"
     color_text_br = "#333"
+    color_text_warn = "#924511"
     color_bg = "#dcdcdc"
     color_bg_br = "#eee"
 else:
     color_text = "#eee"
     color_text_br = "#ccc"
+    color_text_warn = "#d1641b"
     color_bg = "#222"
     color_bg_br = "#333"
 ctk.set_default_color_theme("dark-blue")
@@ -84,6 +86,27 @@ ASSET_DIR = f"{Path.cwd()}\\assets"
 #
 # Icon and image assets loading
 #
+icon_proxy = ctk.CTkImage(
+    light_image=Image.open(f"{ASSET_DIR}\\icon_proxy_light.png"),
+    dark_image=Image.open(f"{ASSET_DIR}\\icon_proxy.png"), size=(20, 20))
+icon_intercept = ctk.CTkImage(
+    light_image=Image.open(f"{ASSET_DIR}\\icon_traffic_light.png"),
+    dark_image=Image.open(f"{ASSET_DIR}\\icon_traffic.png"), size=(60, 60))
+icon_intruder = ctk.CTkImage(
+    light_image=Image.open(f"{ASSET_DIR}\\icon_intruder_light.png"),
+    dark_image=Image.open(f"{ASSET_DIR}\\icon_intruder.png"), size=(20, 20))
+icon_repeater = ctk.CTkImage(
+    light_image=Image.open(f"{ASSET_DIR}\\icon_repeater_light.png"),
+    dark_image=Image.open(f"{ASSET_DIR}\\icon_repeater.png"), size=(20, 20))
+icon_logs = ctk.CTkImage(
+    light_image=Image.open(f"{ASSET_DIR}\\icon_logs_light.png"),
+    dark_image=Image.open(f"{ASSET_DIR}\\icon_logs.png"), size=(20, 20))
+icon_settings = ctk.CTkImage(
+    light_image=Image.open(f"{ASSET_DIR}\\icon_settings_light.png"),
+    dark_image=Image.open(f"{ASSET_DIR}\\icon_settings.png"), size=(20, 20))
+icon_info = ctk.CTkImage(
+    light_image=Image.open(f"{ASSET_DIR}\\icon_info_light.png"),
+    dark_image=Image.open(f"{ASSET_DIR}\\icon_info.png"), size=(20, 20))
 icon_toggle_on = ctk.CTkImage(
     light_image=Image.open(f"{ASSET_DIR}\\icon_toggle_on.png"),
     dark_image=Image.open(f"{ASSET_DIR}\\icon_toggle_on.png"), size=(20, 20))
@@ -96,6 +119,12 @@ icon_arrow_up = ctk.CTkImage(
 icon_arrow_down = ctk.CTkImage(
     light_image=Image.open(f"{ASSET_DIR}\\icon_arrow_down.png"),
     dark_image=Image.open(f"{ASSET_DIR}\\icon_arrow_down.png"), size=(20, 20))
+icon_arrow_left = ctk.CTkImage(
+    light_image=Image.open(f"{ASSET_DIR}\\icon_arrow_left.png"),
+    dark_image=Image.open(f"{ASSET_DIR}\\icon_arrow_left.png"), size=(20, 20))
+icon_arrow_right = ctk.CTkImage(
+    light_image=Image.open(f"{ASSET_DIR}\\icon_arrow_right.png"),
+    dark_image=Image.open(f"{ASSET_DIR}\\icon_arrow_right.png"), size=(20, 20))
 icon_random = ctk.CTkImage(
     light_image=Image.open(f"{ASSET_DIR}\\icon_random.png"),
     dark_image=Image.open(f"{ASSET_DIR}\\icon_random.png"), size=(20, 20))
@@ -105,15 +134,12 @@ icon_browser = ctk.CTkImage(
 icon_delete = ctk.CTkImage(
     light_image=Image.open(f"{ASSET_DIR}\\icon_delete.png"),
     dark_image=Image.open(f"{ASSET_DIR}\\icon_delete.png"), size=(20, 20))
-icon_settings = ctk.CTkImage(
-    light_image=Image.open(f"{ASSET_DIR}\\icon_settings_light.png"),
-    dark_image=Image.open(f"{ASSET_DIR}\\icon_settings.png"), size=(20, 20))
+icon_load_file = ctk.CTkImage(
+    light_image=Image.open(f"{ASSET_DIR}\\icon_load_file.png"),
+    dark_image=Image.open(f"{ASSET_DIR}\\icon_load_file.png"), size=(20, 20))
 icon_add = ctk.CTkImage(
     light_image=Image.open(f"{ASSET_DIR}\\icon_add.png"),
     dark_image=Image.open(f"{ASSET_DIR}\\icon_add.png"), size=(20, 20))
-icon_info = ctk.CTkImage(
-    light_image=Image.open(f"{ASSET_DIR}\\icon_info_light.png"),
-    dark_image=Image.open(f"{ASSET_DIR}\\icon_info.png"), size=(20, 20))
 icon_attack = ctk.CTkImage(
     light_image=Image.open(f"{ASSET_DIR}\\icon_attack.png"),
     dark_image=Image.open(f"{ASSET_DIR}\\icon_attack.png"), size=(20, 20))
@@ -241,7 +267,6 @@ def center_window(root_window, window, width, height):
 
 
 class ActionButton(ctk.CTkButton):
-    # TODO FRONTEND P4: Find a solution for flickering - it's caused by configuring its disabled state when lists r empty
     """
     A preset action button based on CTkButton.
     """
@@ -353,30 +378,34 @@ class ConfirmDialog(ctk.CTkToplevel):
     """
     def __init__(self,
                  master, root,
-                 prompt="Are you sure you want to continue?",
+                 prompt="Are you sure you want to continue?", title="Confirm",
                  action1="Yes", command1=None,
                  action2=None, command2=None,
                  action3=None, command3=None):
         super().__init__(master)
-        self.title("Confirm")
+        self.title(title)
         self.geometry("300x100")
+        self.resizable(False, False)
         self.attributes("-topmost", True)
         center_window(root, self, 300, 100)
-        self.overrideredirect(True)
 
+        # TODO FRONTEND: Add Enter, Space to run command1 and Escape to destroy the window.
         label = ctk.CTkLabel(self, text=prompt, wraplength=250)
         label.pack(pady=(10, 5), padx=10)
 
         yes_button = ctk.CTkButton(self, text=action1, command=command1, corner_radius=32)
-        yes_button.pack(side="left", fill=tk.X, padx=10, pady=(5, 10), anchor="e")
 
         if action2 is not None:
-            no_button = ctk.CTkButton(self, text=action2, command=command2, corner_radius=32)
-            no_button.pack(side="left", fill=tk.X, padx=10, pady=(5, 10), anchor="w")
-
-        if action3 is not None:
-            no_button = ctk.CTkButton(self, text=action3, command=command3, corner_radius=32)
-            no_button.pack(side="left", fill=tk.X, padx=10, pady=(5, 10), anchor="w")
+            yes_button.pack(side="left", fill=tk.X, padx=10, pady=(5, 10), anchor="e")
+            a_button2 = ctk.CTkButton(self, text=action2, command=command2, corner_radius=32)
+            if action3 is not None:
+                a_button2.pack(side="left", fill=tk.X, padx=10, pady=(5, 10), anchor="w")
+                a_button3 = ctk.CTkButton(self, text=action3, command=command3, corner_radius=32)
+                a_button3.pack(side="right", fill=tk.X, padx=10, pady=(5, 10), anchor="w")
+            else:
+                a_button2.pack(side="right", fill=tk.X, padx=10, pady=(5, 10), anchor="w")
+        else:
+            yes_button.pack(side="top", fill=tk.X, padx=10, pady=(5, 10), anchor="e")
 
 
 class TextBox(ctk.CTkTextbox):
@@ -439,10 +468,16 @@ class ItemList(ttk.Treeview):
         treestyle = ttk.Style()
         treestyle.theme_use('default')
         treestyle.configure("Treeview", background=color_bg, foreground=color_text, fieldbackground=color_bg,
-                            borderwidth=0)
+                            borderwidth=0, highlightthickness=0, bd=0)
         treestyle.configure("Treeview.Heading", background=color_bg, foreground=color_text, borderwidth=0)
         treestyle.map('Treeview', background=[('selected', color_acc)], foreground=[('selected', 'white')])
-        treestyle.map("Treeview.Heading", background=[('active', color_bg)])
+        treestyle.map("Treeview.Heading", background=[('active', color_bg_br)])
+
+        treestyle.configure("Treeview2.Treeview", background=color_bg_br, foreground=color_text, fieldbackground=color_bg_br,
+                            borderwidth=0, highlightthickness=0, bd=0)
+        treestyle.configure("Treeview2.Treeview.Heading", background=color_bg_br, foreground=color_text, borderwidth=0)
+        treestyle.map('Treeview2.Treeview', background=[('selected', color_acc)], foreground=[('selected', 'white')])
+        treestyle.map("Treeview2.Treeview.Heading", background=[('active', color_bg_br)])
 
     def popup(self, event):
         """
@@ -466,6 +501,7 @@ class ItemList(ttk.Treeview):
         """
         for item in self.selection():
             self.delete(item)
+            print(f"deleted {item}")
 
         if len(self.get_children()) > 0 and len(self.selection()) == 0:
             self.selection_add(self.get_children()[-1])
@@ -493,7 +529,6 @@ class ItemList(ttk.Treeview):
             # print(f"DEBUG/FRONTEND/PROXY: Copied {content}")
             pyperclip.copy(content.strip())
 
-
 class TextEntry(ctk.CTkEntry):
     """
     Custom TextEntry class
@@ -503,4 +538,16 @@ class TextEntry(ctk.CTkEntry):
         self.configure(border_width=0,
                        text_color=color_text,
                        fg_color=color_bg_br,
+                       bg_color="transparent")
+
+
+class Label(ctk.CTkLabel):
+    """
+    Custom Label class
+    """
+    def __init__(self, parent, *args, **kwargs):
+        super().__init__(parent, *args, **kwargs)
+        self.configure(corner_radius=10,
+                       text_color=color_text,
+                       fg_color="transparent",
                        bg_color="transparent")

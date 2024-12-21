@@ -111,7 +111,7 @@ class GUI(ctk.CTk):
     def show_settings(self):
         if self.settings_window is None or not self.settings_window.winfo_exists():
             # TODO OTHER P2: Actual implmentation of config logic in the app
-            # Settings ideas, appearance (theme), language (EN or PL), Proxy rerun, show Proxy log, turn on Debug mode for the app DEBUG PRINTOUTS
+            #  Settings ideas, appearance (theme), language (EN or PL), Proxy rerun, show Proxy log, turn on Debug mode for the app DEBUG PRINTOUTS
             self.settings_window = ctk.CTkToplevel(self)
             self.settings_window.title("Proxy Settings")
             self.settings_window.attributes("-topmost", True)
@@ -183,7 +183,7 @@ class GUI(ctk.CTk):
                 self.browser.quit()
             self.browser = None
 
-            self.proxy_tab.browser_button_update()
+            self.proxy_tab.update_browser_buttons()
             print("INFO: Closing web browser.")
 
     def start_browser_thread(self):
@@ -194,7 +194,7 @@ class GUI(ctk.CTk):
             self.browser_opened = True
             threading.Thread(target=self.open_browser).start()
 
-            self.proxy_tab.browser_button_update()
+            self.proxy_tab.update_browser_buttons()
             print("INFO: Opening web browser.")
 
         elif self.browser and self.browser_opened:
