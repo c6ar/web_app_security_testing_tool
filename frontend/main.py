@@ -5,9 +5,9 @@ from intruder import *
 from repeater import *
 from logs import *
 from selenium import webdriver
-#noinspection PyUnresolvedReferences
-# from webdriver_manager.chrome import ChromeDriverManager
-# from selenium.webdriver.chrome.options import Options
+# noinspection PyUnresolvedReferences
+from webdriver_manager.chrome import ChromeDriverManager
+from selenium.webdriver.chrome.options import Options
 
 
 class GUI(ctk.CTk):

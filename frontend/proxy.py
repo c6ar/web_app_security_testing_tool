@@ -894,7 +894,7 @@ class GUIProxy(ctk.CTkFrame):
             self.intercept_tab.browser_button.configure(text="Go to browser")
             self.http_traffic_tab.browser_button.configure(text="Go to browser")
         else:
-            self.intercept_tab.configure(text="Open browser")
+            self.intercept_tab.browser_button.configure(text="Open browser")
             self.http_traffic_tab.browser_button.configure(text="Open browser")
 
     def submit_new_scope_hostname_dialog(self):

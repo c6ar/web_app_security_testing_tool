@@ -128,6 +128,15 @@ icon_arrow_right = ctk.CTkImage(
 icon_random = ctk.CTkImage(
     light_image=Image.open(f"{ASSET_DIR}\\icon_random.png"),
     dark_image=Image.open(f"{ASSET_DIR}\\icon_random.png"), size=(20, 20))
+icon_start = ctk.CTkImage(
+    light_image=Image.open(f"{ASSET_DIR}\\icon_start.png"),
+    dark_image=Image.open(f"{ASSET_DIR}\\icon_start.png"), size=(20, 20))
+icon_pause = ctk.CTkImage(
+    light_image=Image.open(f"{ASSET_DIR}\\icon_pause.png"),
+    dark_image=Image.open(f"{ASSET_DIR}\\icon_pause.png"), size=(20, 20))
+icon_abort = ctk.CTkImage(
+    light_image=Image.open(f"{ASSET_DIR}\\icon_abort.png"),
+    dark_image=Image.open(f"{ASSET_DIR}\\icon_abort.png"), size=(20, 20))
 icon_browser = ctk.CTkImage(
     light_image=Image.open(f"{ASSET_DIR}\\icon_browser.png"),
     dark_image=Image.open(f"{ASSET_DIR}\\icon_browser.png"), size=(20, 20))
@@ -158,6 +167,7 @@ intercept_on_image = ctk.CTkImage(light_image=Image.open(f"{ASSET_DIR}\\intercep
 #
 # Common functions
 #
+
 def load_config():
     # TODO OTHER P2: Actual implmentation of config logic in the app
     default_config = {
@@ -175,7 +185,8 @@ def load_config():
         "FRONT_BACK_SENDTOREPEATER_PORT": 65439,
         "BACK_REPEATER_FLOWSEND_PORT": 65440,
         "BACK_REPEATER_RESPONSESEND_PORT": 65441,
-        "debug_mode": False,
+        "debug_mode": True,
+        "show_running_config": False,
         "proxy_console": False
     }
     config = default_config.copy()
@@ -216,9 +227,10 @@ def load_config():
 RUNNING_CONFIG = load_config()
 if RUNNING_CONFIG["debug_mode"]:
     print("Debug mode on.")
-    print("Running config")
-    for key, value in RUNNING_CONFIG.items():
-        print(f"\t{key}: {value}")
+    if RUNNING_CONFIG["show_running_config"]:
+        print("Running config: ")
+        for key, value in RUNNING_CONFIG.items():
+            print(f"\t{key}: {value}")
 
 
 def save_config(config):
@@ -264,6 +276,14 @@ def center_window(root_window, window, width, height):
     position_down = parent_y + int(parent_height / 2 - height / 2)
 
     window.geometry(f"{width}x{height}+{position_right}+{position_down}")
+
+
+def dprint(msg):
+    """
+    Prints a message to the console if debug mode is enabled in the config.
+    """
+    if RUNNING_CONFIG["debug_mode"]:
+        print(msg)
 
 
 class ActionButton(ctk.CTkButton):
@@ -381,17 +401,18 @@ class ConfirmDialog(ctk.CTkToplevel):
                  prompt="Are you sure you want to continue?", title="Confirm",
                  action1="Yes", command1=None,
                  action2=None, command2=None,
-                 action3=None, command3=None):
+                 action3=None, command3=None,
+                 width=300, height=100):
         super().__init__(master)
         self.title(title)
-        self.geometry("300x100")
+        self.geometry(f"{width}x{height}")
         self.resizable(False, False)
         self.attributes("-topmost", True)
-        center_window(root, self, 300, 100)
+        center_window(root, self, width, height)
 
         # TODO FRONTEND: Add Enter, Space to run command1 and Escape to destroy the window.
         label = ctk.CTkLabel(self, text=prompt, wraplength=250)
-        label.pack(pady=(10, 5), padx=10)
+        label.pack(fill=tk.BOTH, pady=(10, 5), padx=10)
 
         yes_button = ctk.CTkButton(self, text=action1, command=command1, corner_radius=32)
 
@@ -406,6 +427,20 @@ class ConfirmDialog(ctk.CTkToplevel):
                 a_button2.pack(side="right", fill=tk.X, padx=10, pady=(5, 10), anchor="w")
         else:
             yes_button.pack(side="top", fill=tk.X, padx=10, pady=(5, 10), anchor="e")
+
+
+class ErrorDialog(ConfirmDialog):
+    def __init__(self,
+                 master, root,
+                 prompt="Error", title="Error!"):
+        super().__init__(
+            master=master,
+            root=root,
+            prompt=prompt,
+            title=title,
+            action1="OK",
+            command1=lambda: self.destroy()
+        )
 
 
 class TextBox(ctk.CTkTextbox):
@@ -528,6 +563,7 @@ class ItemList(ttk.Treeview):
             # print(f'DEBUG/FRONTEND/PROXY: selected_item = {selected_item}\n\nits values = {self.item(selected_item)['values']}')
             # print(f"DEBUG/FRONTEND/PROXY: Copied {content}")
             pyperclip.copy(content.strip())
+
 
 class TextEntry(ctk.CTkEntry):
     """

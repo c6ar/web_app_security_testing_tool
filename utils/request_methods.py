@@ -46,7 +46,8 @@ def extract_base_url(http_message):
     :param http_message: str, the raw HTTP message
     :return: str, the base URL
     """
-    lines = http_message.strip().split("\r\n")
+    http_message = http_message.strip().replace("\r\n", "\n")
+    lines = http_message.split("\n")
     for line in lines:
         if line.lower().startswith("host: "):
             host = line.split(": ", 1)[1]
