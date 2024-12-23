@@ -22,7 +22,7 @@ def parse_http_message(http_message):
     # TODO protection for bad input (eg. 'sdf')
     try:
         headers_body, body = http_message.split("\r\n\r\n")
-    except Exception:
+    except ValueError:
         headers_body = http_message
         body = ""
 
@@ -30,7 +30,10 @@ def parse_http_message(http_message):
     request_line = lines[0]
     header_lines = lines[1:]
     data = extract_key_value_pairs(body)
-    method, path, http_version = request_line.split(" ")
+    try:
+        method, path, http_version = request_line.split(" ")
+    except ValueError as e:
+        raise ValueError("Invalid request line format.\nExpected 'method path http_version'.") from e
 
     headers = {}
     for line in header_lines:

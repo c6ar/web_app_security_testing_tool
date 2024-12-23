@@ -233,11 +233,11 @@ class Settings(ctk.CTkToplevel):
 
         debug_running_conf_box = Box(debug_isle)
         debug_running_conf_box.pack(fill=tk.X, padx=10, pady=10)
-        debug_running_conf_label = Label(debug_running_conf_box, text="Debug mode", width=label_width, anchor=tk.E)
+        debug_running_conf_label = Label(debug_running_conf_box, text="Show running conf", width=label_width, anchor=tk.E)
         debug_running_conf_label.pack(side=tk.LEFT, padx=(10, 5), pady=5)
         self.debug_running_conf_checkbox = ctk.CTkCheckBox(
             debug_running_conf_box,
-            text="Show all application operations in the Python's output.",
+            text="Show currently running configuration on app's start up in the Python's output.",
             command=self.on_settings_change
         )
         if RUNNING_CONFIG['debug_show_running_config']:

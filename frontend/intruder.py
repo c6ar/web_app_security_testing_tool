@@ -25,9 +25,9 @@ class IntruderResult(ctk.CTkToplevel):
         self.attack_paused = False
         self.attack_ceased = False
 
-        self.top_bar = ctk.CTkFrame(self, fg_color="transparent", bg_color="transparent")
+        self.top_bar = Box(self)
         self.top_bar.pack(side=tk.TOP, fill=tk.X, padx=15, pady=(5, 0))
-        self.attack_start_label = ctk.CTkLabel(self.top_bar, text=f"Attack on: {self.hostname} started at {self.timestamp}.")
+        self.attack_start_label = Label(self.top_bar, text=f"Attack on: {self.hostname} started at {self.timestamp}.")
         self.attack_start_label.pack(side=tk.LEFT, padx=(20, 0))
         self.pause_button = ActionButton(
             self.top_bar,
@@ -47,14 +47,14 @@ class IntruderResult(ctk.CTkToplevel):
             hover_color=color_bg_br
         )
         self.abort_button.pack(side=tk.LEFT, padx=(10, 0))
-        self.attack_status_label = ctk.CTkLabel(self.top_bar, text=f"Attack is ongoing.")
+        self.attack_status_label = Label(self.top_bar, text=f"Attack is ongoing.")
         self.attack_status_label.pack(side=tk.LEFT, padx=(10, 0))
 
-        self.tab_nav_bar = ctk.CTkFrame(self, fg_color="transparent", bg_color="transparent")
+        self.tab_nav_bar = Box(self)
         self.tab_nav_bar.pack(side=tk.TOP, fill=tk.X, padx=15, pady=(5, 0))
 
-        self.results_tab = ctk.CTkFrame(self, fg_color=color_bg_br, bg_color="transparent", corner_radius=10)
-        self.positions_tab = ctk.CTkFrame(self, fg_color=color_bg_br, bg_color="transparent", corner_radius=10)
+        self.results_tab = BrightBox(self)
+        self.positions_tab = BrightBox(self)
 
         self.tabs = {
             "Results": self.results_tab,
@@ -68,7 +68,8 @@ class IntruderResult(ctk.CTkToplevel):
 
         self.add_random_button = NavButton(self.tab_nav_bar, text="Add random request", icon=icon_random,
                                            command=self.generate_random_request)
-        self.add_random_button.pack(side=tk.RIGHT)
+        if RUNNING_CONFIG["debug_mode"]:
+            self.add_random_button.pack(side=tk.RIGHT)
 
         """
          > RESULTS TAB
@@ -180,32 +181,22 @@ class IntruderResult(ctk.CTkToplevel):
 
     def on_closing(self):
         if not self.attack_ceased:
-            self.close_dialog = ConfirmDialog(
+            confirm = ConfirmDialog(
                 self,
                 self.root,
                 "There is currently attack pending. Do you want to close the window?",
                 "Warning",
                 "Cancel",
-                lambda: self.close_dialog.destroy(),
+                lambda: confirm.destroy(),
                 "Keep attack in the background",
-                self.hide_window,
+                lambda: (self.withdraw(), confirm.destroy()),
                 "Abort the attack",
-                lambda: (self.abort_attack(), self.hide_window()),
+                lambda: (self.abort_attack(), self.withdraw(), confirm.destroy()),
                 width=550,
                 height=100
             )
         else:
-            self.hide_window()
-
-    def hide_window(self):
-        try:
-            if self.close_dialog is not None:
-                self.close_dialog.destroy()
-                del self.close_dialog
-                self.close_dialog = None
-        except Exception as e:
-            print(f"Error: {e}")
-        self.withdraw()
+            self.withdraw()
 
     def show_tab(self, tab_name):
         for name, tab in self.tabs.items():
@@ -396,7 +387,7 @@ class IntruderTab(ctk.CTkFrame):
 
         self.gen_button = ActionButton(
             self.top_bar,
-            text="Generate a request",
+            text="Generate an attack",
             image=icon_random,
             command=self.generate_seed_intrusion
         )
@@ -535,29 +526,27 @@ class IntruderTab(ctk.CTkFrame):
     def on_attack_button_click(self):
         queue_id = self.unique_id
         if queue_id in self.gui.attack_queues:
-            self.reload_dialog = ConfirmDialog(
+            confirm = ConfirmDialog(
                 master=self,
                 root=self.gui.gui_root,
-                title="Warning",
+                title="Watch out!",
                 prompt=f"The last attack was started at {self.attack_timestamp}. Do you wish to show its result or reload an attack with new parameters (previous results will be lost)?",
                 action1="Reload attack",
-                command1=self.start_attack,
+                command1=lambda: (self.start_attack(), confirm.destroy()),
                 action2="Show last attack",
-                command2=self.show_attack,
+                command2=lambda: (self.show_attack(), confirm.destroy()),
                 height=150
             )
         else:
             self.start_attack()
 
     def start_attack(self):
-        if self.reload_dialog is not None and self.reload_dialog.winfo_ismapped():
-            self.reload_dialog.destroy()
-        # try:
         self.attack_timestamp = datetime.now().strftime("%H:%M:%S %d-%m-%Y")
         uuid = self.unique_id
         hostname = self.hostname_entry.get()
         request_text = self.positions_textbox.get_text()
-        dprint(f"Starting #{self.unique_id} attack on {hostname} at {self.attack_timestamp}")
+        dprint(f"================================================\n"
+               f"[DEBUG] Starting #{self.unique_id} attack on {hostname} at {self.attack_timestamp}")
 
         payloads = {}
         if self.attack_type != 2:
@@ -569,7 +558,7 @@ class IntruderTab(ctk.CTkFrame):
                 payloads[var] = textbox.get_text()
         if len(payloads) == 0:
             raise ValueError("No payloads")
-        dprint(f"With payloads:\n{payloads}\n--------")
+        dprint(f"with payloads:\n{payloads}")
 
         if self.attack_type != 1:
             positions = {}
@@ -585,14 +574,15 @@ class IntruderTab(ctk.CTkFrame):
 
             if len(positions) == 0:
                 raise ValueError("No positions")
-            dprint(f"On positions:\n{positions}\n-------")
+            dprint(f"On positions:\n{positions}"
+                   f"================================================\n")
 
         self.control_flags['pause'].clear()
         self.control_flags['abort'].clear()
 
         if uuid in self.gui.attack_queues:
             del self.gui.attack_queues[uuid]
-            dprint(f"Found attack queue with ID: {uuid}. Deleting it.")
+            dprint(f"[DEBUG] Found attack queue with ID: {uuid}. Deleting it.")
 
         self.gui.attack_queues[uuid] = queue.Queue()
         attack_queue = self.gui.attack_queues[uuid]
@@ -600,7 +590,7 @@ class IntruderTab(ctk.CTkFrame):
         if uuid in self.gui.results_windows:
             self.gui.results_windows[uuid].destroy()
             del self.gui.results_windows[uuid]
-            dprint(f"Found results window ID: {uuid}. Deleting it.")
+            dprint(f"[DEBUG] Found results window ID: {uuid}. Deleting it.")
 
         results_window = IntruderResult(
             master=self,
@@ -647,7 +637,7 @@ class IntruderTab(ctk.CTkFrame):
         if uuid in self.gui.producer_threads:
             self.gui.producer_threads[uuid].join(timeout=1)
             del self.gui.producer_threads[uuid]
-            dprint(f"Found producer thread with ID: {uuid}. Deleting it.")
+            dprint(f"[DEBUG] Found producer thread with ID: {uuid}. Deleting it.")
 
         producer_thread = Thread(target=producer, args=(
             attack_queue,
@@ -666,7 +656,7 @@ class IntruderTab(ctk.CTkFrame):
 
         if uuid in self.gui.consumer_threads:
             del self.gui.consumer_threads[uuid]
-            dprint(f"Found consumer thread with ID: {uuid}. Deleting it.")
+            dprint(f"[DEBUG] Found consumer thread with ID: {uuid}. Deleting it.")
 
         consumer_thread = Thread(target=consumer, daemon=True)
         consumer_thread.start()
@@ -675,12 +665,7 @@ class IntruderTab(ctk.CTkFrame):
         self.attack_info.configure(text=f"Attack started at {self.attack_timestamp}.")
         self.results_button.configure(state=tk.NORMAL)
 
-        # except Exception as e:
-        #     ErrorDialog(self, self.gui.gui_root, prompt=e)
-
     def show_attack(self):
-        if self.reload_dialog is not None:
-            self.reload_dialog.destroy()
         if self.unique_id in self.gui.results_windows:
             results_window = self.gui.results_windows[self.unique_id]
             results_window.deiconify()
@@ -915,15 +900,15 @@ class IntruderTab(ctk.CTkFrame):
         self.update_payloads_textbox_dropdown()
 
     def clear_all_positions_confirm(self):
-        confirmation = ConfirmDialog(
+        confirm = ConfirmDialog(
             self,
             self.gui.gui_root,
             "Are you sure you want to clear all the positions?",
             "Watch out!",
             "Yes",
-            lambda: (self.clear_all_positions(), confirmation.destroy()),
+            lambda: (self.clear_all_positions(), confirm.destroy()),
             "No",
-            lambda: confirmation.destroy()
+            lambda: confirm.destroy()
         )
 
     def add_payload(self, name):

@@ -170,7 +170,9 @@ if RUNNING_CONFIG["debug_show_running_config"]:
     print("================================================\n")
 
 if RUNNING_CONFIG["debug_mode"]:
-    print("[DEBUG] Debug mode on.\n\tApp will print debug messages to the console.")
+    print("[DEBUG] Debug mode is ON. App will print debug messages to the console.")
+else:
+    print("[INFO] Debug mode is OFF. App will print only error and important info messages to the console.")
 
 # ================================================
 # Global variables

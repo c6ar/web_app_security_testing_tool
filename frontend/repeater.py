@@ -132,7 +132,7 @@ class RepeaterTab(ctk.CTkFrame):
                 self.tab_iteration_keys.insert(0, timestamp)
                 self.update_dropdown_menu()
             except Exception as e:
-                dialog = ConfirmDialog(self, self.gui, prompt=e, action1="Ok", command1=lambda: dialog.destroy())
+                ErrorDialog(self, self.gui, e)
 
     def add_response_to_repeater_tab(self, response):
         self.response_textbox.configure(state=tk.NORMAL)

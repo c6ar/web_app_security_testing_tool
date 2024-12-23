@@ -184,7 +184,6 @@ class GUI(ctk.CTk):
                 print(f"[ERROR] Proxy process termination failed: {e}")
 
     def on_close(self):
-        # TODO OTHER P4: Finding other way to kill the mitdump.exe when closing the app.
         """
         Instructions run on GUI closure.
         """

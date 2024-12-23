@@ -86,9 +86,11 @@ class HTTPTrafficTab(ctk.CTkFrame):
             else:
                 button.pack(side=tk.LEFT, padx=5, pady=15)
 
-        self.add_random_entry.pack(side=tk.LEFT, padx=5, pady=15)
+        if RUNNING_CONFIG["debug_mode"]:
+            self.add_random_entry.pack(side=tk.LEFT, padx=5, pady=15)
         self.browser_button.pack(side=tk.RIGHT, padx=(5, 10), pady=15)
-        self.proxy_button.pack(side=tk.RIGHT, padx=5, pady=15)
+        if RUNNING_CONFIG["debug_mode"]:
+            self.proxy_button.pack(side=tk.RIGHT, padx=5, pady=15)
 
         self.paned_window = tk.PanedWindow(self, orient=tk.VERTICAL, sashwidth=10,
                                            background=color_bg_br)
