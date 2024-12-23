@@ -2,38 +2,24 @@ from threading import Thread
 from common import *
 from backend.intruder import *
 import queue
-
-
-def load_payload(payloads_text):
-    file_path = filedialog.askopenfilename(filetypes=[("Text files", "*.txt")])
-
-    if file_path:
-        try:
-            with open(file_path, 'r') as file:
-                file_content = file.read()
-            payloads_text.delete("1.0", tk.END)
-            payloads_text.insert("1.0", file_content)
-        except Exception as e:
-            dprint(f"Error reading the file: {e}")
-
-
-def clear_payload(payloads_text):
-    payloads_text.delete("1.0", tk.END)
+from typing import Dict, Union
 
 
 class IntruderResult(ctk.CTkToplevel):
     def __init__(self, master, gui, hostname, positions, payloads, timestamp, q, control_flags, **kwargs):
         super().__init__(master, **kwargs)
         self.queue = q
-        self.title("Intruder Attack's Results")
+        self.title(f"Intruder Attack on {hostname}")
         self.intruder_tab = master
         self.root = gui.gui_root
+        self.focus_set()
+        self.transient(master)
         self.root.after(100, self.check_queue)
         self.configure(fg_color=color_bg, bg_color=color_bg)
         width = int(int(self.root.winfo_width()) * 0.9)
         height = int(int(self.root.winfo_height()) * 0.9)
         self.geometry(f"{width}x{height}")
-        self.attributes("-topmost", True)
+        # self.attributes("-topmost", True)
         center_window(self.root, self, width, height)
 
         self.hostname = hostname
@@ -100,7 +86,6 @@ class IntruderResult(ctk.CTkToplevel):
 
         self.bottom_frame = ctk.CTkFrame(self.results_paned_window, corner_radius=10, fg_color=color_bg,
                                          bg_color="transparent")
-        # self.results_paned_window.add(self.bottom_frame)
 
         self.bottom_frame.grid_columnconfigure(0, weight=1)
         self.bottom_frame.grid_columnconfigure(1, weight=1)
@@ -143,7 +128,7 @@ class IntruderResult(ctk.CTkToplevel):
             tag_ranges = positions.tag_ranges(tag)
             for start, end in zip(tag_ranges[0::2], tag_ranges[1::2]):
                 self.positions_textbox.tag_add(tag, start, end)
-                self.positions_textbox.tag_config(tag, background="#8b115f", foreground="#b9d918")
+                self.positions_textbox.tag_config(tag, background=color_highlight_bg, foreground=color_highlight)
         self.positions_textbox.configure(state=tk.DISABLED)
         self.positions_textbox.grid(row=2, column=0, padx=(20, 10), pady=(0, 20), sticky="nsew")
 
@@ -168,15 +153,37 @@ class IntruderResult(ctk.CTkToplevel):
 
         self.show_tab("Results")
         self.flow = None
-        """
-        Asyncs servers to catch respones
-        """
 
-        # TODO FRONTEND P2: Give out confirm dialog with 3 options: to stop the attack and close the window,
-        #  to stop the attack and save it in the chronology or to keep attack running in the background.
-        self.protocol("WM_DELETE_WINDOW", self.hide_window)
+        self.close_dialog = None
+        self.protocol("WM_DELETE_WINDOW", self.on_closing)
+
+    def on_closing(self):
+        if not self.attack_ceased:
+            self.close_dialog = ConfirmDialog(
+                self,
+                self.root,
+                "There is currently attack pending. Do you want to close the window?",
+                "Warning",
+                "Cancel",
+                lambda: self.close_dialog.destroy(),
+                "Keep attack in the background",
+                self.hide_window,
+                "Abort the attack",
+                lambda: (self.abort_attack(), self.hide_window()),
+                width=550,
+                height=150
+            )
+        else:
+            self.hide_window()
 
     def hide_window(self):
+        try:
+            if self.close_dialog is not None:
+                self.close_dialog.destroy()
+                del self.close_dialog
+                self.close_dialog = None
+        except Exception as e:
+            print(f"Error: {e}")
         self.withdraw()
 
     def show_tab(self, tab_name):
@@ -188,7 +195,7 @@ class IntruderResult(ctk.CTkToplevel):
                 tab.pack_forget()
                 self.tab_nav_buttons[name].set_selected(False)
 
-    def show_request_content(self, event):
+    def show_request_content(self, _event):
         if len(self.attack_request_list.selection()) > 0:
             selected_item = self.attack_request_list.selection()[0]
             request_string = self.attack_request_list.item(selected_item)['values'][-2]
@@ -247,14 +254,14 @@ class IntruderResult(ctk.CTkToplevel):
             req_con = data['req_con']
             res_con = data['res_con']
             length = len(res_con)
-            request = [rn, pos, payload, status_code, error, timeout, length, req_con, res_con]
+            values = [rn, pos, payload, status_code, error, timeout, length, req_con, res_con]
 
             if self.attack_request_list:
-                self.attack_request_list.insert("", tk.END, values=request)
+                self.attack_request_list.insert("", tk.END, values=values)
 
         else:
             finish_timestamp = datetime.now().strftime("%H:%M:%S %d-%m-%Y")
-
+            self.attack_ceased = True
             self.abort_button.pack_forget()
             self.pause_button.pack_forget()
             if data['status'] == 'completed':
@@ -302,7 +309,7 @@ class IntruderTab(ctk.CTkFrame):
         self.is_empty = True if content is None else False
 
         self.top_bar = ctk.CTkFrame(self, fg_color="transparent")
-        self.top_bar.pack(side=tk.TOP, fill=tk.X, padx=10, pady=(10, 0))
+        self.top_bar.grid(row=0, column=0, columnspan=2, padx=10, pady=(10, 0), sticky="ew")
 
         self.attack_type_label = ctk.CTkLabel(self.top_bar, text="Attack type")
         self.attack_type_label.pack(padx=(20, 5), pady=10, side="left")
@@ -355,7 +362,7 @@ class IntruderTab(ctk.CTkFrame):
         }
 
         if self.id != 0:
-            self.delete_frame_button = ctk.CTkButton(
+            self.delete_frame_button = ActionButton(
                 self.top_bar,
                 text="Delete the card",
                 width=30,
@@ -375,8 +382,46 @@ class IntruderTab(ctk.CTkFrame):
         if RUNNING_CONFIG["debug_mode"]:
             self.gen_button.pack(padx=10, pady=10, side=tk.RIGHT)
 
-        self.target_bar = ctk.CTkFrame(self, fg_color="transparent", bg_color="transparent")
-        self.target_bar.pack(side=tk.TOP, fill=tk.X, padx=10, pady=0)
+        self.left_column = ctk.CTkFrame(self, fg_color="transparent", bg_color="transparent")
+        self.left_column.grid(row=1, column=0, padx=(10, 5), pady=(0, 10), sticky="nsew")
+
+        self.positions_header = ctk.CTkFrame(self.left_column, fg_color="transparent", bg_color="transparent")
+        self.positions_header.pack(side=tk.TOP, fill=tk.X, padx=10, pady=0)
+
+        self.positions_header_title = HeaderTitle(self.positions_header, "Positions")
+        self.positions_header_title.pack(side=tk.LEFT, padx=(0, 10), pady=0)
+
+        self.add_button = ActionButton(
+            self.positions_header,
+            text="Add position",
+            image=icon_add,
+            command=self.add_position
+        )
+        self.add_button.pack(side=tk.LEFT, padx=5, pady=0)
+
+        self.clear_button = ActionButton(
+            self.positions_header,
+            text="Clear position(s)",
+            image=icon_delete,
+            command=self.clear_position,
+            fg_color=color_acc3,
+            hover_color=color_acc4
+        )
+        self.clear_button.pack(side=tk.LEFT, padx=5, pady=0)
+
+        self.positions_textbox = TextBox(self.left_column, text="")
+        self.positions_textbox.pack(fill=tk.BOTH, expand=True, padx=10, pady=(5, 10))
+        if content is not None:
+            self.positions_textbox.insert_text(content)
+        self.positions_textbox.bind("<<Modified>>", self.on_positions_textbox_change)
+
+        self.positions_var_gen_id = 0
+
+        self.right_column = ctk.CTkFrame(self, fg_color="transparent", bg_color="transparent")
+        self.right_column.grid(row=1, column=1, padx=(5, 10), pady=(0, 10), sticky="nsew")
+
+        self.target_bar = ctk.CTkFrame(self.right_column, fg_color="transparent", bg_color="transparent")
+        self.target_bar.pack(side=tk.TOP, fill=tk.X, padx=(0, 10), pady=0)
 
         self.target_bar_title = HeaderTitle(self.target_bar, "Target")
         self.target_bar_title.pack(side=tk.LEFT, padx=(0, 10), pady=0)
@@ -384,45 +429,58 @@ class IntruderTab(ctk.CTkFrame):
         self.hostname_entry = TextEntry(self.target_bar, width=350)
         if self.hostname is not None:
             self.hostname_entry.insert(0, self.hostname)
-        self.hostname_entry.pack(side=tk.LEFT, padx=(0, 10), pady=10)
+        self.hostname_entry.pack(side=tk.LEFT, padx=(0, 10), pady=0)
         self.hostname_entry.bind("<KeyRelease>", self.on_positions_textbox_change)
 
-        self.positions_header = ctk.CTkFrame(self, fg_color="transparent", bg_color="transparent")
-        self.positions_header.pack(side=tk.TOP, fill=tk.X, padx=10, pady=0)
+        self.payloads_header = ctk.CTkFrame(self.right_column, fg_color="transparent", bg_color="transparent")
+        self.payloads_header.pack(side=tk.TOP, fill=tk.X, padx=(0, 10), pady=0)
 
-        self.positions_header_title = HeaderTitle(self.positions_header, "Positions")
-        self.positions_header_title.pack(side=tk.LEFT, padx=(0, 10), pady=0)
+        self.payloads_header_title = HeaderTitle(self.payloads_header, "Payloads")
+        self.payloads_header_title.pack(side=tk.LEFT, padx=(0, 10), pady=0)
 
-        self.add_button = ctk.CTkButton(self.positions_header, text="Add §", command=self.add_position)
-        self.add_button.pack(side=tk.LEFT, padx=5, pady=10)
+        self.payloads_textbox_var = tk.StringVar(self.payloads_header)
+        self.payloads_textbox_var.set("All")
+        self.payloads_textbox_dropdown = ctk.CTkOptionMenu(
+            self.payloads_header,
+            width=200,
+            corner_radius=10,
+            variable=self.payloads_textbox_var,
+            values=[],
+            command=self.switch_payloads_textbox,
+            state=tk.DISABLED,
+        )
+        self.payloads_textbox_dropdown.pack(side=tk.LEFT, padx=(0, 10), pady=0)
+        self.payloads_load_button = ActionButton(
+            self.payloads_header,
+            text="Load from file",
+            image=icon_load_file,
+            command=self.load_payloads
+        )
+        self.payloads_load_button.pack(side=tk.LEFT, padx=(0, 10), pady=0)
+        self.payloads_clear_button = ActionButton(
+            self.payloads_header,
+            text="Clear payloads",
+            image=icon_delete,
+            command=self.clear_payloads,
+            fg_color=color_acc3,
+            hover_color=color_acc4
+        )
+        self.payloads_clear_button.pack(side=tk.LEFT, padx=(0, 10), pady=0)
 
-        self.clear_button = ctk.CTkButton(self.positions_header, text="Clear §", command=self.clear_position)
-        self.clear_button.pack(side=tk.LEFT, padx=5, pady=10)
-
-        self.monoscape_font = ctk.CTkFont(family="Courier New", size=14, weight="normal")
-        self.positions_textbox = TextBox(self, text="", height=224)
-        self.positions_textbox.pack(fill=tk.X, padx=20, pady=10)
-        if content is not None:
-            self.positions_textbox.insert_text(content)
-        self.positions_textbox.bind("<<Modified>>", self.on_positions_textbox_change)
-
-        self.positions_var_gen_id = 0
-
-        self.payloads_header = HeaderTitle(self, "Payloads")
-        self.payloads_header.pack(fill=tk.X, padx=10, pady=0)
-
-        self.payloads_wrapper = ctk.CTkScrollableFrame(self, fg_color="transparent", corner_radius=10)
-        self.payloads_wrapper.pack(fill=tk.BOTH, expand=True, padx=0, pady=0)
-
-        self.payloads_frames = {}
-        self.payloads_textboxes = {}
+        self.payloads_textboxes: Dict[Union[int, str], TextBox] = {0: TextBox(self.right_column)}
+        self.current_payloads_textbox = self.payloads_textboxes[0]
+        self.current_payloads_textbox.pack(fill=tk.BOTH, expand=True, padx=(0, 10), pady=(5, 10))
 
         self.payload_placeholder = ctk.CTkLabel(
-            self.payloads_wrapper,
+            self.right_column,
             text="Add payload position to get payload frame.",
             justify="left",
             anchor="w"
         )
+
+        self.grid_columnconfigure(0, weight=1)
+        self.grid_columnconfigure(1, weight=1)
+        self.grid_rowconfigure(1, weight=1)
 
         self.on_attack_option_select("Sniper attack")
 
@@ -433,7 +491,7 @@ class IntruderTab(ctk.CTkFrame):
                 command=lambda: self.gui.delete_tab(self.id),
             )
 
-    def on_positions_textbox_change(self, event):
+    def on_positions_textbox_change(self, _event):
         self._reset_positions_modified_flag()
         if len(self.positions_textbox.get_text()) > 0:
             self.is_empty = False
@@ -447,35 +505,8 @@ class IntruderTab(ctk.CTkFrame):
 
     def on_attack_option_select(self, choice):
         self.attack_type = self.attack_type_options.index(choice)
-
-        if self.attack_type == 0 or self.attack_type == 1:
-            if len(self.payloads_frames) == 0 or self.payloads_frames.get(0) is None:
-                self.add_payload()
-            else:
-                for name, frame in self.payloads_frames.items():
-                    if name == 0:
-                        frame.pack(side="top", fill=tk.BOTH, expand=True, padx=10, pady=5)
-                    else:
-                        frame.pack_forget()
-
-            self.payload_placeholder.pack_forget()
-
-        elif self.attack_type == 2:
-            if self.payloads_frames.get(0) is not None and self.payloads_frames[0].winfo_ismapped():
-                self.payloads_frames[0].pack_forget()
-
-            for name in self.positions_textbox.tag_names():
-                if name == "sel":
-                    continue
-                if self.payloads_frames.get(name) is not None:
-                    if not self.payloads_frames[name].winfo_ismapped():
-                        self.payloads_frames[name].pack(side="top", fill=tk.X, padx=10, pady=5)
-                else:
-                    self.add_payload(name)
-
-            if (len(self.payloads_frames) == 0 or
-                    (len(self.payloads_frames) == 1 and self.payloads_frames.get(0) is not None)):
-                self.payload_placeholder.pack(fill=tk.X, padx=10, pady=10)
+        self.update_payloads_textbox_dropdown()
+        self.switch_payloads_textbox()
 
     def _reset_positions_modified_flag(self):
         self.positions_textbox.edit_modified(False)
@@ -627,7 +658,7 @@ class IntruderTab(ctk.CTkFrame):
         #     ErrorDialog(self, self.gui.gui_root, prompt=e)
 
     def show_attack(self):
-        if self.reload_dialog is not None and self.reload_dialog.winfo_ismapped():
+        if self.reload_dialog is not None:
             self.reload_dialog.destroy()
         if self.unique_id in self.gui.results_windows:
             results_window = self.gui.results_windows[self.unique_id]
@@ -638,11 +669,11 @@ class IntruderTab(ctk.CTkFrame):
 
     def generate_seed_intrusion(self):
         self.clear_all_positions()
-        for name, frame in self.payloads_frames.items():
+        for name, textbox in self.payloads_textboxes.items():
             if name == 0:
                 continue
-            frame.pack_forget()
-            del frame
+            textbox.pack_forget()
+            del textbox
 
         self.hostname_entry.delete(0, tk.END)
         self.hostname_entry.insert(0, "https://www.example.com")
@@ -670,7 +701,7 @@ class IntruderTab(ctk.CTkFrame):
                 self.positions_textbox.insert(data["start"], "§")
                 self.positions_textbox.insert(data["end"], "§")
                 self.positions_textbox.tag_add(tag, data["start"], data["end"]+"+1c")
-                self.positions_textbox.tag_config(tag, background="#8b115f", foreground="#b9d918")
+                self.positions_textbox.tag_config(tag, background=color_highlight_bg, foreground=color_highlight)
             self.payloads_textboxes[0].insert_text("Test1\nTest2\nTest3\nTest4\nTest5\n")
         elif self.attack_type == 2:
             tags = {
@@ -683,7 +714,7 @@ class IntruderTab(ctk.CTkFrame):
                 self.positions_textbox.insert(data["end"], "§")
                 self.positions_textbox.tag_add(tag, data["start"], data["end"]+"+1c")
                 self.add_payload(tag)
-                self.positions_textbox.tag_config(tag, background="#8b115f", foreground="#b9d918")
+                self.positions_textbox.tag_config(tag, background=color_highlight_bg, foreground=color_highlight)
                 self.payloads_textboxes[tag].insert_text(data["text"])
 
     def get_cursor_position(self):
@@ -745,8 +776,7 @@ class IntruderTab(ctk.CTkFrame):
             self.positions_var_gen_id += 1
 
             if not self.is_overlapping(cursor, cursor + "+1c"):
-                # TODO FRONTEND P3: Add tag coloring respective for the theme dark vs light.
-                self.positions_textbox.tag_config(var_name, background="#8b115f", foreground="#b9d918")
+                self.positions_textbox.tag_config(var_name, background=color_highlight_bg, foreground=color_highlight)
                 self.positions_textbox.insert(cursor, var_string)
 
                 next_cursor = self.get_cursor_position()
@@ -762,19 +792,19 @@ class IntruderTab(ctk.CTkFrame):
             var_string = f"§{var_name}§"
             x, y = selection_indices
 
-            new_var = True
-            for tag in self.positions_textbox.tag_names():
-                if tag == var_name:
-                    new_var = False
+            if var_name in self.positions_textbox.tag_names():
+                ErrorDialog(self, self.gui.gui_root,
+                            f"Variable with the name {var_name} currently exists. Chose different name.")
+                return
 
             if x.split('.')[0] == y.split('.')[0]:
                 if not self.is_overlapping(x, y):
                     self.positions_textbox.delete(x, y)
                     self.positions_textbox.insert(x, var_string)
                     y = self.get_cursor_position()
-                    self.positions_textbox.tag_config(var_name, background="#8b115f", foreground="#b9d918")
+                    self.positions_textbox.tag_config(var_name, background=color_highlight_bg, foreground=color_highlight)
                     self.positions_textbox.tag_add(var_name, x, y)
-                    if new_var and self.attack_type == 2:
+                    if self.attack_type == 2:
                         self.add_payload(var_name)
                 else:
                     ErrorDialog(self, self.gui.gui_root, "Selection is overlapping with an existing tag.")
@@ -788,7 +818,7 @@ class IntruderTab(ctk.CTkFrame):
         dprint(f"Debug:\n cursor pos: {cursor}\n selection: {selection}\n selection indices: {selection_indices}")
 
         if selection is None:
-            # Case 1: Cursor is withing the existing tag.
+            # Case 1: Cursor is within the existing tag.
             tag_found = False
             for tag in self.positions_textbox.tag_names():
                 if tag == "sel":
@@ -807,9 +837,10 @@ class IntruderTab(ctk.CTkFrame):
                         self.positions_textbox.tag_delete(tag)
                         self.positions_textbox.delete(tag_start, tag_end)
                         self.positions_textbox.insert(tag_start, tag)
-                        self.payloads_frames[tag].pack_forget()
-                        del self.payloads_frames[tag]
-                        del self.payloads_textboxes[tag]
+                        if tag in self.payloads_textboxes:
+                            if self.payloads_textboxes[tag] == self.current_payloads_textbox:
+                                self.switch_payloads_textbox()
+                            del self.payloads_textboxes[tag]
                         tag_found = True
                         break
             # Case 2: Cursor is outside any tag, remove all the tags.
@@ -838,14 +869,11 @@ class IntruderTab(ctk.CTkFrame):
                         self.positions_textbox.tag_delete(tag)
                         self.positions_textbox.delete(tag_start, tag_end)
                         self.positions_textbox.insert(tag_start, tag)
-                        if tag in self.payloads_frames:
-                            self.payloads_frames[tag].pack_forget()
-                            del self.payloads_frames[tag]
                         if tag in self.payloads_textboxes:
+                            if self.payloads_textboxes[tag] == self.current_payloads_textbox:
+                                self.switch_payloads_textbox()
                             del self.payloads_textboxes[tag]
-        if self.attack_type == 2 and (len(self.payloads_frames) == 0 or (
-                len(self.payloads_frames) == 1 and self.payloads_frames.get(0) is not None)):
-            self.payload_placeholder.pack(fill=tk.X, padx=10, pady=10)
+        self.update_payloads_textbox_dropdown()
 
     def clear_all_positions(self):
         for tag in self.positions_textbox.tag_names():
@@ -859,13 +887,11 @@ class IntruderTab(ctk.CTkFrame):
                 self.positions_textbox.tag_delete(tag)
                 self.positions_textbox.delete(tag_start, tag_end)
                 self.positions_textbox.insert(tag_start, tag)
-                if tag in self.payloads_frames:
-                    self.payloads_frames[tag].pack_forget()
-                    del self.payloads_frames[tag]
                 if tag in self.payloads_textboxes:
+                    self.payloads_textboxes[tag].pack_forget()
                     del self.payloads_textboxes[tag]
-        if self.attack_type == 2:
-            self.payload_placeholder.pack(fill=tk.X, padx=10, pady=10)
+        self.switch_payloads_textbox()
+        self.update_payloads_textbox_dropdown()
 
     def clear_all_positions_confirm(self):
         confirmation = ConfirmDialog(
@@ -879,40 +905,66 @@ class IntruderTab(ctk.CTkFrame):
             lambda: confirmation.destroy()
         )
 
-    def add_payload(self, new_var=None):
+    def add_payload(self, name):
         self.payload_placeholder.pack_forget()
+        self.payloads_textboxes[name] = TextBox(self.right_column)
+        self.update_payloads_textbox_dropdown()
 
-        payloads_frame = ctk.CTkFrame(self.payloads_wrapper, fg_color="transparent", bg_color="transparent")
-        if new_var is not None:
-            payloads_frame.pack(fill=tk.X, padx=10, pady=5)
+    def update_payloads_textbox_dropdown(self):
+        if self.attack_type != 2:
+            self.payloads_textbox_var.set("All positions")
+            self.payloads_textbox_dropdown.configure(values=[], state=tk.DISABLED)
+            for tag, textbox in self.payloads_textboxes.items():
+                if tag != 0:
+                    textbox.pack_forget()
+        elif self.attack_type == 2:
+            keys_to_select = [k for k in self.payloads_textboxes.keys() if k != 0]
+            self.payloads_textbox_dropdown.configure(values=keys_to_select, state=tk.NORMAL)
+            if keys_to_select:
+                first_key = keys_to_select[0]
+                self.payloads_textbox_var.set(first_key)
+                self.switch_payloads_textbox(first_key)
+            else:
+                self.payloads_textbox_var.set("No positions added")
+                self.switch_payloads_textbox()
 
-            payloads_subtitle = HeaderTitle(payloads_frame, text=f"Payloads for positions of \"{new_var}\"", size=18,
-                                            height=18, pady=0)
-            payloads_subtitle.pack(side="top", anchor="w", padx=0, pady=5)
+    def switch_payloads_textbox(self, choice=None):
+        for tag, textbox in self.payloads_textboxes.items():
+            textbox.pack_forget()
+
+        if self.attack_type != 2:
+            self.current_payloads_textbox = self.payloads_textboxes[0]
+            self.current_payloads_textbox.pack(fill=tk.BOTH, expand=True, padx=(0, 10), pady=(5, 10))
+        elif choice is None:
+            keys_to_select = [k for k in self.payloads_textboxes.keys() if k != 0]
+            if keys_to_select:
+                first_key = keys_to_select[0]
+                self.switch_payloads_textbox(first_key)
+            else:
+                self.current_payloads_textbox = None
+                self.payload_placeholder.pack(fill=tk.BOTH, padx=10, pady=0)
+        elif choice in self.payloads_textboxes.keys():
+            self.current_payloads_textbox = self.payloads_textboxes[choice]
+            self.current_payloads_textbox.pack(fill=tk.BOTH, expand=True, padx=(0, 10), pady=(5, 10))
         else:
-            payloads_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
+            self.current_payloads_textbox = None
+            self.payload_placeholder.pack(fill=tk.BOTH, padx=10, pady=0)
 
-        payloads_buttons = ctk.CTkFrame(payloads_frame, fg_color="transparent", bg_color="transparent")
-        payloads_buttons.pack(side="left", fill=tk.Y, padx=(0, 10), pady=0)
-        load_button = ctk.CTkButton(payloads_buttons, text="Load", command=lambda: load_payload(payloads_text))
-        load_button.pack(side="top", padx=0, pady=(0, 5))
-        clear_button = ctk.CTkButton(payloads_buttons, text="Clear", command=lambda: clear_payload(payloads_text),
-                                     fg_color=color_acc3, hover_color=color_acc4)
-        clear_button.pack(side="top", padx=0, pady=5)
+    def load_payloads(self):
+        file_path = filedialog.askopenfilename(filetypes=[("Text files", "*.txt")])
 
-        if new_var is not None:
-            payloads_text = TextBox(payloads_frame, height=112)
-            payloads_text.pack(side="right", fill=tk.X, expand=True, padx=(0, 10), pady=0)
-        else:
-            payloads_text = TextBox(payloads_frame)
-            payloads_text.pack(side="right", fill=tk.BOTH, expand=True, padx=(0, 10), pady=0)
+        if file_path and self.current_payloads_textbox is not None:
+            try:
+                with open(file_path, 'r') as file:
+                    file_content = file.read()
+                self.current_payloads_textbox.delete("1.0", tk.END)
+                self.current_payloads_textbox.insert("1.0", file_content)
+            except Exception as e:
+                dprint(f"Error reading the file: {e}")
 
-        if new_var is not None:
-            self.payloads_frames[new_var] = payloads_frame
-            self.payloads_textboxes[new_var] = payloads_text
-        else:
-            self.payloads_frames[0] = payloads_frame
-            self.payloads_textboxes[0] = payloads_text
+    def clear_payloads(self):
+        if self.current_payloads_textbox is not None:
+            self.current_payloads_textbox.delete("1.0", tk.END)
 
 
 class GUIIntruder(ctk.CTkFrame):

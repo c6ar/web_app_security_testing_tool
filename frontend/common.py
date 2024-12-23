@@ -53,33 +53,6 @@ from utils.request_methods import *
 from utils.get_domain import *
 import tkinterweb
 
-#
-# Global settings and variables
-#
-ctk.set_appearance_mode("dark")
-ctk.set_default_color_theme("dark-blue")
-if ctk.get_appearance_mode() == "Light":
-    color_text = "#000"
-    color_text_br = "#333"
-    color_text_warn = "#924511"
-    color_bg = "#dcdcdc"
-    color_bg_br = "#eee"
-else:
-    color_text = "#eee"
-    color_text_br = "#ccc"
-    color_text_warn = "#d1641b"
-    color_bg = "#222"
-    color_bg_br = "#333"
-ctk.set_default_color_theme("dark-blue")
-color_acc = ctk.ThemeManager.theme["CTkButton"]["fg_color"][1]
-color_acc2 = ctk.ThemeManager.theme["CTkButton"]["hover_color"][1]
-color_acc3 = "#d1641b"
-color_acc4 = "#924511"
-color_green = "#228600"
-color_green_dk = "#186000"
-color_red = "#c81800"
-color_red_dk = "#911100"
-
 CURRENT_DIR = f"{Path.cwd()}"
 ASSET_DIR = f"{Path.cwd()}\\assets"
 
@@ -147,7 +120,7 @@ icon_load_file = ctk.CTkImage(
     light_image=Image.open(f"{ASSET_DIR}\\icon_load_file.png"),
     dark_image=Image.open(f"{ASSET_DIR}\\icon_load_file.png"), size=(20, 20))
 icon_add = ctk.CTkImage(
-    light_image=Image.open(f"{ASSET_DIR}\\icon_add.png"),
+    light_image=Image.open(f"{ASSET_DIR}\\icon_add_light.png"),
     dark_image=Image.open(f"{ASSET_DIR}\\icon_add.png"), size=(20, 20))
 icon_attack = ctk.CTkImage(
     light_image=Image.open(f"{ASSET_DIR}\\icon_attack.png"),
@@ -161,13 +134,13 @@ intercept_off_image = ctk.CTkImage(light_image=Image.open(f"{ASSET_DIR}\\interce
 intercept_on_image = ctk.CTkImage(light_image=Image.open(f"{ASSET_DIR}\\intercept_on_light.png"),
                                   dark_image=Image.open(f"{ASSET_DIR}\\intercept_on.png"), size=(87, 129))
 
+
 # TODO FRONTEND P3: Add confirm dialog to close the app with data getting lost.
 #  - Option to disable the dialog in the config.
 # TODO FRONTEND P3: Add translation support only for locales: EN and PL.
 #
-# Common functions
+# Config functions
 #
-
 def load_config():
     # TODO OTHER P2: Actual implmentation of config logic in the app
     default_config = {
@@ -201,6 +174,11 @@ def load_config():
                     value = value.strip().lower()
                     key = key.strip().lower()
 
+                    if key == "theme":
+                        if value not in ("system", "dark", "light"):
+                            print("CONFIG ERROR: Incorrect value given, where system, dark or light expected.")
+                            continue
+
                     if key.endswith("port"):
                         try:
                             value = int(value)
@@ -222,15 +200,6 @@ def load_config():
     except FileNotFoundError:
         print("CONFIG ERROR: App config file could not be open. Default settings have been loaded.")
     return config
-
-
-RUNNING_CONFIG = load_config()
-if RUNNING_CONFIG["debug_mode"]:
-    print("Debug mode on.")
-    if RUNNING_CONFIG["show_running_config"]:
-        print("Running config: ")
-        for key, value in RUNNING_CONFIG.items():
-            print(f"\t{key}: {value}")
 
 
 def save_config(config):
@@ -263,6 +232,44 @@ def save_config(config):
         print(f"Error during saving a config: {e}")
 
 
+#
+# Global settings and variables
+#
+RUNNING_CONFIG = load_config()
+
+if RUNNING_CONFIG["debug_mode"]:
+    print("Debug mode on.")
+    if RUNNING_CONFIG["show_running_config"]:
+        print("Running config: ")
+        for key, value in RUNNING_CONFIG.items():
+            print(f"\t{key}: {value}")
+
+ctk.set_appearance_mode(RUNNING_CONFIG["theme"])
+ctk.set_default_color_theme("dark-blue")
+if ctk.get_appearance_mode() == "Light":
+    color_text = "#000"
+    color_text_br = "#333"
+    color_text_warn = "#924511"
+    color_bg = "#dcdcdc"
+    color_bg_br = "#eee"
+else:
+    color_text = "#eee"
+    color_text_br = "#ccc"
+    color_text_warn = "#d1641b"
+    color_bg = "#222"
+    color_bg_br = "#333"
+color_acc = ctk.ThemeManager.theme["CTkButton"]["fg_color"][1]
+color_acc2 = ctk.ThemeManager.theme["CTkButton"]["hover_color"][1]
+color_acc3 = "#d1641b"
+color_acc4 = "#924511"
+color_green = "#228600"
+color_green_dk = "#186000"
+color_red = "#c81800"
+color_red_dk = "#911100"
+color_highlight = "#72f24b"
+color_highlight_bg = "#9e0b69"
+
+
 def center_window(root_window, window, width, height):
     """
     Centers TopLevel window relatively to its parent.
@@ -290,6 +297,7 @@ class ActionButton(ctk.CTkButton):
     """
     A preset action button based on CTkButton.
     """
+
     def __init__(self, parent, *args, **kwargs):
         super().__init__(parent, *args, **kwargs)
         if "corner_radius" not in kwargs:
@@ -305,7 +313,9 @@ class NavButton(ctk.CTkFrame):
     """
     A preset tab navigation button based on CTkButton.
     """
-    def __init__(self, master, text, command, icon=None, compound="left", font=None, background=color_bg, background_selected=color_bg_br):
+
+    def __init__(self, master, text, command, icon=None, compound="left", font=None, background=color_bg,
+                 background_selected=color_bg_br):
         super().__init__(master)
 
         self.bg = background
@@ -377,6 +387,7 @@ class HeaderTitle(ctk.CTkLabel):
     """
     A preset title for section / module headers.
     """
+
     def __init__(self, master, text, size=24, padx=10, pady=10, height=20):
         super().__init__(
             master,
@@ -396,6 +407,7 @@ class ConfirmDialog(ctk.CTkToplevel):
     """
     A custom Confirm dialog class based on customtkinter's Top Level widget.
     """
+
     def __init__(self,
                  master, root,
                  prompt="Are you sure you want to continue?", title="Confirm",
@@ -411,7 +423,7 @@ class ConfirmDialog(ctk.CTkToplevel):
         center_window(root, self, width, height)
 
         # TODO FRONTEND: Add Enter, Space to run command1 and Escape to destroy the window.
-        label = ctk.CTkLabel(self, text=prompt, wraplength=250)
+        label = ctk.CTkLabel(self, text=prompt, wraplength=(width - 20))
         label.pack(fill=tk.BOTH, pady=(10, 5), padx=10)
 
         yes_button = ctk.CTkButton(self, text=action1, command=command1, corner_radius=32)
@@ -451,11 +463,13 @@ class TextBox(ctk.CTkTextbox):
         master (CTkBaseClass)
         text (str)
     """
+
     def __init__(self, master, text="", **kwargs):
         super().__init__(master, **kwargs)
         self.monoscape_font = ctk.CTkFont(family="Courier New", size=14, weight="normal")
         self.monoscape_font_italic = ctk.CTkFont(family="Courier New", size=14, weight="normal", slant="italic")
-        self.configure(wrap="none", font=self.monoscape_font, state="normal", padx=5, pady=5, fg_color=color_bg_br, text_color=color_text)
+        self.configure(wrap="none", font=self.monoscape_font, state="normal", padx=5, pady=5, fg_color=color_bg_br,
+                       text_color=color_text)
 
         self.popup_menu = tk.Menu(self, tearoff=0)
         self.bind("<Button-3>", self.popup)
@@ -495,6 +509,7 @@ class ItemList(ttk.Treeview):
     """
     Custom Item List class
     """
+
     def __init__(self, parent, *args, **kwargs):
         super().__init__(parent, *args, **kwargs)
         self.popup_menu = tk.Menu(self, tearoff=0)
@@ -508,7 +523,8 @@ class ItemList(ttk.Treeview):
         treestyle.map('Treeview', background=[('selected', color_acc)], foreground=[('selected', 'white')])
         treestyle.map("Treeview.Heading", background=[('active', color_bg_br)])
 
-        treestyle.configure("Treeview2.Treeview", background=color_bg_br, foreground=color_text, fieldbackground=color_bg_br,
+        treestyle.configure("Treeview2.Treeview", background=color_bg_br, foreground=color_text,
+                            fieldbackground=color_bg_br,
                             borderwidth=0, highlightthickness=0, bd=0)
         treestyle.configure("Treeview2.Treeview.Heading", background=color_bg_br, foreground=color_text, borderwidth=0)
         treestyle.map('Treeview2.Treeview', background=[('selected', color_acc)], foreground=[('selected', 'white')])
@@ -569,6 +585,7 @@ class TextEntry(ctk.CTkEntry):
     """
     Custom TextEntry class
     """
+
     def __init__(self, parent, *args, **kwargs):
         super().__init__(parent, *args, **kwargs)
         self.configure(border_width=0,
@@ -581,6 +598,7 @@ class Label(ctk.CTkLabel):
     """
     Custom Label class
     """
+
     def __init__(self, parent, *args, **kwargs):
         super().__init__(parent, *args, **kwargs)
         self.configure(corner_radius=10,

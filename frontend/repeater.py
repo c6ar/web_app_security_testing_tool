@@ -39,6 +39,7 @@ class RepeaterTab(ctk.CTkFrame):
         self.tab_iteration_keys = []
         self.current_iteration_index = 0
 
+        # TODO FRONTEND: Remove the arrows.
         self.prev_button = ActionButton(
             self.top_bar,
             text="",
@@ -95,6 +96,7 @@ class RepeaterTab(ctk.CTkFrame):
         self.response_header = HeaderTitle(self, text="Response")
         self.response_header.grid(row=1, column=1, padx=10, pady=(5, 0), sticky="w")
 
+        # TODO FRONTEND: Add rendering view.
         self.response_textbox = TextBox(self, text="Response will appear here.")
         self.response_textbox.configure(state="disabled", font=self.response_textbox.monoscape_font_italic)
         self.response_textbox.grid(row=2, column=1, padx=(10, 20), pady=(0, 20), sticky="nsew")
