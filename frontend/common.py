@@ -1,6 +1,6 @@
-#
-# Loading moduels and libraries
-#
+# ================================================
+# Imports of common modules and libraries
+# ================================================
 # noinspection PyUnresolvedReferences
 from backend.global_setup import *
 # noinspection PyUnresolvedReferences
@@ -53,12 +53,140 @@ from utils.request_methods import *
 from utils.get_domain import *
 import tkinterweb
 
+
+# ================================================
+# App configuration functionality
+# ================================================
+def load_config():
+    config = DEFAULT_CONFIG.copy()
+    try:
+        with open("app.conf", "r") as file:
+            for line in file:
+                line = line.strip()
+                if line and not line.startswith("#"):
+                    setting, val = line.split("=", 1)
+                    if "#" in val:
+                        val, _ = val.split("#", 1)
+                    val = val.strip().lower()
+                    setting = setting.strip().lower()
+
+                    if setting == "theme":
+                        if val not in ("system", "dark", "light"):
+                            print("CONFIG ERROR: Incorrect value given, where system, dark or light expected.")
+                            continue
+
+                    if setting.endswith("port"):
+                        try:
+                            val = int(val)
+                        except ValueError:
+                            print("CONFIG ERROR: Incorrect value given, where int expected.")
+                            continue
+
+                    if setting in ("debug_mode", "proxy_console"):
+                        if val not in (1, 0, "1", "0", "true", "false"):
+                            print("CONFIG ERROR: Incorrect value given, where bool expected (false, true, 0 or 1).")
+                            continue
+
+                    if setting in (1, "1", "true"):
+                        val = True
+                    if val in (0, "0", "false"):
+                        val = False
+
+                    config[setting] = val
+    except FileNotFoundError:
+        print("CONFIG ERROR: App config file could not be open. Default settings have been loaded.")
+    return config
+
+
+def save_config(config):
+    try:
+        with open("app.conf", "r") as file:
+            lines = file.readlines()
+
+        updated_lines = []
+        settings_found = set()
+        for line in lines:
+            if line.strip() and not line.strip().startswith("#"):
+                setting, val = line.split("=", 1)
+                setting = setting.strip()
+                if setting in config:
+                    updated_lines.append(f"{setting} = {config[setting]}\n")
+                    settings_found.add(setting)
+                else:
+                    updated_lines.append(line)
+            else:
+                updated_lines.append(line)
+
+        for setting, val in config.items():
+            if setting not in settings_found:
+                updated_lines.append(f"{setting} = {val}\n")
+
+        with open("app.conf", "w") as file:
+            file.writelines(updated_lines)
+            load_config()
+    except Exception as e:
+        print(f"Error during saving a config: {e}")
+
+
+DEFAULT_CONFIG = {
+    "theme": "system",
+    "lang": "en",
+    "proxy_host_address": "127.0.0.1",
+    "proxy_port": 8082,
+    "back_front_historyrequests_port": 65432,
+    "back_front_scoperequests_port": 65433,
+    "front_back_droprequest_port": 65434,
+    "front_back_scopeupdate_port": 65430,
+    "front_back_forwardbutton_port": 65436,
+    "front_back_interceptbutton_port": 65437,
+    "debug_mode": False,
+    "show_running_config": False,
+    "proxy_console": False
+}
+RUNNING_CONFIG = load_config()
+
+if RUNNING_CONFIG["debug_mode"]:
+    print("[DEBUG] Debug mode on.\n\tApp will print debug messages to the console.")
+    if RUNNING_CONFIG["show_running_config"]:
+        print("================================================\n"
+              "[DEBUG] Running config: ")
+        for config_item, config_value in RUNNING_CONFIG.items():
+            print(f"\t{config_item} = {config_value}")
+        print("================================================\n")
+
+# ================================================
+# Global variables
+# ================================================
 CURRENT_DIR = f"{Path.cwd()}"
 ASSET_DIR = f"{Path.cwd()}\\assets"
+ctk.set_appearance_mode(RUNNING_CONFIG["theme"])
+ctk.set_default_color_theme("dark-blue")
+if ctk.get_appearance_mode() == "Light":
+    color_text = "#000"
+    color_text_br = "#333"
+    color_text_warn = "#924511"
+    color_bg = "#dcdcdc"
+    color_bg_br = "#eee"
+else:
+    color_text = "#eee"
+    color_text_br = "#ccc"
+    color_text_warn = "#d1641b"
+    color_bg = "#222"
+    color_bg_br = "#333"
+color_acc = ctk.ThemeManager.theme["CTkButton"]["fg_color"][1]
+color_acc2 = ctk.ThemeManager.theme["CTkButton"]["hover_color"][1]
+color_acc3 = "#d1641b"
+color_acc4 = "#924511"
+color_green = "#228600"
+color_green_dk = "#186000"
+color_red = "#c81800"
+color_red_dk = "#911100"
+color_highlight = "#72f24b"
+color_highlight_bg = "#9e0b69"
 
-#
+# ================================================
 # Icon and image assets loading
-#
+# ================================================
 icon_proxy = ctk.CTkImage(
     light_image=Image.open(f"{ASSET_DIR}\\icon_proxy_light.png"),
     dark_image=Image.open(f"{ASSET_DIR}\\icon_proxy.png"), size=(20, 20))
@@ -135,137 +263,9 @@ intercept_on_image = ctk.CTkImage(light_image=Image.open(f"{ASSET_DIR}\\intercep
                                   dark_image=Image.open(f"{ASSET_DIR}\\intercept_on.png"), size=(87, 129))
 
 
-# TODO FRONTEND P3: Add confirm dialog to close the app with data getting lost.
-#  - Option to disable the dialog in the config.
-# TODO FRONTEND P3: Add translation support only for locales: EN and PL.
-#
-# Config functions
-#
-def load_config():
-    # TODO OTHER P2: Actual implmentation of config logic in the app
-    default_config = {
-        "theme": "system",
-        "lang": "en",
-        "proxy_host_address": "127.0.0.1",
-        "proxy_port": 8082,
-        "BACK_FRONT_HISTORYREQUESTS_PORT": 65432,
-        "BACK_FRONT_SCOPEREQUESTS_PORT": 65433,
-        "FRONT_BACK_DROPREQUEST_PORT": 65434,
-        "FRONT_BACK_SCOPEUPDATE_PORT": 65430,
-        "FRONT_BACK_FORWARDBUTTON_PORT": 65436,
-        "FRONT_BACK_INTERCEPTBUTTON_PORT": 65437,
-        "debug_mode": True,
-        "show_running_config": False,
-        "proxy_console": False
-    }
-    config = default_config.copy()
-    try:
-        with open("app.conf", "r") as file:
-            for line in file:
-                line = line.strip()
-                if line and not line.startswith("#"):
-                    setting, val = line.split("=", 1)
-                    if "#" in val:
-                        val, _ = val.split("#", 1)
-                    val = val.strip().lower()
-                    setting = setting.strip().lower()
-
-                    if setting == "theme":
-                        if val not in ("system", "dark", "light"):
-                            print("CONFIG ERROR: Incorrect value given, where system, dark or light expected.")
-                            continue
-
-                    if setting.endswith("port"):
-                        try:
-                            val = int(val)
-                        except ValueError:
-                            print("CONFIG ERROR: Incorrect value given, where int expected.")
-                            continue
-
-                    if setting in ("debug_mode", "proxy_console"):
-                        if val not in (1, 0, "1", "0", "true", "false"):
-                            print("CONFIG ERROR: Incorrect value given, where bool expected (false, true, 0 or 1).")
-                            continue
-
-                    if setting in (1, "1", "true"):
-                        val = True
-                    if val in (0, "0", "false"):
-                        val = False
-
-                    config[setting] = val
-    except FileNotFoundError:
-        print("CONFIG ERROR: App config file could not be open. Default settings have been loaded.")
-    return config
-
-
-def save_config(config):
-    try:
-        with open("app.conf", "r") as file:
-            lines = file.readlines()
-
-        updated_lines = []
-        settings_found = set()
-        for line in lines:
-            if line.strip() and not line.strip().startswith("#"):
-                setting, val = line.split("=", 1)
-                setting = setting.strip()
-                if setting in config:
-                    updated_lines.append(f"{setting} = {config[setting]}\n")
-                    settings_found.add(setting)
-                else:
-                    updated_lines.append(line)
-            else:
-                updated_lines.append(line)
-
-        for setting, val in config.items():
-            if setting not in settings_found:
-                updated_lines.append(f"{setting} = {val}\n")
-
-        with open("app.conf", "w") as file:
-            file.writelines(updated_lines)
-            load_config()
-    except Exception as e:
-        print(f"Error during saving a config: {e}")
-
-
-#
-# Global settings and variables
-#
-RUNNING_CONFIG = load_config()
-
-if RUNNING_CONFIG["debug_mode"]:
-    print("Debug mode on.")
-    if RUNNING_CONFIG["show_running_config"]:
-        print("Running config: ")
-        for key, value in RUNNING_CONFIG.items():
-            print(f"\t{key}: {value}")
-
-ctk.set_appearance_mode(RUNNING_CONFIG["theme"])
-ctk.set_default_color_theme("dark-blue")
-if ctk.get_appearance_mode() == "Light":
-    color_text = "#000"
-    color_text_br = "#333"
-    color_text_warn = "#924511"
-    color_bg = "#dcdcdc"
-    color_bg_br = "#eee"
-else:
-    color_text = "#eee"
-    color_text_br = "#ccc"
-    color_text_warn = "#d1641b"
-    color_bg = "#222"
-    color_bg_br = "#333"
-color_acc = ctk.ThemeManager.theme["CTkButton"]["fg_color"][1]
-color_acc2 = ctk.ThemeManager.theme["CTkButton"]["hover_color"][1]
-color_acc3 = "#d1641b"
-color_acc4 = "#924511"
-color_green = "#228600"
-color_green_dk = "#186000"
-color_red = "#c81800"
-color_red_dk = "#911100"
-color_highlight = "#72f24b"
-color_highlight_bg = "#9e0b69"
-
-
+# ================================================
+# Common functions
+# ================================================
 def center_window(root_window, window, width, height):
     """
     Centers TopLevel window relatively to its parent.
@@ -290,6 +290,9 @@ def dprint(msg):
 
 
 def show_response_view(gui, hostname, html_content):
+    """
+    Opens a separate CTk window to display the response HTML content.
+    """
     if len(html_content) > 0:
         response_view = ctk.CTk()
         width = int(gui.winfo_width() * 0.9)
@@ -309,11 +312,13 @@ def show_response_view(gui, hostname, html_content):
         response_view.mainloop()
 
 
+# ================================================
+# Common classes
+# ================================================
 class ActionButton(ctk.CTkButton):
     """
     A preset action button based on CTkButton.
     """
-
     def __init__(self, parent, *args, **kwargs):
         super().__init__(parent, *args, **kwargs)
         if "corner_radius" not in kwargs:

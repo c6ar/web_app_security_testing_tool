@@ -39,6 +39,7 @@ class GUI(ctk.CTk):
         self.settings_button = NavButton(self.tab_nav, text="SETTINGS", icon=icon_settings, command=self.show_settings)
         self.settings_button.pack(side="right")
         self.settings_window = None
+        self.settings_window_changed = False
         self.settings_entries = {}
 
         self.tab_content = ctk.CTkFrame(self, fg_color="transparent", bg_color="transparent", corner_radius=10)
@@ -109,7 +110,8 @@ class GUI(ctk.CTk):
 
     def show_settings(self):
         if self.settings_window is None or not self.settings_window.winfo_exists():
-            # TODO OTHER P2: Actual implmentation of config logic in the app
+            # TODO FRONTEND P1: More UI friendly settings with controls and all
+            #  Actual implmentation of config logic in the app
             #  Settings ideas, appearance (theme), language (EN or PL), Proxy rerun, show Proxy log, turn on Debug mode for the app DEBUG PRINTOUTS
             self.settings_window = ctk.CTkToplevel(self)
             self.settings_window.title("Proxy Settings")
@@ -142,10 +144,9 @@ class GUI(ctk.CTk):
             cancel_button.pack(side=tk.RIGHT, padx=10, pady=10)
 
     def save_settings(self):
-        # TODO OTHER P2: Actual implmentation of config logic in the app
         new_config = RUNNING_CONFIG.copy()
-        for key, entry in self.settings_entries.items():
-            new_config[key] = entry.get()
+        for setting, entry in self.settings_entries.items():
+            new_config[setting] = entry.get()
         save_config(new_config)
         self.settings_window.destroy()
 
@@ -214,7 +215,7 @@ class GUI(ctk.CTk):
                 print(f"Error while terminating proxy process: {e}")
 
     def on_close(self):
-        # TODO OTHER P3: Finding other way to kill the mitdump.exe when closing the app.
+        # TODO OTHER P4: Finding other way to kill the mitdump.exe when closing the app.
         """
         Instructions run on GUI closure.
         """

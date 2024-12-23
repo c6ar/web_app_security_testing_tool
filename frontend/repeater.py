@@ -77,7 +77,6 @@ class RepeaterTab(ctk.CTkFrame):
         self.response_header_title = HeaderTitle(self.response_header, text="Response")
         self.response_header_title.pack(side=tk.LEFT, padx=0, pady=0)
 
-        # TODO FRONTEND: Add rendering view.
         self.response_textbox = TextBox(self, text="Response will appear here.")
         self.response_textbox.configure(state="disabled", font=self.response_textbox.monoscape_font_italic)
         self.response_textbox.grid(row=2, column=1, padx=(10, 20), pady=(0, 20), sticky="nsew")
