@@ -28,7 +28,6 @@ class GUI(ctk.CTk):
         self.requests = None
         self.proxy_process = None
         self.stop_threads = False
-        self.intercepting = False
 
         self.tab_nav = ctk.CTkFrame(self, fg_color=color_bg, bg_color=color_bg)
         self.tab_nav.pack(side="top", fill="x", padx=15, pady=(5, 0))

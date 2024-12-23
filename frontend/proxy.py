@@ -7,7 +7,6 @@ class HTTPTrafficTab(ctk.CTkFrame):
         self.configure(fg_color="transparent", bg_color="transparent", corner_radius=10)
         self.proxy_gui = master
         self.gui = root
-        self.intercepting = root.intercepting
 
         """
          > Top Bar
@@ -239,7 +238,7 @@ class HTTPTrafficTab(ctk.CTkFrame):
             self.toggle_list_actions("normal")
             self.request_list_empty = False
 
-    def show_request_content(self, event):
+    def show_request_content(self, _event):
         """
         HTTP Traffic Tab:
             Shows selected HTTP request and its response in the textbox.
@@ -402,7 +401,7 @@ class InterceptTab(ctk.CTkFrame):
         self.configure(fg_color=color_bg_br, bg_color="transparent", corner_radius=10)
         self.proxy_gui = master
         self.gui = root
-        self.intercepting = root.intercepting
+        self.intercepting = False
 
         self.grid_columnconfigure(0, weight=1)
         self.grid_columnconfigure(1, weight=2)
@@ -584,22 +583,20 @@ class InterceptTab(ctk.CTkFrame):
         Intercept Tab:
             Toggles intercepting on the frontend and sends flag to the backend.
         """
-        self.gui.intercepting = not self.gui.intercepting
-        # print(f"DEBUG/FRONTEND/PROXY: Intercept state {self.gui.intercepting}.")
+        self.intercepting = not self.intercepting
+        # print(f"DEBUG/FRONTEND/PROXY: Intercept state {self.intercepting}.")
         self.interceptor_status_update()
 
-        # TODO BACKEND: Can we have an actual bool state of self.gui.intercepting sent to backend instead of toggle flag?
-        flag = "Change state"
         try:
             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
                 s.connect((HOST, FRONT_BACK_INTERCEPTBUTTON_PORT))
-                serialized_flag = flag.encode("utf-8")
+                serialized_flag = str(self.intercepting).encode("utf-8")
                 s.sendall(serialized_flag)
         except Exception as e:
-            print(f"Error while sending change intercept state flag: {e}")
+            print(f"ERROR/FRONTEND/PROXY: Error while sending change intercept state flag: {e}")
 
     def interceptor_status_update(self):
-        if self.gui.intercepting:
+        if self.intercepting:
             self.toggle_intercept_button.configure(text="Toggle Intercept off", image=icon_toggle_on,
                                                    fg_color=color_red, hover_color=color_red_dk)
             self.interceptor_status.configure(text="Web Interceptor is on.")
@@ -648,7 +645,13 @@ class InterceptTab(ctk.CTkFrame):
                             self.show_request()
 
                         except Exception as e:
-                            print(f"Error while deserialization recieved in scope: {e}")
+                            print(f"ERROR/FRONTEND/PROXY: Error while deserializing received in scope: {e}")
+                            try:
+                                with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s2:
+                                    s2.connect((HOST, FRONT_BACK_FORWARDBUTTON_PORT))
+                                    s2.sendall(serialized_reqeust)
+                            except Exception as e:
+                                print(f"ERROR/FRONTEND/PROXY: Forwarding intercepted request failed: {e}")
 
     def show_request(self):
         """
@@ -782,7 +785,6 @@ class GUIProxy(ctk.CTkFrame):
         self.process = None
         self.configure(fg_color=color_bg_br, bg_color="transparent", corner_radius=10)
         self.root = root
-        self.intercepting = root.intercepting
 
         # Proxy tabs nav
         self.http_traffic_tab = HTTPTrafficTab(self, self.root)
@@ -812,7 +814,6 @@ class GUIProxy(ctk.CTkFrame):
 
         if not self.process:
             threading.Thread(target=self.run_mitmdump).start()
-        self.intercepting = True
 
         self.switch_tab("HTTP Traffic")
 
