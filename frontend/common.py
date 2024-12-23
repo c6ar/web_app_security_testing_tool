@@ -438,7 +438,6 @@ class ConfirmDialog(ctk.CTkToplevel):
         self.attributes("-topmost", True)
         center_window(root, self, width, height)
 
-        # TODO FRONTEND: Add Enter, Space to run command1 and Escape to destroy the window.
         label = ctk.CTkLabel(self, text=prompt, wraplength=(width - 20))
         label.grid(column=0, row=0, pady=(10, 5), padx=10, sticky=tk.NSEW)
 
@@ -465,6 +464,14 @@ class ConfirmDialog(ctk.CTkToplevel):
         self.grid_rowconfigure(0, weight=1)
         self.grid_rowconfigure(1, weight=1)
 
+        self.bind("<Return>", lambda event: self.run_command(command1))
+        self.bind("<space>", lambda event: self.run_command(command1))
+        self.bind("<Escape>", lambda event: self.destroy())
+
+    def run_command(self, command):
+        if command:
+            command()
+        self.destroy()
 
 
 class ErrorDialog(ConfirmDialog):
