@@ -200,7 +200,7 @@ class HTTPTrafficTab(ctk.CTkFrame):
 
             if len(hostnames) > 0:
                 self.proxy_gui.update_scope(mode, hostnames)
-                # print(f"DEBUG/FRONTEND/PROXY: {mode.capitalize().replace('e', '')}ing {hostnames_to_update} to the scope")
+                dprint(f"[DEBUG] /FRONTEND/PROXY: {mode.capitalize().replace('e', '')}ing {hostnames} to the scope")
 
     def receive_request(self):
         """
@@ -228,7 +228,7 @@ class HTTPTrafficTab(ctk.CTkFrame):
                                 self.add_request_to_list(request2)
                         except Exception as e:
                             if str(e) != "pickle data was truncated":  # Cannot pickle "cryptography.hazmat.bindings._rust.x509.Certificate"
-                                print(f"Error while deserialization request to http traffic: {e}")
+                                print(f"[ERROR] Failure while deserialization request to http traffic: {e}")
 
     def add_request_to_list(self, req, resp=None):
         """
@@ -321,7 +321,7 @@ class HTTPTrafficTab(ctk.CTkFrame):
         self.request_list.delete_all()
         self.request_list_backup.delete_all()
         if not self.request_list_empty:
-            # print("DEBUG/FRONTEND/PROXY/HTTP TRAFFIC: Deleting all the requests from the list.")
+            dprint("[DEBUG] FRONTEND/PROXY/HTTP TRAFFIC: Deleting all the requests from the list.")
             self.toggle_list_actions("disabled")
             self.request_list_empty = True
 
@@ -400,7 +400,7 @@ class HTTPTrafficTab(ctk.CTkFrame):
         for button in self.top_bar_buttons:
             if str(button.cget("state") != state):
                 button.configure(state=state)
-        # print(f"DEBUG/FRONTEND/PROXY: Toggling buttons to {state} state.")
+        dprint(f"[DEBUG] FRONTEND/PROXY: Toggling buttons to {state} state.")
 
 
 class InterceptTab(ctk.CTkFrame):
@@ -482,8 +482,7 @@ class InterceptTab(ctk.CTkFrame):
         )
         self.clear_button.pack(side="top", fill=tk.X, padx=5, pady=10)
 
-        self.scope_url_list_wrapper = ctk.CTkFrame(self.scope_widget,
-                                                   corner_radius=10, fg_color=color_bg_br, bg_color="transparent")
+        self.scope_url_list_wrapper = BrightBox(self.scope_widget)
         self.scope_url_list_wrapper.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True, padx=(5, 20), pady=(0, 20))
         self.scope_url_list = ItemList(self.scope_url_list_wrapper, columns="Host", style="Treeview2.Treeview")
         self.scope_url_list.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
@@ -592,7 +591,7 @@ class InterceptTab(ctk.CTkFrame):
             Toggles intercepting on the frontend and sends flag to the backend.
         """
         self.intercepting = not self.intercepting
-        # print(f"DEBUG/FRONTEND/PROXY: Intercept state {self.intercepting}.")
+        dprint(f"[DEBUG] FRONTEND/PROXY: Intercept state {self.intercepting}.")
         self.interceptor_status_update()
 
         try:
@@ -601,7 +600,7 @@ class InterceptTab(ctk.CTkFrame):
                 serialized_flag = str(self.intercepting).encode("utf-8")
                 s.sendall(serialized_flag)
         except Exception as e:
-            print(f"ERROR/FRONTEND/PROXY: Error while sending change intercept state flag: {e}")
+            print(f"[ERROR] FRONTEND/PROXY: Error while sending change intercept state flag: {e}")
 
     def interceptor_status_update(self):
         if self.intercepting:
@@ -653,13 +652,13 @@ class InterceptTab(ctk.CTkFrame):
                             self.show_request()
 
                         except Exception as e:
-                            print(f"ERROR/FRONTEND/PROXY: Error while deserializing received in scope: {e}")
+                            print(f"[ERROR] FRONTEND/PROXY: Error while deserializing received in scope: {e}")
                             try:
                                 with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s2:
                                     s2.connect((HOST, FRONT_BACK_FORWARDBUTTON_PORT))
                                     s2.sendall(serialized_reqeust)
                             except Exception as e:
-                                print(f"ERROR/FRONTEND/PROXY: Forwarding intercepted request failed: {e}")
+                                print(f"[ERROR] FRONTEND/PROXY: Forwarding intercepted request failed: {e}")
 
     def show_request(self):
         """
@@ -727,7 +726,7 @@ class InterceptTab(ctk.CTkFrame):
                     s.sendall(serialized_reqeust)
                     self.remove_request()
             except Exception as e:
-                print(f"ERROR/FRONTEND/PROXY: Forwarding intercepted request failed: {e}")
+                print(f"[ERROR] FRONTEND/PROXY: Forwarding intercepted request failed: {e}")
 
     def drop_request(self):
         """
@@ -745,7 +744,7 @@ class InterceptTab(ctk.CTkFrame):
                     s.sendall(serialized_flag)
                     self.remove_request()
             except Exception as e:
-                print(f"ERROR/FRONTEND/PROXY: Droping intercepted request failed: {e}")
+                print(f"[ERROR] FRONTEND/PROXY: Droping intercepted request failed: {e}")
 
             try:
                 if self.gui.browser is not None:
@@ -754,7 +753,7 @@ class InterceptTab(ctk.CTkFrame):
                         self.gui.browser.execute_script(
                             "alert('WASTT: Request has been dropped by user. Please close this page.');")
             except Exception as e:
-                print(f"Error while letting know about dropped request: {e}")
+                print(f"[ERROR] Error while letting know about dropped request: {e}")
 
     def send_request(self, dest):
         request_content = self.request_textbox.get_text()
@@ -765,7 +764,7 @@ class InterceptTab(ctk.CTkFrame):
             elif dest == "repeater":
                 self.gui.repeater_tab.add_request_to_repeater_tab(request_content, host=hostname_url)
         except Exception as e:
-            print(f"Error while sending request from Intercept: {e}")
+            print(f"[ERROR] Error while sending request from Intercept: {e}")
 
     def update_scope(self, mode="remove"):
         if mode == "remove":
@@ -825,7 +824,7 @@ class GUIProxy(ctk.CTkFrame):
 
         self.switch_tab("HTTP Traffic")
 
-    def run_mitmdump(self):
+    def run_mitmdump(self, init_scope=None):
         """
         Proxy GUI:
             Runs mitmdump process after first killing all the mitdmdump.exe processes.
@@ -833,9 +832,9 @@ class GUIProxy(ctk.CTkFrame):
         try:
             result = subprocess.run(['taskkill', '/F', '/IM', 'mitmdump.exe', '/T'], capture_output=True, text=True)
             if 'SUCCESS' in result.stdout:
-                print("INFO: Previously run mitmdump.exe process has been terminated.")
+                print("[INFO] Previously run mitmdump.exe process has been terminated.")
         except Exception as e:
-            print(f"Error terminating previously run mitmdump process: {e}")
+            print(f"[ERROR] Terminating previously run mitmdump process failed: {e}")
 
         try:
             backend_dir = Path.cwd().parent / "backend"
@@ -843,9 +842,9 @@ class GUIProxy(ctk.CTkFrame):
             command = ["mitmdump", "-s", proxy_script, "--listen-port", "8082"]
             if RUNNING_CONFIG["proxy_console"]:
                 command = ["start", "cmd", "/k"] + command
-                print("INFO: Starting the HTTP(S) proxy process in new shell terminal window.")
+                print("[INFO] Starting the HTTP(S) proxy process in new shell terminal window.")
             else:
-                print("INFO: Starting the HTTP(S) proxy process.")
+                print("[INFO] Starting the HTTP(S) proxy process.")
 
             self.process = subprocess.Popen(
                 command,
@@ -858,8 +857,22 @@ class GUIProxy(ctk.CTkFrame):
             )
             threading.Thread(target=self.read_stdout, daemon=True).start()
             threading.Thread(target=self.read_stderr, daemon=True).start()
+            if init_scope is not None and len(init_scope) > 0:
+                try:
+                    self.update_scope(
+                        mode="add",
+                        hostnames_to_update=init_scope
+                    )
+                    self.current_scope = init_scope
+
+                except Exception as e:
+                    print(f"[ERROR] {e}")
+            else:
+                self.current_scope.clear()
+                self.intercept_tab.scope_url_list.delete_all()
+
         except Exception as e:
-            print(f"Error while starting the HTTP(S) proxy process: {e}")
+            print(f"[ERROR] While starting the HTTP(S) proxy process: {e}")
         finally:
             self.process = None
 
@@ -869,7 +882,7 @@ class GUIProxy(ctk.CTkFrame):
             Reads Standard Out lines from running mitmdump process.
         """
         for line in iter(self.process.stdout.readline, ''):
-            print(f"INFO (mitmdump): {line.strip()}")
+            print(f"[MITMDUMP] {line.strip()}")
 
     def read_stderr(self):
         """
@@ -877,7 +890,7 @@ class GUIProxy(ctk.CTkFrame):
             Reads Standard Error lines from running mitmdump process.
         """
         for line in iter(self.process.stderr.readline, ''):
-            print(f"ERROR (mitmdump): {line.strip()}")
+            print(f"[MITMDUMP ERROR] {line.strip()}")
 
     def switch_tab(self, selected_tab):
         """
@@ -886,11 +899,11 @@ class GUIProxy(ctk.CTkFrame):
         """
         for tab_name, tab in self.tabs.items():
             if tab_name == selected_tab:
-                # print(f"Debug Proxy/Tabs: Switching to {tab_name} tab")
+                dprint(f"[DEBUG] Proxy/Tabs: Switching to {tab_name} tab")
                 tab.pack(side="top", fill="both", expand=True)
                 self.tab_nav_buttons[tab_name].set_selected(True)
             else:
-                # print(f"Debug Proxy/Tabs: Hiding {tab_name} tab")
+                dprint(f"[DEBUG] Proxy/Tabs: Hiding {tab_name} tab")
                 tab.pack_forget()
                 self.tab_nav_buttons[tab_name].set_selected(False)
 
@@ -970,7 +983,7 @@ class GUIProxy(ctk.CTkFrame):
                     self.update_scope("add", hostnames)
 
             except FileNotFoundError:
-                print(f"PROXY SCOPE ERROR: File {file_path} could not be open. Default settings have been loaded.")
+                print(f"[ERROR] FRONTEND/PROXY: File {file_path} could not be open. Default settings have been loaded.")
 
     def update_scope(self, mode="add", hostnames_to_update=None):
         """

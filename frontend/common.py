@@ -5,9 +5,11 @@
 from backend.global_setup import *
 # noinspection PyUnresolvedReferences
 from backend.Request import *
+# noinspection PyUnresolvedReferences
 from collections.abc import Iterable
 # noinspection PyUnresolvedReferences
 import ctypes
+# noinspection PyUnresolvedReferences
 import customtkinter as ctk
 # noinspection PyUnresolvedReferences
 from customtkinter import ThemeManager, AppearanceModeTracker
@@ -25,12 +27,16 @@ import json
 from operator import truediv
 # noinspection PyUnresolvedReferences
 import os
+# noinspection PyUnresolvedReferences
 from pathlib import Path
 # noinspection PyUnresolvedReferences
 import pickle
 # noinspection PyUnresolvedReferences
 from PIL import Image, ImageTk
+# noinspection PyUnresolvedReferences
 import pyperclip
+# noinspection PyUnresolvedReferences
+import queue
 # noinspection PyUnresolvedReferences
 import random
 # noinspection PyUnresolvedReferences
@@ -40,17 +46,26 @@ import socket
 # noinspection PyUnresolvedReferences
 import subprocess
 # noinspection PyUnresolvedReferences
+import sys
+# noinspection PyUnresolvedReferences
 import threading
 # noinspection PyUnresolvedReferences
+from threading import Thread
+# noinspection PyUnresolvedReferences
 import time
+# noinspection PyUnresolvedReferences
 import tkinter as tk
+# noinspection PyUnresolvedReferences
 from tkinter import ttk
 # noinspection PyUnresolvedReferences
 from tkinter import filedialog
 # noinspection PyUnresolvedReferences
+from typing import Dict, Union
+# noinspection PyUnresolvedReferences
 from utils.request_methods import *
 # noinspection PyUnresolvedReferences
 from utils.get_domain import *
+# noinspection PyUnresolvedReferences
 import tkinterweb
 
 
@@ -133,6 +148,9 @@ DEFAULT_CONFIG = {
     "lang": "en",
     "proxy_host_address": "127.0.0.1",
     "proxy_port": 8082,
+    "proxy_logging": 1,
+    "proxy_logs_location": f"{Path.cwd()}\\proxy_logs",
+    "proxy_console": False,
     "back_front_historyrequests_port": 65432,
     "back_front_scoperequests_port": 65433,
     "front_back_droprequest_port": 65434,
@@ -140,19 +158,19 @@ DEFAULT_CONFIG = {
     "front_back_forwardbutton_port": 65436,
     "front_back_interceptbutton_port": 65437,
     "debug_mode": False,
-    "show_running_config": False,
-    "proxy_console": False
+    "debug_show_running_config": False
 }
 RUNNING_CONFIG = load_config()
 
+if RUNNING_CONFIG["debug_show_running_config"]:
+    print("================================================\n"
+          "[DEBUG] Running config: ")
+    for config_item, config_value in RUNNING_CONFIG.items():
+        print(f"\t{config_item} = {config_value}")
+    print("================================================\n")
+
 if RUNNING_CONFIG["debug_mode"]:
     print("[DEBUG] Debug mode on.\n\tApp will print debug messages to the console.")
-    if RUNNING_CONFIG["show_running_config"]:
-        print("================================================\n"
-              "[DEBUG] Running config: ")
-        for config_item, config_value in RUNNING_CONFIG.items():
-            print(f"\t{config_item} = {config_value}")
-        print("================================================\n")
 
 # ================================================
 # Global variables
@@ -253,6 +271,9 @@ icon_add = ctk.CTkImage(
 icon_attack = ctk.CTkImage(
     light_image=Image.open(f"{ASSET_DIR}\\icon_attack.png"),
     dark_image=Image.open(f"{ASSET_DIR}\\icon_attack.png"), size=(20, 20))
+icon_folder = ctk.CTkImage(
+    light_image=Image.open(f"{ASSET_DIR}\\icon_folder.png"),
+    dark_image=Image.open(f"{ASSET_DIR}\\icon_folder.png"), size=(20, 20))
 icon_reload = ctk.CTkImage(
     light_image=Image.open(f"{ASSET_DIR}\\icon_reload.png"),
     dark_image=Image.open(f"{ASSET_DIR}\\icon_reload.png"), size=(20, 20))
@@ -424,6 +445,7 @@ class HeaderTitle(ctk.CTkLabel):
         )
 
 
+# TODO FRONTEND P2: Rework into InfoDialogs and ActionDialogs.
 class ConfirmDialog(ctk.CTkToplevel):
     """
     A custom Confirm dialog class based on customtkinter's Top Level widget.
@@ -480,6 +502,9 @@ class ConfirmDialog(ctk.CTkToplevel):
 
 
 class ErrorDialog(ConfirmDialog):
+    """
+    ConfirmDialog sub class for error message display.
+    """
     def __init__(self,
                  master, root,
                  prompt="Error", title="Error!"):
@@ -495,7 +520,7 @@ class ErrorDialog(ConfirmDialog):
 
 class TextBox(ctk.CTkTextbox):
     """
-    Custom TextBox class based on customtkinter's CTkTextbox with monoscape font and custom insert and get text methods.
+    Custom CTkTextbox class based on customtkinter's CTkTextbox with monoscape font and custom insert and get text methods.
 
     Args:
         master (CTkBaseClass)
@@ -545,9 +570,8 @@ class TextBox(ctk.CTkTextbox):
 
 class ItemList(ttk.Treeview):
     """
-    Custom Item List class
+    Custom TkTreeview class expanded with built-in pop method and custom methods to manipulate items.
     """
-
     def __init__(self, parent, *args, **kwargs):
         super().__init__(parent, *args, **kwargs)
         self.popup_menu = tk.Menu(self, tearoff=0)
@@ -621,9 +645,8 @@ class ItemList(ttk.Treeview):
 
 class TextEntry(ctk.CTkEntry):
     """
-    Custom TextEntry class
+    Custom CTkEntry class with bright background.
     """
-
     def __init__(self, parent, *args, **kwargs):
         super().__init__(parent, *args, **kwargs)
         self.configure(border_width=0,
@@ -634,12 +657,44 @@ class TextEntry(ctk.CTkEntry):
 
 class Label(ctk.CTkLabel):
     """
-    Custom Label class
+    Custom CTkLabel class with transparent background.
     """
-
     def __init__(self, parent, *args, **kwargs):
         super().__init__(parent, *args, **kwargs)
         self.configure(corner_radius=10,
                        text_color=color_text,
                        fg_color="transparent",
+                       bg_color="transparent")
+
+
+class Box(ctk.CTkFrame):
+    """
+    Custom CTkFrame class with transparent background.
+    """
+    def __init__(self, parent, *args, **kwargs):
+        super().__init__(parent, *args, **kwargs)
+        self.configure(corner_radius=10,
+                       fg_color="transparent",
+                       bg_color="transparent")
+
+
+class DarkBox(ctk.CTkFrame):
+    """
+    Custom CTkFrame class with darker background.
+    """
+    def __init__(self, parent, *args, **kwargs):
+        super().__init__(parent, *args, **kwargs)
+        self.configure(corner_radius=10,
+                       fg_color=color_bg,
+                       bg_color="transparent")
+
+
+class BrightBox(ctk.CTkFrame):
+    """
+    Custom CTkFrame class with brighter background.
+    """
+    def __init__(self, parent, *args, **kwargs):
+        super().__init__(parent, *args, **kwargs)
+        self.configure(corner_radius=10,
+                       fg_color=color_bg_br,
                        bg_color="transparent")

@@ -1,8 +1,5 @@
-from threading import Thread
-from common import *
 from backend.intruder import *
-import queue
-from typing import Dict, Union
+from common import *
 
 
 class IntruderResult(ctk.CTkToplevel):
@@ -133,7 +130,7 @@ class IntruderResult(ctk.CTkToplevel):
             text="Show response render",
             command=lambda: show_response_view(self.root, self.hostname, self.response_textbox.get_text())
         )
-        self.response_render_button.pack(side=tk.RIGHT, padx=(0 ,10))
+        self.response_render_button.pack(side=tk.RIGHT, padx=(0, 10))
 
         """
          > POSITIONS TAB

@@ -1,5 +1,6 @@
 # noinspection PyUnresolvedReferences
 from common import *
+from settings import *
 from proxy import *
 from intruder import *
 from repeater import *
@@ -14,6 +15,7 @@ class GUI(ctk.CTk):
     def __init__(self):
         super().__init__()
         self.title("WASTT | Web App Security Testing Tool")
+        # TODO FRONTEND P4: Adding screen responsiveness to this app.
         screen_width = self.winfo_screenwidth()
         screen_height = self.winfo_screenheight()
         self.initial_width = int(screen_width * 0.9)
@@ -29,7 +31,7 @@ class GUI(ctk.CTk):
         self.proxy_process = None
         self.stop_threads = False
 
-        self.tab_nav = ctk.CTkFrame(self, fg_color=color_bg, bg_color=color_bg)
+        self.tab_nav = DarkBox(self)
         self.tab_nav.pack(side="top", fill="x", padx=15, pady=(5, 0))
 
         self.about_button = NavButton(self.tab_nav, text="ABOUT", icon=icon_info, command=self.show_about)
@@ -39,10 +41,8 @@ class GUI(ctk.CTk):
         self.settings_button = NavButton(self.tab_nav, text="SETTINGS", icon=icon_settings, command=self.show_settings)
         self.settings_button.pack(side="right")
         self.settings_window = None
-        self.settings_window_changed = False
-        self.settings_entries = {}
 
-        self.tab_content = ctk.CTkFrame(self, fg_color="transparent", bg_color="transparent", corner_radius=10)
+        self.tab_content = Box(self)
         self.tab_content.pack(side="top", fill="both", expand=True)
 
         self.proxy_tab = GUIProxy(self.tab_content, self)
@@ -62,7 +62,7 @@ class GUI(ctk.CTk):
             self.tab_nav_buttons[name].pack(side=tk.LEFT)
 
         self.show_tab("Proxy")
-        print("INFO: Starting the WASTT app.")
+        print("[INFO] Starting the WASTT app.")
 
     def show_tab(self, tab_name):
         for name, tab in self.tabs.items():
@@ -80,8 +80,9 @@ class GUI(ctk.CTk):
             aw_width = 400
             aw_height = 475
             self.about_window.geometry(f"{aw_width}x{aw_height}")
-            self.about_window.iconbitmap(f"{ASSET_DIR}\\wastt.ico")
+            self.about_window.resizable(False, False)
             self.about_window.attributes("-topmost", True)
+            self.about_window.iconbitmap(f"{ASSET_DIR}\\wastt.png")
 
             center_window(self, self.about_window, aw_width, aw_height)
 
@@ -107,48 +108,16 @@ class GUI(ctk.CTk):
                                 font=ctk.CTkFont(family="Calibri", size=12, weight="normal"),
                                 wraplength=350)
             desc.pack(fill=tk.X, pady=(5, 10), padx=10)
+        if self.about_window.state() in ("withdrawn", "iconic", "icon"):
+            self.about_window.deiconify()
+        self.about_window.focus_force()
 
     def show_settings(self):
-        if self.settings_window is None or not self.settings_window.winfo_exists():
-            # TODO FRONTEND P1: More UI friendly settings with controls and all
-            #  Actual implmentation of config logic in the app
-            #  Settings ideas, appearance (theme), language (EN or PL), Proxy rerun, show Proxy log, turn on Debug mode for the app DEBUG PRINTOUTS
-            self.settings_window = ctk.CTkToplevel(self)
-            self.settings_window.title("Proxy Settings")
-            self.settings_window.attributes("-topmost", True)
-            center_window(self, self.settings_window, 500, 650)
-            self.settings_window.configure()
-
-            wrapper = ctk.CTkScrollableFrame(self.settings_window, fg_color=color_bg, bg_color="transparent")
-            wrapper.pack(fill=tk.BOTH, expand=True, padx=0, pady=0)
-
-            for key, value in RUNNING_CONFIG.items():
-                frame = ctk.CTkFrame(wrapper, fg_color=color_bg, bg_color="transparent")
-                frame.pack(fill=tk.X, padx=10, pady=(10, 5))
-                label = ctk.CTkLabel(frame, text=key, width=100, anchor="w")
-                label.pack(side=tk.LEFT, padx=10, pady=10)
-                entry = TextEntry(frame, width=250)
-                entry.insert(0, value)
-                entry.pack(side=tk.RIGHT, padx=10, pady=10)
-                self.settings_entries[key] = entry
-
-            bottom_bar = ctk.CTkFrame(self.settings_window, fg_color=color_bg_br, bg_color="transparent")
-            bottom_bar.pack(fill=tk.X, padx=0, pady=0)
-
-            save_button = ctk.CTkButton(bottom_bar, text="Save", command=self.save_settings, fg_color=color_acc3,
-                                        hover_color=color_acc4, corner_radius=32)
-            save_button.pack(side=tk.LEFT, padx=10, pady=10)
-
-            cancel_button = ctk.CTkButton(bottom_bar, text="Cancel", command=self.settings_window.destroy,
-                                          corner_radius=32)
-            cancel_button.pack(side=tk.RIGHT, padx=10, pady=10)
-
-    def save_settings(self):
-        new_config = RUNNING_CONFIG.copy()
-        for setting, entry in self.settings_entries.items():
-            new_config[setting] = entry.get()
-        save_config(new_config)
-        self.settings_window.destroy()
+        if self.settings_window is None:
+            self.settings_window = Settings(self)
+            self.settings_window.focus_force()
+        self.settings_window.deiconify()
+        self.settings_window.focus_force()
 
     def open_browser(self):
         """
@@ -184,7 +153,7 @@ class GUI(ctk.CTk):
             self.browser = None
 
             self.proxy_tab.update_browser_buttons()
-            print("INFO: Closing web browser.")
+            print("[INFO] Closing web browser.")
 
     def start_browser_thread(self):
         """
@@ -195,7 +164,7 @@ class GUI(ctk.CTk):
             threading.Thread(target=self.open_browser).start()
 
             self.proxy_tab.update_browser_buttons()
-            print("INFO: Opening web browser.")
+            print("[INFO] Opening web browser.")
 
         elif self.browser and self.browser_opened:
             user32 = ctypes.windll.user32
@@ -210,9 +179,9 @@ class GUI(ctk.CTk):
             try:
                 self.proxy_tab.process.terminate()
                 self.proxy_tab.process.wait()
-                print("INFO: Proxy process has been terminated succesfully.")
+                print("[INFO] Proxy process has been terminated succesfully.")
             except Exception as e:
-                print(f"Error while terminating proxy process: {e}")
+                print(f"[ERROR] Proxy process termination failed: {e}")
 
     def on_close(self):
         # TODO OTHER P4: Finding other way to kill the mitdump.exe when closing the app.
@@ -224,7 +193,7 @@ class GUI(ctk.CTk):
             self.browser.quit()
         self.stop_proxy()
         self.destroy()
-        print("INFO: Closing the WASTT app.")
+        print("[INFO] Closing the WASTT app.")
 
 
 wastt = GUI()
