@@ -4,7 +4,11 @@ from common import *
 class HTTPTrafficTab(ctk.CTkFrame):
     def __init__(self, master, root):
         super().__init__(master)
-        self.configure(fg_color="transparent", bg_color="transparent", corner_radius=10)
+        self.configure(
+            fg_color="transparent",
+            bg_color="transparent",
+            corner_radius=10
+        )
         self.proxy_gui = master
         self.gui = root
 
@@ -16,34 +20,56 @@ class HTTPTrafficTab(ctk.CTkFrame):
         self.top_bar.pack(side=tk.TOP, fill=tk.X, pady=(0, 5), padx=5)
 
         self.add_to_scope_button = ActionButton(
-            self.top_bar, text="Add to scope",  # image=icon_add,
+            self.top_bar,
+            text="Add to scope",
+            # image=icon_add,
             command=lambda: self.update_scope(),
-            state=tk.DISABLED)
+            state=tk.DISABLED
+        )
         self.send_requests_to_intruder_button = ActionButton(
-            self.top_bar, text="Send to intruder",  # image=icon_arrow_up,
+            self.top_bar,
+            text="Send to intruder",
+            # image=icon_arrow_up,
             command=lambda: self.send_request("intruder"),
-            state=tk.DISABLED)
+            state=tk.DISABLED
+        )
         self.send_requests_to_repeater_button = ActionButton(
-            self.top_bar, text="Send to repeater",  # image=icon_arrow_up,
+            self.top_bar, text="Send to repeater",
+            # image=icon_arrow_up,
             command=lambda: self.send_request("repeater"),
-            state=tk.DISABLED)
+            state=tk.DISABLED
+        )
         self.filter_list_button = ActionButton(
-            self.top_bar, text=f"Filter the list with scope",  # image=icon_random,
-            command=self.filter_list_with_scope)
+            self.top_bar, text=f"Filter the list with scope",
+            # image=icon_random,
+            command=self.filter_list_with_scope,
+            state=tk.DISABLED)
         self.delete_requests_button = ActionButton(
-            self.top_bar, text="Delete all requests",  # image=icon_delete,
+            self.top_bar, text="Delete all requests",
+            # image=icon_delete,
             command=self.remove_all_requests_from_list,
             state=tk.DISABLED,
-            fg_color=color_acc3, hover_color=color_acc4)
+            fg_color=color_acc3,
+            hover_color=color_acc4
+        )
         self.add_random_entry = ActionButton(
-            self.top_bar, text=f"Random request", image=icon_random,
-            command=self.generate_random_request)
+            self.top_bar,
+            text=f"Random request",
+            image=icon_random,
+            command=self.generate_random_request
+        )
         self.browser_button = ActionButton(
-            self.top_bar, text="Open browser", image=icon_browser,
-            command=self.gui.start_browser_thread)
+            self.top_bar,
+            text="Open browser",
+            image=icon_browser,
+            command=self.gui.start_browser_thread
+        )
         self.proxy_button = ActionButton(
-            self.top_bar, text="Re-run proxy", image=icon_reload,
-            command=self.proxy_gui.run_mitmdump)
+            self.top_bar,
+            text="Re-run proxy",
+            image=icon_reload,
+            command=self.proxy_gui.run_mitmdump
+        )
 
         self.request_list_filtered = False
 
@@ -79,6 +105,7 @@ class HTTPTrafficTab(ctk.CTkFrame):
         self.request_list = ItemList(self.top_pane, columns=columns, show="headings", style="Treeview")
         self.request_list_backup = ItemList(self.top_pane, columns=columns)
         self.request_list.bind("<<TreeviewSelect>>", self.show_request_content)
+        self.request_list.bind("<Button-1>", self.on_click_outside_item)
         for col in columns:
             self.request_list.heading(col, text=col, command=lambda c=col: self.sort_by_column(c, False))
             self.request_list.column(col, width=100)
@@ -127,7 +154,7 @@ class HTTPTrafficTab(ctk.CTkFrame):
         """
         self.bottom_pane = ctk.CTkFrame(self.paned_window, corner_radius=10, fg_color=color_bg,
                                         bg_color="transparent")
-        self.paned_window.add(self.bottom_pane)
+        # self.paned_window.add(self.bottom_pane)
 
         self.bottom_pane.grid_columnconfigure(0, weight=1)
         self.bottom_pane.grid_columnconfigure(1, weight=1)
@@ -148,17 +175,17 @@ class HTTPTrafficTab(ctk.CTkFrame):
         self.response_header = HeaderTitle(self.response_frame, "Response")
         self.response_header.pack(fill=tk.X)
 
-        self.response_render_button = ActionButton(
-            self.response_frame,
-            text="Show response render",
-            command=self.show_response_view
-        )
-        self.response_render_button.place(relx=1, rely=0, anchor=tk.NE, x=-10, y=10)
-
         self.response_textbox = TextBox(self.response_frame, "Select request to display its response contents.")
         self.response_textbox.configure(state=tk.DISABLED)
         self.response_textbox.pack(pady=10, padx=10, fill="both", expand=True)
-        self.response_view = None
+
+        self.response_hostname = ""
+        self.response_render_button = ActionButton(
+            self.response_frame,
+            text="Show response render",
+            command=lambda: show_response_view(self.gui, self.response_hostname, self.response_textbox.get_text())
+        )
+        self.response_render_button.place(relx=1, rely=0, anchor=tk.NE, x=-10, y=10)
 
     def update_scope(self, mode="add"):
         """
@@ -238,55 +265,36 @@ class HTTPTrafficTab(ctk.CTkFrame):
             self.toggle_list_actions("normal")
             self.request_list_empty = False
 
+    def on_click_outside_item(self, event):
+        region = self.request_list.identify_region(event.x, event.y)
+        if region != "cell":
+            self.request_list.selection_remove(self.request_list.selection())
+            self.show_request_content(event)
+
     def show_request_content(self, _event):
         """
         HTTP Traffic Tab:
             Shows selected HTTP request and its response in the textbox.
         """
         if len(self.request_list.selection()) > 0:
+            self.paned_window.add(self.bottom_pane)
             selected_item = self.request_list.selection()[0]
             request_string = self.request_list.item(selected_item)['values'][3]
-            if len(self.request_list.item(selected_item)['values']) == 9:
-                response_string = self.request_list.item(selected_item)['values'][7]
-            else:
-                response_string = "Request got no response."
+            response_string = self.request_list.item(selected_item)['values'][-2]
+            self.response_hostname = self.request_list.item(selected_item)['values'][0]
             self.request_textbox.configure(state=tk.NORMAL, font=self.request_textbox.monoscape_font)
             self.request_textbox.insert_text(request_string)
             self.response_textbox.configure(state=tk.NORMAL, font=self.request_textbox.monoscape_font)
             self.response_textbox.insert_text(response_string)
             self.response_textbox.configure(state=tk.DISABLED)
         else:
+            self.paned_window.remove(self.bottom_pane)
             self.request_textbox.configure(state=tk.NORMAL)
             self.request_textbox.insert_text("Select a request to display its contents.")
             self.request_textbox.configure(state=tk.DISABLED, font=self.request_textbox.monoscape_font_italic)
             self.response_textbox.configure(state=tk.NORMAL)
             self.response_textbox.insert_text("Select a request to display contents of its response.")
             self.response_textbox.configure(state=tk.DISABLED, font=self.request_textbox.monoscape_font_italic)
-
-    def show_response_view(self):
-        response_content = self.response_textbox.get_text()
-
-        if len(response_content) > 0:
-            self.response_view = ctk.CTk()
-            width = int(self.gui.root.winfo_width() * 0.9)
-            height = int(self.gui.root.winfo_height() * 0.9)
-            self.response_view.geometry(f"{width}x{height}")
-            # self.response_view.attributes("-topmost", True)
-            center_window(self.gui, self.response_view, width, height)
-
-            host_url = ""
-            if len(self.request_list.selection()) > 0:
-                selected_item = self.request_list.selection()[0]
-                host_url = self.request_list.item(selected_item)['values'][-1]
-                response_content = self.response_textbox.get_text()
-                response_content = response_content.replace("src=\"/", f"src=\"{host_url}/")
-                response_content = response_content.replace("href=\"/", f"href=\"{host_url}/")
-
-            response_webview = tkinterweb.HtmlFrame(self.response_view, messages_enabled=False)
-            response_webview.load_html(response_content)
-            response_webview.current_url = host_url
-            response_webview.pack(pady=0, padx=0, fill="both", expand=True)
-            self.response_view.mainloop()
 
     def send_request(self, dest):
         request_content = self.request_textbox.get_text()

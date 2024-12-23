@@ -37,18 +37,6 @@ class RepeaterTab(ctk.CTkFrame):
 
         self.tab_iterations = {}
         self.tab_iteration_keys = []
-        self.current_iteration_index = 0
-
-        # TODO FRONTEND: Remove the arrows.
-        self.prev_button = ActionButton(
-            self.top_bar,
-            text="",
-            image=icon_arrow_left,
-            command=self.prev_iteration,
-            state=tk.DISABLED,
-            width=20
-        )
-        self.prev_button.pack(padx=(10, 0), pady=10, side="left")
 
         self.iteration_var = tk.StringVar(self.top_bar)
         self.iteration_var.set("Select Iteration")
@@ -62,16 +50,6 @@ class RepeaterTab(ctk.CTkFrame):
             width=200
         )
         self.iteration_dropdown.pack(side="left", padx=5, pady=10)
-
-        self.next_button = ActionButton(
-            self.top_bar,
-            text="",
-            image=icon_arrow_right,
-            command=self.next_iteration,
-            state=tk.DISABLED,
-            width=20
-        )
-        self.next_button.pack(padx=(0, 10), pady=10, side="left")
 
         if self.id != 0:
             self.delete_tab_button = ActionButton(
@@ -93,13 +71,24 @@ class RepeaterTab(ctk.CTkFrame):
             self.is_empty = False
         self.request_textbox.bind("<<Modified>>", self.on_request_textbox_change)
 
-        self.response_header = HeaderTitle(self, text="Response")
-        self.response_header.grid(row=1, column=1, padx=10, pady=(5, 0), sticky="w")
+        self.response_header = ctk.CTkFrame(self, corner_radius=10, fg_color="transparent", bg_color="transparent")
+        self.response_header.grid(row=1, column=1, padx=(10, 20), pady=(5, 0), sticky="we")
+
+        self.response_header_title = HeaderTitle(self.response_header, text="Response")
+        self.response_header_title.pack(side=tk.LEFT, padx=0, pady=0)
 
         # TODO FRONTEND: Add rendering view.
         self.response_textbox = TextBox(self, text="Response will appear here.")
         self.response_textbox.configure(state="disabled", font=self.response_textbox.monoscape_font_italic)
         self.response_textbox.grid(row=2, column=1, padx=(10, 20), pady=(0, 20), sticky="nsew")
+
+        self.response_render_button = ActionButton(
+            self.response_header,
+            text="Show response render",
+            command=lambda: show_response_view(self.gui, self.hosturl_entry.get(), self.response_textbox.get_text()),
+            state=tk.DISABLED
+        )
+        self.response_render_button.pack(side=tk.RIGHT, padx=0, pady=0)
 
         self.grid_columnconfigure(0, weight=1)
         self.grid_columnconfigure(1, weight=1)
@@ -112,7 +101,7 @@ class RepeaterTab(ctk.CTkFrame):
                 command=lambda: self.gui.delete_tab(self.id)
             )
 
-    def on_request_textbox_change(self, event):
+    def on_request_textbox_change(self, _event):
         self._reset_request_modified_flag()
         if len(self.request_textbox.get_text()) > 0 and self.request_textbox.get_text() != "Enter request here.":
             self.is_empty = False
@@ -142,30 +131,15 @@ class RepeaterTab(ctk.CTkFrame):
 
                 self.tab_iterations[timestamp] = [request_text, response_text]
                 self.tab_iteration_keys.insert(0, timestamp)
-                self.current_iteration_index = 0
-                self.update_chronology_controls()
                 self.update_dropdown_menu()
             except Exception as e:
-                dialog = ConfirmDialog(self, self.gui, prompt=e, action1="Ok", command1= lambda: dialog.destroy())
+                dialog = ConfirmDialog(self, self.gui, prompt=e, action1="Ok", command1=lambda: dialog.destroy())
 
     def add_response_to_repeater_tab(self, response):
         self.response_textbox.configure(state=tk.NORMAL)
         self.response_textbox.insert_text(response)
         self.response_textbox.configure(state=tk.DISABLED)
-
-    def update_chronology_controls(self):
-        if self.current_iteration_index > 0:
-            self.prev_button.configure(state=tk.NORMAL)
-        else:
-            self.prev_button.configure(state=tk.DISABLED)
-
-        if self.current_iteration_index < len(self.tab_iteration_keys) - 1:
-            self.next_button.configure(state=tk.NORMAL)
-        else:
-            self.next_button.configure(state=tk.DISABLED)
-
-        iteration_name = self.tab_iteration_keys[self.current_iteration_index]
-        self.iteration_var.set(iteration_name)
+        self.response_render_button.configure(state=tk.NORMAL)
 
     def update_dropdown_menu(self):
         self.iteration_dropdown.configure(values=self.tab_iteration_keys, state=tk.NORMAL)
@@ -175,24 +149,9 @@ class RepeaterTab(ctk.CTkFrame):
 
     def select_iteration(self, iteration_name):
         if iteration_name in self.tab_iteration_keys:
-            self.current_iteration_index = self.tab_iteration_keys.index(iteration_name)
-            self.load_iteration(self.current_iteration_index)
-            self.update_chronology_controls()
+            self.load_iteration(iteration_name)
 
-    def prev_iteration(self):
-        if self.current_iteration_index > 0:
-            self.current_iteration_index -= 1
-            self.load_iteration(self.current_iteration_index)
-            self.update_chronology_controls()
-
-    def next_iteration(self):
-        if self.current_iteration_index < len(self.tab_iteration_keys) - 1:
-            self.current_iteration_index += 1
-            self.load_iteration(self.current_iteration_index)
-            self.update_chronology_controls()
-
-    def load_iteration(self, index):
-        iteration_name = self.tab_iteration_keys[index]
+    def load_iteration(self, iteration_name):
         request_text, response_text = self.tab_iterations[iteration_name]
         self.request_textbox.configure(state=tk.NORMAL)
         self.response_textbox.configure(state=tk.NORMAL)
@@ -201,6 +160,7 @@ class RepeaterTab(ctk.CTkFrame):
         self.response_textbox.delete("1.0", tk.END)
         self.response_textbox.insert_text(response_text)
         self.response_textbox.configure(state=tk.DISABLED)
+        self.response_render_button.configure(state=tk.NORMAL)
 
 
 class GUIRepeater(ctk.CTkFrame):

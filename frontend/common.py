@@ -154,10 +154,6 @@ def load_config():
         "FRONT_BACK_SCOPEUPDATE_PORT": 65430,
         "FRONT_BACK_FORWARDBUTTON_PORT": 65436,
         "FRONT_BACK_INTERCEPTBUTTON_PORT": 65437,
-        "REPEATER_BACK_SENDHTTPMESSAGE_PORT": 65438,
-        "FRONT_BACK_SENDTOREPEATER_PORT": 65439,
-        "BACK_REPEATER_FLOWSEND_PORT": 65440,
-        "BACK_REPEATER_RESPONSESEND_PORT": 65441,
         "debug_mode": True,
         "show_running_config": False,
         "proxy_console": False
@@ -168,35 +164,35 @@ def load_config():
             for line in file:
                 line = line.strip()
                 if line and not line.startswith("#"):
-                    key, value = line.split("=", 1)
-                    if "#" in value:
-                        value, _ = value.split("#", 1)
-                    value = value.strip().lower()
-                    key = key.strip().lower()
+                    setting, val = line.split("=", 1)
+                    if "#" in val:
+                        val, _ = val.split("#", 1)
+                    val = val.strip().lower()
+                    setting = setting.strip().lower()
 
-                    if key == "theme":
-                        if value not in ("system", "dark", "light"):
+                    if setting == "theme":
+                        if val not in ("system", "dark", "light"):
                             print("CONFIG ERROR: Incorrect value given, where system, dark or light expected.")
                             continue
 
-                    if key.endswith("port"):
+                    if setting.endswith("port"):
                         try:
-                            value = int(value)
+                            val = int(val)
                         except ValueError:
                             print("CONFIG ERROR: Incorrect value given, where int expected.")
                             continue
 
-                    if key in ("debug_mode", "proxy_console"):
-                        if value not in (1, 0, "1", "0", "true", "false"):
+                    if setting in ("debug_mode", "proxy_console"):
+                        if val not in (1, 0, "1", "0", "true", "false"):
                             print("CONFIG ERROR: Incorrect value given, where bool expected (false, true, 0 or 1).")
                             continue
 
-                    if value in (1, "1", "true"):
-                        value = True
-                    if value in (0, "0", "false"):
-                        value = False
+                    if setting in (1, "1", "true"):
+                        val = True
+                    if val in (0, "0", "false"):
+                        val = False
 
-                    config[key] = value
+                    config[setting] = val
     except FileNotFoundError:
         print("CONFIG ERROR: App config file could not be open. Default settings have been loaded.")
     return config
@@ -208,22 +204,22 @@ def save_config(config):
             lines = file.readlines()
 
         updated_lines = []
-        keys_found = set()
+        settings_found = set()
         for line in lines:
             if line.strip() and not line.strip().startswith("#"):
-                key, value = line.split("=", 1)
-                key = key.strip()
-                if key in config:
-                    updated_lines.append(f"{key} = {config[key]}\n")
-                    keys_found.add(key)
+                setting, val = line.split("=", 1)
+                setting = setting.strip()
+                if setting in config:
+                    updated_lines.append(f"{setting} = {config[setting]}\n")
+                    settings_found.add(setting)
                 else:
                     updated_lines.append(line)
             else:
                 updated_lines.append(line)
 
-        for key, value in config.items():
-            if key not in keys_found:
-                updated_lines.append(f"{key} = {value}\n")
+        for setting, val in config.items():
+            if setting not in settings_found:
+                updated_lines.append(f"{setting} = {val}\n")
 
         with open("app.conf", "w") as file:
             file.writelines(updated_lines)
@@ -291,6 +287,26 @@ def dprint(msg):
     """
     if RUNNING_CONFIG["debug_mode"]:
         print(msg)
+
+
+def show_response_view(gui, hostname, html_content):
+    if len(html_content) > 0:
+        response_view = ctk.CTk()
+        width = int(gui.winfo_width() * 0.9)
+        height = int(gui.winfo_height() * 0.9)
+        response_view.geometry(f"{width}x{height}")
+        # self.response_view.attributes("-topmost", True)
+        response_view.focus_set()
+        center_window(gui, response_view, width, height)
+
+        html_content = html_content.replace("src=\"/", f"src=\"{hostname}/")
+        html_content = html_content.replace("href=\"/", f"href=\"{hostname}/")
+
+        response_webview = tkinterweb.HtmlFrame(response_view, messages_enabled=False)
+        response_webview.load_html(html_content)
+        response_webview.current_url = hostname
+        response_webview.pack(pady=0, padx=0, fill="both", expand=True)
+        response_view.mainloop()
 
 
 class ActionButton(ctk.CTkButton):
@@ -363,8 +379,8 @@ class NavButton(ctk.CTkFrame):
         self.main_button.pack(side="left", padx=3, pady=(1, 5))
         self.selected = False
 
-    def set_selected(self, value):
-        self.selected = value
+    def set_selected(self, val):
+        self.selected = val
         if self.selected:
             self.configure(
                 fg_color=self.bg_sel,
@@ -424,21 +440,31 @@ class ConfirmDialog(ctk.CTkToplevel):
 
         # TODO FRONTEND: Add Enter, Space to run command1 and Escape to destroy the window.
         label = ctk.CTkLabel(self, text=prompt, wraplength=(width - 20))
-        label.pack(fill=tk.BOTH, pady=(10, 5), padx=10)
+        label.grid(column=0, row=0, pady=(10, 5), padx=10, sticky=tk.NSEW)
 
-        yes_button = ctk.CTkButton(self, text=action1, command=command1, corner_radius=32)
+        buttons = ctk.CTkFrame(self, fg_color="transparent", bg_color="transparent")
+        buttons.grid(column=0, row=1, pady=(0, 10), padx=10, sticky=tk.NSEW)
+
+        button1 = ctk.CTkButton(buttons, text=action1, command=command1, corner_radius=32)
+        button1.grid(column=0, row=0, padx=10, pady=(5, 10), sticky=tk.NE)
+
+        buttons.grid_columnconfigure(0, weight=1)
+        buttons.grid_rowconfigure(0, weight=1)
 
         if action2 is not None:
-            yes_button.pack(side="left", fill=tk.X, padx=10, pady=(5, 10), anchor="e")
-            a_button2 = ctk.CTkButton(self, text=action2, command=command2, corner_radius=32)
-            if action3 is not None:
-                a_button2.pack(side="left", fill=tk.X, padx=10, pady=(5, 10), anchor="w")
-                a_button3 = ctk.CTkButton(self, text=action3, command=command3, corner_radius=32)
-                a_button3.pack(side="right", fill=tk.X, padx=10, pady=(5, 10), anchor="w")
-            else:
-                a_button2.pack(side="right", fill=tk.X, padx=10, pady=(5, 10), anchor="w")
-        else:
-            yes_button.pack(side="top", fill=tk.X, padx=10, pady=(5, 10), anchor="e")
+            button2 = ctk.CTkButton(buttons, text=action2, command=command2, corner_radius=32)
+            button2.grid(column=1, row=0, padx=10, pady=(5, 10), sticky=tk.NE)
+            buttons.grid_columnconfigure(1, weight=1)
+
+        if action3 is not None:
+            button3 = ctk.CTkButton(buttons, text=action3, command=command3, corner_radius=32)
+            button3.grid(column=2, row=0, padx=10, pady=(5, 10), sticky=tk.NE)
+            buttons.grid_columnconfigure(2, weight=1)
+
+        self.grid_columnconfigure(0, weight=1)
+        self.grid_rowconfigure(0, weight=1)
+        self.grid_rowconfigure(1, weight=1)
+
 
 
 class ErrorDialog(ConfirmDialog):
@@ -576,8 +602,8 @@ class ItemList(ttk.Treeview):
                     content += self.item(selected_item)['values'][i] + "\n"
             elif isinstance(index, int):
                 content = self.item(selected_item)['values'][index]
-            # print(f'DEBUG/FRONTEND/PROXY: selected_item = {selected_item}\n\nits values = {self.item(selected_item)['values']}')
-            # print(f"DEBUG/FRONTEND/PROXY: Copied {content}")
+            dprint(f"DEBUG/FRONTEND: selected_item = {selected_item}\n\nits values = {self.item(selected_item)['values']}")
+            dprint(f"DEBUG/FRONTEND: Copied {content}")
             pyperclip.copy(content.strip())
 
 

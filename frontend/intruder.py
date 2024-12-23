@@ -32,9 +32,23 @@ class IntruderResult(ctk.CTkToplevel):
         self.top_bar.pack(side=tk.TOP, fill=tk.X, padx=15, pady=(5, 0))
         self.attack_start_label = ctk.CTkLabel(self.top_bar, text=f"Attack on: {self.hostname} started at {self.timestamp}.")
         self.attack_start_label.pack(side=tk.LEFT, padx=(20, 0))
-        self.pause_button = ActionButton(self.top_bar, text="Pause", image=icon_pause, command=self.pause_attack)
+        self.pause_button = ActionButton(
+            self.top_bar,
+            text="Pause",
+            image=icon_pause,
+            command=self.pause_attack,
+            fg_color=color_bg,
+            hover_color=color_bg_br
+        )
         self.pause_button.pack(side=tk.LEFT, padx=(10, 0))
-        self.abort_button = ActionButton(self.top_bar, text="Abort", image=icon_abort, command=self.abort_attack)
+        self.abort_button = ActionButton(
+            self.top_bar,
+            text="Abort",
+            image=icon_abort,
+            command=self.abort_attack,
+            fg_color=color_bg,
+            hover_color=color_bg_br
+        )
         self.abort_button.pack(side=tk.LEFT, padx=(10, 0))
         self.attack_status_label = ctk.CTkLabel(self.top_bar, text=f"Attack is ongoing.")
         self.attack_status_label.pack(side=tk.LEFT, padx=(10, 0))
@@ -104,12 +118,22 @@ class IntruderResult(ctk.CTkToplevel):
         self.response_frame = ctk.CTkFrame(self.bottom_frame, fg_color=color_bg, bg_color="transparent")
         self.response_frame.grid(row=0, column=1, sticky="nsew", padx=10, pady=10)
 
-        self.response_header = HeaderTitle(self.response_frame, "Response")
+        self.response_header = ctk.CTkFrame(self.response_frame, fg_color="transparent", bg_color="transparent")
         self.response_header.pack(fill=tk.X)
+
+        self.response_header_title = HeaderTitle(self.response_header, "Response")
+        self.response_header_title.pack(side=tk.LEFT)
 
         self.response_textbox = TextBox(self.response_frame, "Select request to display its response contents.")
         self.response_textbox.configure(state=tk.DISABLED)
         self.response_textbox.pack(pady=10, padx=10, fill="both", expand=True)
+
+        self.response_render_button = ActionButton(
+            self.response_header,
+            text="Show response render",
+            command=lambda: show_response_view(self.root, self.hostname, self.response_textbox.get_text())
+        )
+        self.response_render_button.pack(side=tk.RIGHT, padx=(0 ,10))
 
         """
          > POSITIONS TAB
@@ -171,7 +195,7 @@ class IntruderResult(ctk.CTkToplevel):
                 "Abort the attack",
                 lambda: (self.abort_attack(), self.hide_window()),
                 width=550,
-                height=150
+                height=100
             )
         else:
             self.hide_window()
