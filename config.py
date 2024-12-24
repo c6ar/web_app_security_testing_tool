@@ -7,6 +7,11 @@ from pathlib import Path
 CONFIG_PATH = Path.cwd().parent / "app.conf"
 
 
+def update_config(config):
+    global RUNNING_CONFIG
+    RUNNING_CONFIG = config
+
+
 def load_config():
     config = DEFAULT_CONFIG.copy()
     try:
@@ -22,19 +27,19 @@ def load_config():
 
                     if setting == "theme":
                         if val not in ("system", "dark", "light"):
-                            print("CONFIG ERROR: Incorrect value given, where system, dark or light expected.")
+                            print("[ERROR] CONFIG: Incorrect value given, where system, dark or light expected.")
                             continue
 
                     if setting.endswith("port"):
                         try:
                             val = int(val)
                         except ValueError:
-                            print("CONFIG ERROR: Incorrect value given, where int expected.")
+                            print("[ERROR] CONFIG: Incorrect value given, where int expected.")
                             continue
 
                     if setting in ("debug_mode", "proxy_console"):
                         if val not in (1, 0, "1", "0", "true", "false"):
-                            print("CONFIG ERROR: Incorrect value given, where bool expected (false, true, 0 or 1).")
+                            print("[ERROR] CONFIG: Incorrect value given, where bool expected (false, true, 0 or 1).")
                             continue
 
                     if setting in (1, "1", "true"):
@@ -44,7 +49,7 @@ def load_config():
 
                     config[setting] = val
     except FileNotFoundError:
-        print("CONFIG ERROR: App config file could not be open. Default settings have been loaded.")
+        print("[ERROR] CONFIG: App config file could not be open. Default settings have been loaded.")
     return config
 
 
@@ -80,7 +85,7 @@ def save_config(config):
 
 DEFAULT_CONFIG = {
     "theme": "system",
-    "lang": "en",
+    "lang": "english",
     "proxy_host_address": "127.0.0.1",
     "proxy_port": 8082,
     "proxy_logging": 1,

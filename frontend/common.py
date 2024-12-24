@@ -357,6 +357,7 @@ class ConfirmDialog(ctk.CTkToplevel):
         self.geometry(f"{width}x{height}")
         self.resizable(False, False)
         self.transient(master)
+        self.attributes("-topmost", True)
         center_window(root, self, width, height)
 
         label = ctk.CTkLabel(self, text=prompt, wraplength=(width - 20))
@@ -366,19 +367,19 @@ class ConfirmDialog(ctk.CTkToplevel):
         buttons.grid(column=0, row=1, pady=(0, 10), padx=10, sticky=tk.NSEW)
 
         button1 = ctk.CTkButton(buttons, text=action1, command=command1, corner_radius=32)
-        button1.grid(column=0, row=0, padx=10, pady=(5, 10), sticky=tk.NE)
+        button1.grid(column=0, row=0, padx=10, pady=(5, 10))
 
         buttons.grid_columnconfigure(0, weight=1)
         buttons.grid_rowconfigure(0, weight=1)
 
         if action2 is not None:
             button2 = ctk.CTkButton(buttons, text=action2, command=command2, corner_radius=32)
-            button2.grid(column=1, row=0, padx=10, pady=(5, 10), sticky=tk.NE)
+            button2.grid(column=1, row=0, padx=10, pady=(5, 10))
             buttons.grid_columnconfigure(1, weight=1)
 
         if action3 is not None:
             button3 = ctk.CTkButton(buttons, text=action3, command=command3, corner_radius=32)
-            button3.grid(column=2, row=0, padx=10, pady=(5, 10), sticky=tk.NE)
+            button3.grid(column=2, row=0, padx=10, pady=(5, 10))
             buttons.grid_columnconfigure(2, weight=1)
 
         self.grid_columnconfigure(0, weight=1)

@@ -11,6 +11,25 @@ from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.chrome.options import Options
 
 
+def create_browser():
+    """
+    Creates a new Selenium Chrome Browser instance with custom preset config.
+    """
+    options = Options()
+    options.add_argument("--enable-logging")
+    options.add_argument("--log-level=0")
+    options.add_argument("--disable-infobars")
+    options.add_argument("--disable-notifications")
+    proxy_host = RUNNING_CONFIG["proxy_host_address"]
+    proxy_port = RUNNING_CONFIG["proxy_port"]
+    options.add_argument(f"--proxy-server={proxy_host}:{proxy_port}")
+    options.add_argument("--ignore-certificate-errors")
+    options.add_experimental_option("excludeSwitches", ["enable-logging"])
+    options.set_capability("goog:loggingPrefs", {"performance": "ALL"})
+
+    return webdriver.Chrome(options=options)
+
+
 class GUI(ctk.CTk):
     def __init__(self):
         super().__init__()
@@ -117,37 +136,23 @@ class GUI(ctk.CTk):
         if self.settings_window is None:
             self.settings_window = Settings(self)
             self.settings_window.focus_set()
-        self.settings_window.deiconify()
-        self.settings_window.focus_set()
+        try:
+            self.settings_window.deiconify()
+            self.settings_window.focus_set()
+        except tk.TclError:
+            self.settings_window = Settings(self)
+            self.settings_window.focus_set()
+
 
     def open_browser(self):
         """
-        Opening Selenium Chrome Browser with custom preset config.
+        Opening Selenium Chrome Browser
         """
-        options = Options()
-        options.add_argument("--enable-logging")
-        options.add_argument("--log-level=0")
-        options.add_argument("--disable-infobars")
-        options.add_argument("--disable-notifications")
-        proxy_host = RUNNING_CONFIG["proxy_host_address"]
-        proxy_port = RUNNING_CONFIG["proxy_port"]
-        options.add_argument(f"--proxy-server={proxy_host}:{proxy_port}")
-        options.add_argument("--ignore-certificate-errors")
-        options.add_experimental_option("excludeSwitches", ["enable-logging"])
-        options.set_capability("goog:loggingPrefs", {"performance": "ALL"})
-
-        self.browser = webdriver.Chrome(options=options)
+        self.browser = create_browser()
         self.browser.get("https://www.example.com")
-
-        time.sleep(2)
-
-        user32 = ctypes.windll.user32
-        user32.ShowWindow(user32.GetForegroundWindow(), 5)
-        user32.SetForegroundWindow(user32.GetForegroundWindow())
 
         try:
             while self.browser_opened and not self.stop_threads:
-                # self.requests = driver.get_log('performance')
                 if len(self.browser.window_handles) == 0:
                     self.browser_opened = False
         finally:
@@ -164,11 +169,6 @@ class GUI(ctk.CTk):
             self.browser_opened = True
             threading.Thread(target=self.open_browser).start()
             print("[INFO] Opening web browser.")
-
-        elif self.browser and self.browser_opened:
-            user32 = ctypes.windll.user32
-            user32.ShowWindow(user32.GetForegroundWindow(), 5)
-            user32.SetForegroundWindow(user32.GetForegroundWindow())
 
     def stop_proxy(self):
         """
@@ -190,8 +190,15 @@ class GUI(ctk.CTk):
         if self.browser is not None:
             self.browser.quit()
         self.stop_proxy()
-        self.destroy()
         print("[INFO] Closing the WASTT app.")
+        self.destroy()
+
+
+def restart():
+    global wastt
+    wastt.on_close()
+    del wastt
+    wastt = GUI()
 
 
 wastt = GUI()

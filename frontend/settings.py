@@ -22,7 +22,7 @@ class Settings(ctk.CTkToplevel):
         wrapper.pack(fill=tk.BOTH, expand=True, padx=0, pady=0)
         label_width = int(settings_width / 5)
 
-        # TODO FRONTEND P2: Next to each label there will be an info icon, after clicking, opens a info window like About
+        # TODO FRONTEND P1: Next to each label there will be an info icon, after clicking, opens a info window like About
         #  that can be dismissed with esc, space and enter
         #  and it describes settings
         # ================================================
@@ -43,8 +43,10 @@ class Settings(ctk.CTkToplevel):
             width=200,
             command=lambda option: self.on_settings_change()
         )
+        self.theme_options.set(RUNNING_CONFIG['theme'].capitalize())
         self.theme_options.pack(side=tk.LEFT, padx=(5, 10), pady=5)
 
+        # TODO FRONTEND P4: Language support.
         lang_box = Box(general_isle)
         lang_box.pack(fill=tk.X, padx=10, pady=(10, 15))
         lang_label = Label(lang_box, text="Language", width=label_width, anchor=tk.E)
@@ -55,6 +57,7 @@ class Settings(ctk.CTkToplevel):
             width=200,
             command=lambda option: self.on_settings_change()
         )
+        self.lang_options.set(RUNNING_CONFIG['lang'].capitalize())
         self.lang_options.pack(side=tk.LEFT, padx=(5, 10), pady=5)
 
         # ================================================
@@ -132,6 +135,8 @@ class Settings(ctk.CTkToplevel):
             corner_radius=5,
             command=self.select_log_file_dir
         )
+        # TODO FRONTEND P1: Implementing Proxy logging.
+        #  If Proxy loggin disabled the respective placeholder with info displayed in logs tab on the Traffic widget.
         self.proxy_logs_location_button.grid(row=1, column=2, padx=5, pady=5, sticky=tk.E)
         if RUNNING_CONFIG['proxy_logging']:
             self.proxy_logs_checkbox.select()
@@ -191,7 +196,7 @@ class Settings(ctk.CTkToplevel):
         browser_settings.pack(fill=tk.X, padx=10, pady=(10, 5))
         label1 = Label(browser_isle, text="Arguments for the Selenium browser will be here.")
         label1.pack(side=tk.LEFT, padx=20, pady=20)
-        # TODO FRONTEND P3: Browser settings.
+        # TODO FRONTEND P2: Browser settings.
 
         # ================================================
         # Logs settings isle
@@ -253,7 +258,7 @@ class Settings(ctk.CTkToplevel):
         self.save_button = ActionButton(
             bottom_bar,
             text="Save",
-            command=self.save_settings,
+            command=self.read_new_settings,
             state=tk.DISABLED
         )
         self.cancel_button = ActionButton(
@@ -279,7 +284,7 @@ class Settings(ctk.CTkToplevel):
                 "You have unsaved changes. Do you want to save them?",
                 "Save changes?",
                 "Save",
-                lambda: (self.save_settings(), confirm.destroy()),
+                lambda: (self.read_new_settings(), confirm.destroy()),
                 "Cancel",
                 lambda: confirm.destroy(),
                 "Discard",
@@ -320,17 +325,17 @@ class Settings(ctk.CTkToplevel):
             self.proxy_logs_location_input.delete(0, tk.END)
             self.proxy_logs_location_input.insert(0, file_path)
 
-    def save_settings(self):
+    def read_new_settings(self):
         new_config = {
-            "theme": self.theme_options.get(),
-            "lang": self.lang_options.get(),
+            "theme": self.theme_options.get().lower(),
+            "lang": self.lang_options.get().lower(),
             "proxy_host_address": self.proxy_ip_input.get(),
             "proxy_port": self.proxy_port_input.get(),
             "proxy_logging": self.proxy_logs_checkbox.get(),
             "proxy_logs_location": self.proxy_logs_location_input.get(),
             "proxy_console": self.proxy_cmd_box_checkbox.get(),
-            "debug_mode": False,
-            "debug_show_running_config": False
+            "debug_mode": self.debug_mode_checkbox.get(),
+            "debug_show_running_config": self.debug_running_conf_checkbox.get()
         }
         for port_key, port_input in self.bf_port_inputs.items():
             new_config[port_key] = port_input.get()
@@ -341,16 +346,55 @@ class Settings(ctk.CTkToplevel):
             dprint(f"\t{key}: {value}")
         dprint("================================================")
 
-        # TODO FRONTEND P2: If settings such as Proxy require restart show pop-up first.
-        if (new_config["proxy_console"] != RUNNING_CONFIG["proxy_console"] or
-                new_config["proxy_host_address"] != RUNNING_CONFIG["proxy_host_address"] or
+        if (new_config["theme"] != RUNNING_CONFIG["theme"] or
+                new_config["lang"] != RUNNING_CONFIG["lang"] or
+                new_config["debug_mode"] != RUNNING_CONFIG["debug_mode"]):
+            confirm = ConfirmDialog(
+                self.root,
+                self,
+                "To apply some changes you need to restart the application manually.",
+                "Restart",
+                "Ok",
+                lambda: (self.save_settings(new_config), confirm.destroy())
+            )
+        elif (new_config["proxy_host_address"] != RUNNING_CONFIG["proxy_host_address"] or
                 new_config["proxy_port"] != RUNNING_CONFIG["proxy_port"]):
-            RUNNING_CONFIG["proxy_console"] = new_config["proxy_console"]
-            self.reload_proxy(retain_scope=True)
+            confirm = ConfirmDialog(
+                self.root,
+                self,
+                "To apply some changes you need to restart the browser and proxy process.",
+                "Restart",
+                "Ok",
+                lambda: (self.save_settings(new_config, reload_proxy=True, reload_browser=True), confirm.destroy()),
+            )
+        elif new_config["proxy_console"] != RUNNING_CONFIG["proxy_console"]:
+            confirm = ConfirmDialog(
+                self.root,
+                self,
+                "To apply some changes you need to restart mitmdump proxy process.",
+                "Restart",
+                "Ok",
+                lambda: (self.save_settings(new_config, reload_proxy=True), confirm.destroy()),
+            )
+        else:
+            self.save_settings(new_config)
 
-        # TODO FRONTEND P2: Full implementation of settings.
-        # TODO FRONTEND P2: If settings such as Theme or Language require restart show pop-up.
-        # save_config(new_config)
-
+    def save_settings(self, new_config, reload_proxy=False, reload_browser=False):
         dprint("[DEBUG] Saving settings.")
+        from config import save_config, update_config
+        update_config(new_config)
+        save_config(new_config)
+        if reload_proxy:
+            dprint("[DEBUG] Reloading proxy.")
+            self.reload_proxy(retain_scope=True)
+        if reload_browser:
+            if self.root.browser_opened:
+                dprint("[DEBUG] Reopening browser.")
+                if self.root.browser is not None:
+                    self.root.browser.quit()
+                self.root.browser = None
+                self.root.start_browser_thread()
+            else:
+                self.root.browser = None
+
         self.destroy_window()
