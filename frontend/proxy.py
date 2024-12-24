@@ -17,7 +17,7 @@ class HTTPTrafficTab(ctk.CTkFrame):
         """
         self.top_bar = ctk.CTkFrame(self, height=50, corner_radius=10, fg_color=color_bg,
                                     bg_color="transparent")
-        self.top_bar.pack(side=tk.TOP, fill=tk.X, pady=(0, 5), padx=5)
+        self.top_bar.pack(side=tk.TOP, fill=tk.X, pady=(0, 5), padx=10)
 
         self.add_to_scope_button = ActionButton(
             self.top_bar,
@@ -94,7 +94,7 @@ class HTTPTrafficTab(ctk.CTkFrame):
 
         self.paned_window = tk.PanedWindow(self, orient=tk.VERTICAL, sashwidth=10,
                                            background=color_bg_br)
-        self.paned_window.pack(fill=tk.BOTH, expand=1, padx=5, pady=5)
+        self.paned_window.pack(fill=tk.BOTH, expand=1, padx=10, pady=(5, 10))
 
         """
          > Top pane
@@ -421,7 +421,7 @@ class InterceptTab(ctk.CTkFrame):
         """
         self.interceptor_widget = ctk.CTkFrame(self, fg_color=color_bg, bg_color="transparent",
                                                corner_radius=10)
-        self.interceptor_widget.grid(row=0, column=0, padx=5, pady=(0, 10), sticky="nsew")
+        self.interceptor_widget.grid(row=0, column=0, padx=(10, 5), pady=(0, 10), sticky="nsew")
 
         self.interceptor_header = HeaderTitle(self.interceptor_widget, "Web Interceptor")
         self.interceptor_header.pack(fill=tk.X, padx=10, pady=10)
@@ -455,7 +455,7 @@ class InterceptTab(ctk.CTkFrame):
          > Scope Widget
         """
         self.scope_widget = ctk.CTkFrame(self, corner_radius=10, fg_color=color_bg, bg_color="transparent")
-        self.scope_widget.grid(row=0, column=1, padx=5, pady=(0, 10), sticky="nsew")
+        self.scope_widget.grid(row=0, column=1, padx=(5, 10), pady=(0, 10), sticky="nsew")
 
         self.scope_header = HeaderTitle(self.scope_widget, "Scope")
         self.scope_header.pack(fill=tk.X, padx=10, pady=10)
@@ -511,7 +511,7 @@ class InterceptTab(ctk.CTkFrame):
         """
         self.placeholder_widget = ctk.CTkFrame(self, fg_color=color_bg, bg_color="transparent",
                                                corner_radius=10)
-        self.placeholder_widget.grid(row=1, column=0, columnspan=2, padx=5, pady=(0, 5), sticky="nsew")
+        self.placeholder_widget.grid(row=1, column=0, columnspan=2, padx=10, pady=(0, 10), sticky="nsew")
 
         self.center_frame = ctk.CTkFrame(self.placeholder_widget, fg_color="transparent", bg_color="transparent")
         self.center_frame.pack(expand=True, anchor="center")
@@ -680,7 +680,7 @@ class InterceptTab(ctk.CTkFrame):
         self.request_authority_entry.insert("0", authority)
         self.request_textbox.insert_text(request_content)
         self.placeholder_widget.grid_forget()
-        self.request_widget.grid(row=1, column=0, columnspan=2, padx=5, pady=(0, 5), sticky="nsew")
+        self.request_widget.grid(row=1, column=0, columnspan=2, padx=10, pady=(0, 10), sticky="nsew")
 
         for button in self.top_bar_buttons:
             if str(button.cget("state") != "normal"):
@@ -699,7 +699,7 @@ class InterceptTab(ctk.CTkFrame):
         self.request_authority_entry.delete("0", tk.END)
         self.request_textbox.insert_text("")
         self.request_widget.grid_forget()
-        self.placeholder_widget.grid(row=1, column=0, columnspan=2, padx=5, pady=(0, 5), sticky="nsew")
+        self.placeholder_widget.grid(row=1, column=0, columnspan=2, padx=10, pady=(0, 10), sticky="nsew")
 
         for button in self.top_bar_buttons:
             if str(button.cget("state") != "disabled"):
@@ -803,7 +803,7 @@ class GUIProxy(ctk.CTkFrame):
             "Intercept": self.intercept_tab
         }
         self.tab_nav = ctk.CTkFrame(self, fg_color="transparent")
-        self.tab_nav.pack(side="top", fill="x", padx=15, pady=(10, 0))
+        self.tab_nav.pack(side="top", fill="x", padx=25, pady=(10, 0))
         self.tab_nav_buttons = {}
         for tab in self.tabs.keys():
             self.tab_nav_buttons[tab] = NavButton(self.tab_nav, text=tab, command=lambda t=tab: self.switch_tab(t),

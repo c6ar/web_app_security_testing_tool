@@ -992,7 +992,7 @@ class GUIIntruder(ctk.CTkFrame):
         self.unique_id_counter = 1  # 0 is used for the first, unremovable tab
 
         self.tab_nav = ctk.CTkFrame(self, fg_color="transparent")
-        self.tab_nav.pack(side="top", fill="x", padx=15, pady=(10, 0))
+        self.tab_nav.pack(side="top", fill="x", padx=25, pady=(10, 0))
         first_tab_button = NavButton(
             self.tab_nav, text="1",
             command=lambda: self.show_tab(0),
@@ -1035,7 +1035,7 @@ class GUIIntruder(ctk.CTkFrame):
         for i, tab in enumerate(self.tabs):
             if i == tab_id:
                 self.tab_nav_buttons[i].set_selected(True)
-                tab.pack(side="top", fill="both", expand=True, padx=5, pady=(0, 5))
+                tab.pack(side="top", fill="both", expand=True, padx=10, pady=(0, 10))
             else:
                 self.tab_nav_buttons[i].set_selected(False)
                 tab.pack_forget()
