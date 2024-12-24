@@ -211,7 +211,7 @@ class HTTPTrafficTab(ctk.CTkFrame):
             and runs self.htt_add_request_to_list with received tab
         """
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-            s.bind((HOST, BACK_FRONT_HISTORYREQUESTS_PORT))
+            s.bind((RUNNING_CONFIG["proxy_host_address"], RUNNING_CONFIG["back_front_request_to_traffic_port"]))
             s.listen()
             while not self.gui.stop_threads:
                 conn, addr = s.accept()
@@ -598,7 +598,7 @@ class InterceptTab(ctk.CTkFrame):
 
         try:
             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-                s.connect((HOST, FRONT_BACK_INTERCEPTBUTTON_PORT))
+                s.connect((RUNNING_CONFIG["proxy_host_address"], RUNNING_CONFIG["front_back_intercept_toggle_port"]))
                 serialized_flag = str(self.intercepting).encode("utf-8")
                 s.sendall(serialized_flag)
         except Exception as e:
@@ -637,7 +637,7 @@ class InterceptTab(ctk.CTkFrame):
             and runs self.htt_add_request_to_list with received tab
         """
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-            s.bind((HOST, BACK_FRONT_SCOPEREQUESTS_PORT))
+            s.bind((RUNNING_CONFIG["proxy_host_address"], RUNNING_CONFIG["back_front_request_to_intercept_port"]))
             s.listen()
 
             while not self.gui.stop_threads:
@@ -657,7 +657,7 @@ class InterceptTab(ctk.CTkFrame):
                             print(f"[ERROR] FRONTEND/PROXY: Error while deserializing received in scope: {e}")
                             try:
                                 with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s2:
-                                    s2.connect((HOST, FRONT_BACK_FORWARDBUTTON_PORT))
+                                    s2.connect((RUNNING_CONFIG["proxy_host_address"], RUNNING_CONFIG["front_back_forward_request_port"]))
                                     s2.sendall(serialized_reqeust)
                             except Exception as e:
                                 print(f"[ERROR] FRONTEND/PROXY: Forwarding intercepted request failed: {e}")
@@ -724,7 +724,7 @@ class InterceptTab(ctk.CTkFrame):
 
             try:
                 with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-                    s.connect((HOST, FRONT_BACK_FORWARDBUTTON_PORT))
+                    s.connect((RUNNING_CONFIG["proxy_host_address"], RUNNING_CONFIG["front_back_forward_request_port"]))
                     s.sendall(serialized_reqeust)
                     self.remove_request()
             except Exception as e:
@@ -741,7 +741,7 @@ class InterceptTab(ctk.CTkFrame):
             flag = "True"
             try:
                 with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-                    s.connect((HOST, FRONT_BACK_DROPREQUEST_PORT))
+                    s.connect((RUNNING_CONFIG["proxy_host_address"], RUNNING_CONFIG["front_back_drop_request_port"]))
                     serialized_flag = flag.encode("utf-8")
                     s.sendall(serialized_flag)
                     self.remove_request()
@@ -841,7 +841,8 @@ class GUIProxy(ctk.CTkFrame):
         try:
             backend_dir = Path.cwd().parent / "backend"
             proxy_script = backend_dir / "proxy.py"
-            command = ["mitmdump", "-s", proxy_script, "--listen-port", "8082"]
+            proxy_port = str(RUNNING_CONFIG["proxy_port"])
+            command = ["mitmdump", "-s", proxy_script, "--listen-port", proxy_port]
             if RUNNING_CONFIG["proxy_console"]:
                 command = ["start", "cmd", "/k"] + command
                 print("[INFO] Starting the HTTP(S) proxy process in new shell terminal window.")
@@ -908,18 +909,6 @@ class GUIProxy(ctk.CTkFrame):
                 dprint(f"[DEBUG] Proxy/Tabs: Hiding {tab_name} tab")
                 tab.pack_forget()
                 self.tab_nav_buttons[tab_name].set_selected(False)
-
-    def update_browser_buttons(self):
-        """
-        Proxy GUI:
-            Updates text of the Open browser button
-        """
-        if self.root.browser_opened:
-            self.intercept_tab.browser_button.configure(text="Go to browser")
-            self.http_traffic_tab.browser_button.configure(text="Go to browser")
-        else:
-            self.intercept_tab.browser_button.configure(text="Open browser")
-            self.http_traffic_tab.browser_button.configure(text="Open browser")
 
     def submit_new_scope_hostname_dialog(self):
         """
@@ -1001,7 +990,7 @@ class GUIProxy(ctk.CTkFrame):
 
                 data_to_send = (mode, *hostnames_to_update)
                 serialized_data = pickle.dumps(data_to_send)
-                s.connect((HOST, FRONT_BACK_SCOPEUPDATE_PORT))
+                s.connect((RUNNING_CONFIG["proxy_host_address"], RUNNING_CONFIG["front_back_scope_update_port"]))
                 s.sendall(serialized_data)
 
                 if mode == "add":

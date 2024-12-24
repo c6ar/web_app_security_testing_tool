@@ -1,6 +1,7 @@
 from mitmproxy.http import Request
 import pickle
 
+
 class Request2(Request):
     def __init__(self, *args, **kwargs):
         """
@@ -95,7 +96,7 @@ class Request2(Request):
             timestamp_end=existing_request.timestamp_end
         )
 
-    def to_request(self):
+    def to_request(self) -> object:
         """
         Create a new Request object from the current Request2 object.
 
@@ -141,7 +142,7 @@ class Request2(Request):
 
         # Parse request line (e.g., "POST / HTTP/1.1")
 
-        method, path, version= request_line.split(" ", 3)
+        method, path, version = request_line.split(" ", 3)
 
         # Parse headers
         header_dict = {}
@@ -197,4 +198,3 @@ class Request2(Request):
             http_message += "\r\n"
 
         return str(http_message)
-

@@ -10,13 +10,12 @@ class IntruderResult(ctk.CTkToplevel):
         self.intruder_tab = master
         self.root = gui.gui_root
         self.focus_set()
-        self.transient(master)
+        self.transient(gui.gui_root)
         self.root.after(100, self.check_queue)
         self.configure(fg_color=color_bg, bg_color=color_bg)
         width = int(int(self.root.winfo_width()) * 0.9)
         height = int(int(self.root.winfo_height()) * 0.9)
         self.geometry(f"{width}x{height}")
-        # self.attributes("-topmost", True)
         center_window(self.root, self, width, height)
 
         self.hostname = hostname
@@ -189,7 +188,7 @@ class IntruderResult(ctk.CTkToplevel):
                 "Cancel",
                 lambda: confirm.destroy(),
                 "Keep attack in the background",
-                lambda: (self.withdraw(), confirm.destroy()),
+                lambda: (self.withdraw(), confirm.destroy(), self.root.focus_set()),
                 "Abort the attack",
                 lambda: (self.abort_attack(), self.withdraw(), confirm.destroy()),
                 width=550,
@@ -603,8 +602,6 @@ class IntruderTab(ctk.CTkFrame):
             control_flags=self.control_flags
         )
         self.gui.results_windows[uuid] = results_window
-        results_window.deiconify()
-        results_window.lift()
 
         def producer(q, attack_type):
             if attack_type == 0:
@@ -664,6 +661,10 @@ class IntruderTab(ctk.CTkFrame):
 
         self.attack_info.configure(text=f"Attack started at {self.attack_timestamp}.")
         self.results_button.configure(state=tk.NORMAL)
+
+        results_window.deiconify()
+        results_window.lift()
+        results_window.focus_force()
 
     def show_attack(self):
         if self.unique_id in self.gui.results_windows:

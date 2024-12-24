@@ -81,10 +81,11 @@ class GUI(ctk.CTk):
             aw_height = 475
             self.about_window.geometry(f"{aw_width}x{aw_height}")
             self.about_window.resizable(False, False)
-            self.about_window.attributes("-topmost", True)
+            self.about_window.transient(self)
             self.about_window.iconbitmap(f"{ASSET_DIR}\\wastt.png")
 
             center_window(self, self.about_window, aw_width, aw_height)
+            self.about_window.focus_set()
 
             app_logo = ctk.CTkImage(light_image=Image.open(f"{ASSET_DIR}\\wastt.png"), dark_image=Image.open(f"{ASSET_DIR}\\wastt.png"),
                                     size=(150, 150))
@@ -115,9 +116,9 @@ class GUI(ctk.CTk):
     def show_settings(self):
         if self.settings_window is None:
             self.settings_window = Settings(self)
-            self.settings_window.focus_force()
+            self.settings_window.focus_set()
         self.settings_window.deiconify()
-        self.settings_window.focus_force()
+        self.settings_window.focus_set()
 
     def open_browser(self):
         """
@@ -128,7 +129,9 @@ class GUI(ctk.CTk):
         options.add_argument("--log-level=0")
         options.add_argument("--disable-infobars")
         options.add_argument("--disable-notifications")
-        options.add_argument(f"--proxy-server=localhost:8082")
+        proxy_host = RUNNING_CONFIG["proxy_host_address"]
+        proxy_port = RUNNING_CONFIG["proxy_port"]
+        options.add_argument(f"--proxy-server={proxy_host}:{proxy_port}")
         options.add_argument("--ignore-certificate-errors")
         options.add_experimental_option("excludeSwitches", ["enable-logging"])
         options.set_capability("goog:loggingPrefs", {"performance": "ALL"})
@@ -151,8 +154,6 @@ class GUI(ctk.CTk):
             if self.browser is not None:
                 self.browser.quit()
             self.browser = None
-
-            self.proxy_tab.update_browser_buttons()
             print("[INFO] Closing web browser.")
 
     def start_browser_thread(self):
@@ -162,8 +163,6 @@ class GUI(ctk.CTk):
         if self.browser is None:
             self.browser_opened = True
             threading.Thread(target=self.open_browser).start()
-
-            self.proxy_tab.update_browser_buttons()
             print("[INFO] Opening web browser.")
 
         elif self.browser and self.browser_opened:

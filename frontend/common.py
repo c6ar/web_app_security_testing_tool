@@ -2,8 +2,6 @@
 # Imports of common modules and libraries
 # ================================================
 # noinspection PyUnresolvedReferences
-from backend.global_setup import *
-# noinspection PyUnresolvedReferences
 from backend.Request import *
 # noinspection PyUnresolvedReferences
 from collections.abc import Iterable
@@ -50,7 +48,7 @@ import sys
 # noinspection PyUnresolvedReferences
 import threading
 # noinspection PyUnresolvedReferences
-from threading import Thread
+from threading import Thread, Event
 # noinspection PyUnresolvedReferences
 import time
 # noinspection PyUnresolvedReferences
@@ -68,111 +66,7 @@ from utils.get_domain import *
 # noinspection PyUnresolvedReferences
 import tkinterweb
 
-
-# ================================================
-# App configuration functionality
-# ================================================
-def load_config():
-    config = DEFAULT_CONFIG.copy()
-    try:
-        with open("app.conf", "r") as file:
-            for line in file:
-                line = line.strip()
-                if line and not line.startswith("#"):
-                    setting, val = line.split("=", 1)
-                    if "#" in val:
-                        val, _ = val.split("#", 1)
-                    val = val.strip().lower()
-                    setting = setting.strip().lower()
-
-                    if setting == "theme":
-                        if val not in ("system", "dark", "light"):
-                            print("CONFIG ERROR: Incorrect value given, where system, dark or light expected.")
-                            continue
-
-                    if setting.endswith("port"):
-                        try:
-                            val = int(val)
-                        except ValueError:
-                            print("CONFIG ERROR: Incorrect value given, where int expected.")
-                            continue
-
-                    if setting in ("debug_mode", "proxy_console"):
-                        if val not in (1, 0, "1", "0", "true", "false"):
-                            print("CONFIG ERROR: Incorrect value given, where bool expected (false, true, 0 or 1).")
-                            continue
-
-                    if setting in (1, "1", "true"):
-                        val = True
-                    if val in (0, "0", "false"):
-                        val = False
-
-                    config[setting] = val
-    except FileNotFoundError:
-        print("CONFIG ERROR: App config file could not be open. Default settings have been loaded.")
-    return config
-
-
-def save_config(config):
-    try:
-        with open("app.conf", "r") as file:
-            lines = file.readlines()
-
-        updated_lines = []
-        settings_found = set()
-        for line in lines:
-            if line.strip() and not line.strip().startswith("#"):
-                setting, val = line.split("=", 1)
-                setting = setting.strip()
-                if setting in config:
-                    updated_lines.append(f"{setting} = {config[setting]}\n")
-                    settings_found.add(setting)
-                else:
-                    updated_lines.append(line)
-            else:
-                updated_lines.append(line)
-
-        for setting, val in config.items():
-            if setting not in settings_found:
-                updated_lines.append(f"{setting} = {val}\n")
-
-        with open("app.conf", "w") as file:
-            file.writelines(updated_lines)
-            load_config()
-    except Exception as e:
-        print(f"Error during saving a config: {e}")
-
-
-DEFAULT_CONFIG = {
-    "theme": "system",
-    "lang": "en",
-    "proxy_host_address": "127.0.0.1",
-    "proxy_port": 8082,
-    "proxy_logging": 1,
-    "proxy_logs_location": f"{Path.cwd()}\\proxy_logs",
-    "proxy_console": False,
-    "back_front_historyrequests_port": 65432,
-    "back_front_scoperequests_port": 65433,
-    "front_back_droprequest_port": 65434,
-    "front_back_scopeupdate_port": 65430,
-    "front_back_forwardbutton_port": 65436,
-    "front_back_interceptbutton_port": 65437,
-    "debug_mode": False,
-    "debug_show_running_config": False
-}
-RUNNING_CONFIG = load_config()
-
-if RUNNING_CONFIG["debug_show_running_config"]:
-    print("================================================\n"
-          "[DEBUG] Running config: ")
-    for config_item, config_value in RUNNING_CONFIG.items():
-        print(f"\t{config_item} = {config_value}")
-    print("================================================\n")
-
-if RUNNING_CONFIG["debug_mode"]:
-    print("[DEBUG] Debug mode is ON. App will print debug messages to the console.")
-else:
-    print("[INFO] Debug mode is OFF. App will print only error and important info messages to the console.")
+from config import RUNNING_CONFIG
 
 # ================================================
 # Global variables
@@ -447,12 +341,10 @@ class HeaderTitle(ctk.CTkLabel):
         )
 
 
-# TODO FRONTEND P2: Rework into InfoDialogs and ActionDialogs.
 class ConfirmDialog(ctk.CTkToplevel):
     """
     A custom Confirm dialog class based on customtkinter's Top Level widget.
     """
-
     def __init__(self,
                  master, root,
                  prompt="Are you sure you want to continue?", title="Confirm",
@@ -464,7 +356,7 @@ class ConfirmDialog(ctk.CTkToplevel):
         self.title(title)
         self.geometry(f"{width}x{height}")
         self.resizable(False, False)
-        self.attributes("-topmost", True)
+        self.transient(master)
         center_window(root, self, width, height)
 
         label = ctk.CTkLabel(self, text=prompt, wraplength=(width - 20))
@@ -507,9 +399,7 @@ class ErrorDialog(ConfirmDialog):
     """
     ConfirmDialog sub class for error message display.
     """
-    def __init__(self,
-                 master, root,
-                 prompt="Error", title="Error!"):
+    def __init__(self, master, root, prompt="Error", title="Error!"):
         super().__init__(
             master=master,
             root=root,

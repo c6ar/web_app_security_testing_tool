@@ -1,14 +1,8 @@
 from common import *
 
 
-# ================================================
-# GUI Settings Class
-# ================================================
 class Settings(ctk.CTkToplevel):
     def __init__(self, master):
-        # ================================================
-        # Initialising class
-        # ================================================
         super().__init__(master)
         self.root = master
         self.title("WASTT settings")
@@ -167,12 +161,12 @@ class Settings(ctk.CTkToplevel):
         ports_header.pack(fill=tk.X, padx=10, pady=5)
 
         configurations = {
-            'back_front_historyrequests_port': "HTTP Traffic (Back >> Front)",
-            'back_front_scoperequests_port': "Intercept Traffic (Back >> Front)",
-            'front_back_forwardbutton_port': "Forward Request (Front >> Back)",
-            'front_back_droprequest_port': "Drop Request (Front >> Back)",
-            'front_back_scopeupdate_port': "Scope Update (Front >> Back)",
-            'front_back_interceptbutton_port': "Toggle Web Interceptor (Front >> Back)"
+            'back_front_request_to_traffic_port': "HTTP Traffic (Back >> Front)",
+            'back_front_request_to_intercept_port': "Intercept Traffic (Back >> Front)",
+            'front_back_forward_request_port': "Forward Request (Front >> Back)",
+            'front_back_drop_request_port': "Drop Request (Front >> Back)",
+            'front_back_scope_update_port': "Scope Update (Front >> Back)",
+            'front_back_intercept_toggle_port': "Toggle Web Interceptor (Front >> Back)"
         }
         self.bf_port_inputs = {}
 

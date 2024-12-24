@@ -8,7 +8,7 @@ from mitmproxy.http import Request, Response, HTTPFlow
 import asyncio
 import threading
 from utils.get_domain import extract_domain
-from global_setup import *
+from config import RUNNING_CONFIG
 
 
 def send_flow_to_http_trafic_tab(flow):
@@ -27,7 +27,7 @@ def send_flow_to_http_trafic_tab(flow):
         serialized_flow = pickle.dumps(flow.request)
     try:
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-            s.connect((HOST, BACK_FRONT_HISTORYREQUESTS_PORT))
+            s.connect((RUNNING_CONFIG["proxy_host_address"], RUNNING_CONFIG["back_front_request_to_traffic_port"]))
             s.sendall(serialized_flow)
     except Exception as e:
         print(f"\nError while sending request to http tab: {e}")
@@ -42,7 +42,7 @@ def send_request_to_intercept_tab(request):
         serialized_request2 = pickle.dumps(request)
         try:
             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-                s.connect((HOST, BACK_FRONT_SCOPEREQUESTS_PORT))
+                s.connect((RUNNING_CONFIG["proxy_host_address"], RUNNING_CONFIG["back_front_request_to_intercept_port"]))
                 s.sendall(serialized_request2)
         except Exception as e:
             print(f"\nError while sending request to scope tab: {e}")
@@ -55,7 +55,7 @@ def receive_forwarded_request(flow):
     Receives request from GUI when forward button in scope is pressed.
     """
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        s.bind((HOST, FRONT_BACK_FORWARDBUTTON_PORT))
+        s.bind((RUNNING_CONFIG["proxy_host_address"], RUNNING_CONFIG["front_back_forward_request_port"]))
         s.listen()
 
         conn, addr = s.accept()
@@ -157,7 +157,7 @@ class WebRequestInterceptor:
         Asynchronously receives listens for Web Interceptor state changes from the frontend.
         """
         server = await asyncio.start_server(
-            self.handle_toggle_intercept, HOST, FRONT_BACK_INTERCEPTBUTTON_PORT
+            self.handle_toggle_intercept, RUNNING_CONFIG["proxy_host_address"], RUNNING_CONFIG["front_back_intercept_toggle_port"]
         )
         async with server:
             await server.serve_forever()
@@ -188,7 +188,7 @@ class WebRequestInterceptor:
         Asynchronously receives and adds hostname to scope.
         """
         server = await asyncio.start_server(
-            self.handle_scope_update, HOST, FRONT_BACK_SCOPEUPDATE_PORT
+            self.handle_scope_update, RUNNING_CONFIG["proxy_host_address"], RUNNING_CONFIG["front_back_scope_update_port"]
         )
         async with server:
             await server.serve_forever()
@@ -225,7 +225,7 @@ class WebRequestInterceptor:
         Asynchronously listens for flow kill requests.
         """
         server = await asyncio.start_server(
-            self.handle_kill_request, HOST, FRONT_BACK_DROPREQUEST_PORT
+            self.handle_kill_request, RUNNING_CONFIG["proxy_host_address"], RUNNING_CONFIG["front_back_drop_request_port"]
         )
         async with server:
             await server.serve_forever()

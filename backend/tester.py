@@ -1,6 +1,7 @@
 # backend/tester.py
 import requests
 
+
 class ManualTester:
     def __init__(self):
         self.session = requests.Session()  # pozwala na utrzymanie sesji
@@ -8,6 +9,7 @@ class ManualTester:
     def send_request(self, method, url, headers=None, data=None):
         response = self.session.request(method=method, url=url, headers=headers, data=data)
         return response
+
 
 class Fuzzer:
     def __init__(self, payload_list):

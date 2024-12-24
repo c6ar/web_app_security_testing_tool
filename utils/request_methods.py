@@ -1,7 +1,8 @@
-import urllib
+from urllib import parse
 import requests
 from bs4 import BeautifulSoup
 import re
+
 
 def extract_key_value_pairs(data):
     """
@@ -10,8 +11,9 @@ def extract_key_value_pairs(data):
     :param data: str, the input string to parse
     :return: dict, a dictionary containing the extracted key-value pairs
     """
-    parsed_data = urllib.parse.parse_qs(data, keep_blank_values=True)
+    parsed_data = parse.parse_qs(data, keep_blank_values=True)
     return {key: values[0] if values else '' for key, values in parsed_data.items()}
+
 
 def parse_http_message(http_message):
     """
@@ -43,6 +45,7 @@ def parse_http_message(http_message):
 
     return method, path, headers, data
 
+
 def extract_base_url(http_message):
     """
     Extract the base URL from the HTTP message.
@@ -59,11 +62,12 @@ def extract_base_url(http_message):
             return f"http://{host}"  # Assume HTTPS by default
     raise ValueError("Host header not found in HTTP message.")
 
+
 def send_http_message(http_message, real_url=None):
     """
     Send an HTTP request based on the provided HTTP message.
     :param http_message: str, the raw HTTP message
-    :param url: str, url of a request
+    :param real_url: str, url of a request
     :return: requests.Response, the response object
     """
     method, path, headers, data = parse_http_message(http_message)
@@ -72,7 +76,8 @@ def send_http_message(http_message, real_url=None):
     if real_url is None:
         base_url = extract_base_url(http_message)
         url = f"{base_url}{path}"
-    else: url = real_url
+    else:
+        url = real_url
 
     # TODO timeouts in request (for intruder list)
     if method.upper() == "GET":
@@ -83,6 +88,7 @@ def send_http_message(http_message, real_url=None):
         raise ValueError(f"HTTP method {method} is not supported.")
 
     return response
+
 
 def process_response(response):
     """
@@ -98,6 +104,7 @@ def process_response(response):
         return response.content  # Return raw content for non-HTML/XML
     return "Bad Request"
 
+
 def replace_values(values, http_message=str):
     """
        Replaces placeholder variables in the HTTP message marked with §var_name§ with values from the `values` list.
@@ -110,7 +117,7 @@ def replace_values(values, http_message=str):
            str: The modified HTTP message with placeholders replaced.
     """
 
-    placeholders = re.findall(r'\§(.*?)\§', http_message)
+    placeholders = re.findall(r'§(.*?)§', http_message)
 
     if len(placeholders) > len(values):
         raise ValueError("Not enough values provided to replace all placeholders.")
@@ -120,6 +127,8 @@ def replace_values(values, http_message=str):
             http_message = http_message.replace(f'\u00a7{placeholder}\u00a7', values[i], 1)
 
     return http_message
+
+
 # Example usage
 http_message_GET = """GET /Pe5gM9R0s-OCS2DfKecIG72P_fwfB8I2BSbC1obg0oM=.5716.jpg HTTP/2.0
 user-agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:133.0) Gecko/20100101 Firefox/133.0

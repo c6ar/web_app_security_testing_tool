@@ -1,8 +1,5 @@
 import threading
-from threading import Event
 import time
-from operator import index
-from backend.global_setup import *
 from utils.request_methods import *
 import re
 
