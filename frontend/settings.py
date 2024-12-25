@@ -283,12 +283,12 @@ class Settings(ctk.CTkToplevel):
                 self,
                 "You have unsaved changes. Do you want to save them?",
                 "Save changes?",
-                "Save",
+                "Save new settings",
                 lambda: (self.read_new_settings(), confirm.destroy()),
-                "Cancel",
-                lambda: confirm.destroy(),
-                "Discard",
-                lambda: (self.destroy_window(), confirm.destroy())
+                "Discard new settings",
+                lambda: (self.destroy_window(), confirm.destroy()),
+                "Go back",
+                lambda: confirm.destroy()
             )
         else:
             self.destroy_window()
@@ -353,7 +353,7 @@ class Settings(ctk.CTkToplevel):
                 self.root,
                 self,
                 "To apply some changes you need to restart the application manually.",
-                "Restart",
+                "App restart needed",
                 "Ok",
                 lambda: (self.save_settings(new_config), confirm.destroy())
             )
@@ -363,7 +363,7 @@ class Settings(ctk.CTkToplevel):
                 self.root,
                 self,
                 "To apply some changes you need to restart the browser and proxy process.",
-                "Restart",
+                "Proxy restart needed",
                 "Ok",
                 lambda: (self.save_settings(new_config, reload_proxy=True, reload_browser=True), confirm.destroy()),
             )
@@ -372,7 +372,7 @@ class Settings(ctk.CTkToplevel):
                 self.root,
                 self,
                 "To apply some changes you need to restart mitmdump proxy process.",
-                "Restart",
+                "Proxy restart needed",
                 "Ok",
                 lambda: (self.save_settings(new_config, reload_proxy=True), confirm.destroy()),
             )

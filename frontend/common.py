@@ -76,10 +76,10 @@ ASSET_DIR = f"{Path.cwd()}\\assets"
 ctk.set_appearance_mode(RUNNING_CONFIG["theme"])
 ctk.set_default_color_theme("dark-blue")
 if ctk.get_appearance_mode() == "Light":
-    color_text = "#000"
+    color_text = "#111"
     color_text_br = "#333"
     color_text_warn = "#924511"
-    color_bg = "#dcdcdc"
+    color_bg = "#ddd"
     color_bg_br = "#eee"
 else:
     color_text = "#eee"

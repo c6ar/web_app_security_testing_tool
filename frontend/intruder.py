@@ -188,7 +188,7 @@ class IntruderResult(ctk.CTkToplevel):
                 "Cancel",
                 lambda: confirm.destroy(),
                 "Keep attack in the background",
-                lambda: (self.withdraw(), confirm.destroy(), self.root.focus_set()),
+                lambda: (self.withdraw(), self.root.focus_set(), confirm.destroy()),
                 "Abort the attack",
                 lambda: (self.abort_attack(), self.withdraw(), confirm.destroy()),
                 width=550,
@@ -852,7 +852,16 @@ class IntruderTab(ctk.CTkFrame):
                         break
             # Case 2: Cursor is outside any tag, remove all the tags.
             if not tag_found:
-                self.clear_all_positions_confirm()
+                confirm = ConfirmDialog(
+                    self,
+                    self.gui.gui_root,
+                    "Are you sure you want to clear all the positions?",
+                    "Watch out!",
+                    "Yes",
+                    lambda: (self.clear_all_positions(), confirm.destroy()),
+                    "No",
+                    lambda: confirm.destroy()
+                )
         else:
             # Remove all tags that are overlapping or within the selection
             x, y = selection_indices
@@ -899,18 +908,6 @@ class IntruderTab(ctk.CTkFrame):
                     del self.payloads_textboxes[tag]
         self.switch_payloads_textbox()
         self.update_payloads_textbox_dropdown()
-
-    def clear_all_positions_confirm(self):
-        confirm = ConfirmDialog(
-            self,
-            self.gui.gui_root,
-            "Are you sure you want to clear all the positions?",
-            "Watch out!",
-            "Yes",
-            lambda: (self.clear_all_positions(), confirm.destroy()),
-            "No",
-            lambda: confirm.destroy()
-        )
 
     def add_payload(self, name):
         self.payload_placeholder.pack_forget()
