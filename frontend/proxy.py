@@ -592,17 +592,35 @@ class InterceptTab(ctk.CTkFrame):
         Intercept Tab:
             Toggles intercepting on the frontend and sends flag to the backend.
         """
-        self.intercepting = not self.intercepting
-        dprint(f"[DEBUG] FRONTEND/PROXY: Intercept state {self.intercepting}.")
-        self.interceptor_status_update()
+        def toggle():
+            self.intercepting = not self.intercepting
+            dprint(f"[DEBUG] FRONTEND/PROXY: Intercept state {self.intercepting}.")
+            self.interceptor_status_update()
 
-        try:
-            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-                s.connect((RUNNING_CONFIG["proxy_host_address"], RUNNING_CONFIG["front_back_intercept_toggle_port"]))
-                serialized_flag = str(self.intercepting).encode("utf-8")
-                s.sendall(serialized_flag)
-        except Exception as e:
-            print(f"[ERROR] FRONTEND/PROXY: Error while sending change intercept state flag: {e}")
+            try:
+                with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                    serialized_flag = str(self.intercepting).encode("utf-8")
+                    s.connect((RUNNING_CONFIG["proxy_host_address"], RUNNING_CONFIG["front_back_intercept_toggle_port"]))
+                    s.sendall(serialized_flag)
+            except Exception as e:
+                print(f"[ERROR] FRONTEND/PROXY: Error while sending change intercept state flag: {e}")
+
+        if self.intercepted_request is not None:
+            confirm = ConfirmDialog(
+                self,
+                self.gui,
+                "Request currently intercepted",
+                "There is request currently held by Web Interceptor. How do you want to proceed?",
+                "Forward original request",
+                lambda: (self.forward_request(), toggle(), confirm.destroy()),
+                "Forward modified request",
+                lambda: (self.forward_request(original=True), toggle(), confirm.destroy()),
+                "Cancel",
+                lambda: (confirm.destroy()),
+                width=550
+            )
+        else:
+            toggle()
 
     def interceptor_status_update(self):
         if self.intercepting:
@@ -657,7 +675,7 @@ class InterceptTab(ctk.CTkFrame):
                             print(f"[ERROR] FRONTEND/PROXY: Error while deserializing received in scope: {e}")
                             try:
                                 with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s2:
-                                    s2.connect((RUNNING_CONFIG["proxy_host_address"], RUNNING_CONFIG["front_back_forward_request_port"]))
+                                    s2.connect((RUNNING_CONFIG["proxy_host_address"], RUNNING_CONFIG["front_back_data_port"]))
                                     s2.sendall(serialized_reqeust)
                             except Exception as e:
                                 print(f"[ERROR] FRONTEND/PROXY: Forwarding intercepted request failed: {e}")
@@ -705,27 +723,36 @@ class InterceptTab(ctk.CTkFrame):
             if str(button.cget("state") != "disabled"):
                 button.configure(state="disabled")
 
-    def forward_request(self):
+    def forward_request(self, original=False):
         """
         Intercept Tab:
             Sends a request from Intercept tab textbox, request is forwarded to web browser.
         """
-        request_content = self.request_textbox.get_text().replace("\r", "")
+        data = None
+        if original:
+            data = ["forward", self.intercepted_request]
+        else:
+            request_host = self.request_host_entry.get()
+            request_content = self.request_textbox.get_text().replace("\r", "")
+            if len(request_content) > 0 and len(request_host) > 0:
+                request2 = Request2.from_http_message(request_content)
+                request2.host = request_host
+                try:
+                    request2.port = int(self.request_port_entry.get())
+                except ValueError as e:
+                    ErrorDialog(self, self.gui, e)
+                    return
+                request2.scheme = self.request_scheme_entry.get()
+                request2.authority = self.request_authority_entry.get()
 
-        if len(request_content) > 0:
-            request2 = Request2.from_http_message(request_content)
-            request2.host = self.intercepted_request.host
-            request2.port = self.intercepted_request.port
-            request2.scheme = self.intercepted_request.scheme
-            request2.authority = self.intercepted_request.authority
+                data = ["forward", request2.to_request()]
 
-            request = request2.to_request()
-            serialized_reqeust = pickle.dumps(request)
-
+        if data is not None:
+            serialized_data = pickle.dumps(data)
             try:
                 with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-                    s.connect((RUNNING_CONFIG["proxy_host_address"], RUNNING_CONFIG["front_back_forward_request_port"]))
-                    s.sendall(serialized_reqeust)
+                    s.connect((RUNNING_CONFIG["proxy_host_address"], RUNNING_CONFIG["front_back_data_port"]))
+                    s.sendall(serialized_data)
                     self.remove_request()
             except Exception as e:
                 print(f"[ERROR] FRONTEND/PROXY: Forwarding intercepted request failed: {e}")
@@ -735,27 +762,35 @@ class InterceptTab(ctk.CTkFrame):
         Intercept Tab:
             Removes a request from list in GUI, request is dropped, proxy sends "request dropped info".
         """
-        request_content = self.request_textbox.get_text()
+        data = ["drop"]
 
-        if len(request_content) > 0:
-            flag = "True"
-            try:
-                with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-                    s.connect((RUNNING_CONFIG["proxy_host_address"], RUNNING_CONFIG["front_back_drop_request_port"]))
-                    serialized_flag = flag.encode("utf-8")
-                    s.sendall(serialized_flag)
-                    self.remove_request()
-            except Exception as e:
-                print(f"[ERROR] FRONTEND/PROXY: Droping intercepted request failed: {e}")
+        serialized_data = pickle.dumps(data)
 
-            try:
-                if self.gui.browser is not None:
-                    # self.gui.browser.quit()
-                    if len(self.gui.browser.window_handles) > 0:
-                        self.gui.browser.execute_script(
-                            "alert('WASTT: Request has been dropped by user. Please close this page.');")
-            except Exception as e:
-                print(f"[ERROR] Error while letting know about dropped request: {e}")
+        try:
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                s.connect((RUNNING_CONFIG["proxy_host_address"], RUNNING_CONFIG["front_back_data_port"]))
+                s.sendall(serialized_data)
+                self.remove_request()
+        except Exception as e:
+            print(f"[ERROR] FRONTEND/PROXY: Forwarding intercepted request failed: {e}")
+        # flag = "True"
+        # try:
+        #     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        #         s.connect((RUNNING_CONFIG["proxy_host_address"], RUNNING_CONFIG["front_back_drop_request_port"]))
+        #         serialized_flag = flag.encode("utf-8")
+        #         s.sendall(serialized_flag)
+        #         self.remove_request()
+        # except Exception as e:
+        #     print(f"[ERROR] FRONTEND/PROXY: Droping intercepted request failed: {e}")
+
+        try:
+            if self.gui.browser is not None:
+                # self.gui.browser.quit()
+                if len(self.gui.browser.window_handles) > 0:
+                    self.gui.browser.execute_script(
+                        "alert('WASTT: Request has been dropped by user. Please close this page.');")
+        except Exception as e:
+            print(f"[ERROR] Error while letting know about dropped request: {e}")
 
     def send_request(self, dest):
         request_content = self.request_textbox.get_text()

@@ -62,8 +62,6 @@ from typing import Dict, Union
 # noinspection PyUnresolvedReferences
 from utils.request_methods import *
 # noinspection PyUnresolvedReferences
-from utils.get_domain import *
-# noinspection PyUnresolvedReferences
 import tkinterweb
 
 from config import RUNNING_CONFIG

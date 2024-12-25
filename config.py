@@ -91,12 +91,11 @@ DEFAULT_CONFIG = {
     "proxy_logging": 1,
     "proxy_logs_location": f"{Path.cwd()}\\proxy_logs",
     "proxy_console": False,
+    "front_back_intercept_toggle_port": 65430,
     "back_front_request_to_traffic_port": 65432,
     "back_front_request_to_intercept_port": 65433,
-    "front_back_drop_request_port": 65434,
-    "front_back_scope_update_port": 65430,
-    "front_back_forward_request_port": 65436,
-    "front_back_intercept_toggle_port": 65437,
+    "front_back_data_port": 65434,
+    "front_back_scope_update_port": 65436,
     "debug_mode": False,
     "debug_show_running_config": False
 }

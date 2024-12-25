@@ -7,7 +7,6 @@ from mitmproxy import ctx
 from mitmproxy.http import Request, Response, HTTPFlow
 import asyncio
 import threading
-from utils.get_domain import extract_domain
 from config import RUNNING_CONFIG
 
 
@@ -15,6 +14,9 @@ def send_flow_to_http_trafic_tab(flow):
     """
     Serializes tab = [flow.reqeust, flow.response] and sends to
     frontend.proxy.GUIProxy.receive_and_add_to_http_traffic
+
+    Parameters:
+        flow: mitmproxy.http.HTTPFlow object.
     """
     if flow.response is not None:
         flow_tab = [flow.request, flow.response]
@@ -36,9 +38,12 @@ def send_flow_to_http_trafic_tab(flow):
 def send_request_to_intercept_tab(request):
     """
     Serializes request and sends it to GUI scope tab.
+
+    Parameters:
+        request: mitmproxy.http.Request object.
     """
     try:
-        print(f"----\nSending intercepted request to Frontend:\n{request.data}")
+        print(f"======\nSending intercepted request to Frontend:\n{request.data}\n======")
         serialized_request2 = pickle.dumps(request)
         try:
             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
@@ -50,33 +55,50 @@ def send_request_to_intercept_tab(request):
         print(f"\nError while serialization before sending to scope tab: {e}")
 
 
-def receive_forwarded_request(flow):
+def receive_data_from_frontend(flow):
     """
     Receives request from GUI when forward button in scope is pressed.
+
+    Parameters:
+        flow: mitmproxy.http.HTTPFlow object.
     """
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        s.bind((RUNNING_CONFIG["proxy_host_address"], RUNNING_CONFIG["front_back_forward_request_port"]))
+        s.bind((RUNNING_CONFIG["proxy_host_address"], RUNNING_CONFIG["front_back_data_port"]))
         s.listen()
-
         conn, addr = s.accept()
         with conn:
-            serialized_reqeust = conn.recv(4096)
-            if serialized_reqeust:
-                deserialized_request = pickle.loads(serialized_reqeust)
-                flow.request.data = deserialized_request.data
-                print(f"----\nForwarding intercepted request from Frontend:\n{flow.request.data}")
-                if flow.intercepted:
-                    flow.resume()
+            serialized_data = conn.recv(4096)
+            if serialized_data:
+                deserialized_data = pickle.loads(serialized_data)
+                print(f"======\nReceived data from the frontend.\n======")
+                if deserialized_data[0] == "forward":
+                    print("Received instruction to forward the last intercepted request.\n======")
+                    if isinstance(deserialized_data[1], Request):
+                        print(f"Forwarding intercepted request:\n{flow.request.data}\n======")
+                        flow.request.data = deserialized_data[1].data
+                elif deserialized_data[0] == "drop":
+                    print("Received instruction to drop the last intercepted request.\n======\nSending request redirecting to googlec.com\n======")
+                    flow.request.host = "google.com"
+                    flow.request.url = "https://google.com"
+                    flow.request.port = 443
+                    flow.request.scheme = "https"
+                else:
+                    print("Received unknown instruction.\n======\nResuming current flow.\n======")
+            if flow.intercepted:
+                flow.resume()
 
 
 class WebRequestInterceptor:
+    """
+    A Web Request Interceptor backend logic.
+
+    Acts as a bridge between mitmproxy and the rest of the program.
+    """
+
     def __init__(self):
         """
-        Initializes Web Request Interceptor backend logic.
-        Acts as a bridge between mitmproxy and the rest of the program.
+        Initializes Web Request Interceptor class.
         """
-        # TODO BACKEND: Resuming the flow (self.current_flow), while dropping the request or turning interception off on intercepted request doesn't work due to asynch logic.
-        # TODO BACKEND: Filter with subdomains, not with domain only
         self.scope = []
         self.loop = asyncio.new_event_loop()
         self.start_async_servers()
@@ -87,18 +109,36 @@ class WebRequestInterceptor:
     def request(self, flow: mitmproxy.http.HTTPFlow):
         """
         Method made for mitmproxy process, triggered when new HTTPFlow is created.
+
         Acts as a bridge between mitmproxy and the rest of the program.
+
+        Parameters:
+            flow: mitmproxy.http.HTTPFlow object.
         """
         request = flow.request
         self.current_flow = flow
         if self.intercept_state:
-            print(f"*****\nINTERCEPTED REQUEST TO {request.host}")
+            print(f"======\nProcessing request to {request.host}\n======")
             flow.intercept()
 
+            def extract_domain(full_string):
+                """
+                Extracts the domain from a string of the format `ads.google.com	`.
+
+                Parameters:
+                    full_string (str): The full string containing subdomains and domain.
+
+                Returns:
+                    str: The extracted domain (e.g., `google.com`).
+                """
+                parts = full_string.split('.')
+                if len(parts) >= 2:
+                    domain = '.'.join(parts[-2:])
+                    return domain
+                return ""  # Return an empty string if the input is malformed
+
             if "mozilla.org" in request.host:
-                """
-                Filters out telemetry 
-                """
+                print(f"Received telemetry request to mozilla.org.\n======\nResuming HTTP(S) flow.\n======")
                 flow.request = Request.make(
                     method="GET",
                     url="https://google.com",
@@ -106,32 +146,31 @@ class WebRequestInterceptor:
                     headers={"Accept": "*/*"}
                 )
                 flow.resume()
-            elif not self.scope:
-                print(f"*****\nEMPTY SCOPE: REQUEST TO {request.host} INFO:"
-                      f"\n  Hostname from the request: {extract_domain(request.host)}"
-                      f"\n  Hostnames in the current scope: {self.scope}")
+            elif not self.scope or request.host in self.scope or extract_domain(request.host) in self.scope:
+                if not self.scope:
+                    print("Request Interceptor's scope is currently empty.\n======")
+                else:
+                    print(f"Current Request Interceptor's scope: {self.scope}.\n======")
+                print(f"Request to {request.host} has been intercepted.")
                 send_request_to_intercept_tab(request)
-                receive_forwarded_request(flow)
-            elif extract_domain(request.host) not in self.scope:
-                print(f"*****\nREQUEST NOT IN SCOPE: REQUEST TO {request.host} INFO:"
-                      f"\n  Hostname from the request: {extract_domain(request.host)}"
-                      f"\n  Hostnames in the current scope: {self.scope}")
+                receive_data_from_frontend(flow)
+            else:
+                print(f"Request to {request.host} has been passed throught.\n======")
                 if flow.intercepted:
                     flow.resume()
-            else:
-                print(f"*****\nREQUEST IN SCOPE: REQUEST TO {request.host} INFO:"
-                      f"\n  Hostname from the request: {extract_domain(request.host)}"
-                      f"\n  Hostnames in the current scope: {self.scope}")
-                send_request_to_intercept_tab(request)
-                receive_forwarded_request(flow)
+            send_flow_to_http_trafic_tab(flow)
         else:
-            print(f"*****\nPASSING REQUEST TO {request.host}")
+            print(f"======\nPassing through reqyest to {request.host}\n======")
 
     # noinspection PyMethodMayBeStatic
     def response(self, flow: mitmproxy.http.HTTPFlow):
         """
         Method made for mitmproxy process, triggered when new HTTPFlow is created.
+
         Acts as a bridge between mitmproxy and the rest of the program.
+
+        Parameters:
+            flow: mitmproxy.http.HTTPFlow object.
         """
         if flow.response:
             send_flow_to_http_trafic_tab(flow)
@@ -144,8 +183,7 @@ class WebRequestInterceptor:
             asyncio.set_event_loop(self.loop)
             tasks = [
                 self.listen_for_scope_update(),
-                self.listen_for_kill_flow(),
-                self.listen_for_intercept_button(),
+                self.listen_for_intercept_button()
             ]
             self.loop.run_until_complete(asyncio.gather(*tasks))
 
@@ -154,104 +192,77 @@ class WebRequestInterceptor:
 
     async def listen_for_intercept_button(self):
         """
-        Asynchronously receives listens for Web Interceptor state changes from the frontend.
+        Asynchronously listens to the Web Request Interceptor state changes from the frontend.
         """
+        async def toggle_intercept(reader, writer):
+            """
+            Handles the Web Request Interceptor state changes received from the frontend.
+
+            Parameters:
+                reader: asyncio.StreamReader object.
+                writer: asyncio.StreamWriter object.
+            """
+            data = await reader.read(4096)
+            if data:
+                print(f"======\nReceived instruction to change Request Interceptor state.\n======")
+                if data.decode('utf-8').lower() == 'false':
+                    new_state = False
+                else:
+                    new_state = True
+                self.intercept_state = new_state
+                if not self.intercept_state and self.current_flow.intercepted:
+                    self.current_flow.resume()
+            print(f"Current Request Interceptor state: {self.intercept_state}\n======")
+            writer.close()
+            await writer.wait_closed()
+
         server = await asyncio.start_server(
-            self.handle_toggle_intercept, RUNNING_CONFIG["proxy_host_address"], RUNNING_CONFIG["front_back_intercept_toggle_port"]
+            toggle_intercept, RUNNING_CONFIG["proxy_host_address"], RUNNING_CONFIG["front_back_intercept_toggle_port"]
         )
         async with server:
             await server.serve_forever()
-
-    async def handle_toggle_intercept(self, reader, writer):
-        """
-        Handles the Web Interceptor state changes from the frontend.
-        """
-        # TODO BACKEND: Fix resuming intercepted traffic if toggling the interception off
-        data = await reader.read(4096)
-        if data:
-            new_state = data.decode('utf-8').lower() == 'true'
-            self.intercept_state = new_state
-            if not self.intercept_state:
-                # self.backup = self.scope
-                # self.scope = []
-                if self.current_flow.intercepted:
-                    self.current_flow.resume()
-            else:
-                pass
-                # self.scope = self.backup.copy()
-        print(f"Intercepting state: {self.intercept_state}")
-        writer.close()
-        await writer.wait_closed()
 
     async def listen_for_scope_update(self):
         """
-        Asynchronously receives and adds hostname to scope.
+        Asynchronously listens to Web Request Interceptor scope updates from the frontend.
         """
+        async def scope_update(reader, writer):
+            """
+            Handles incoming scope updates received from the frontend.
+
+            Parameters:
+                reader: asyncio.StreamReader object.
+                writer: asyncio.StreamWriter object.
+            """
+            data = await reader.read(4096)
+            if data:
+                print(f"======\nReceived instruction to update scope of Request Interceptor.\n======")
+                operation, *hostnames = pickle.loads(data)
+                if operation == "add":
+                    for hostname in hostnames:
+                        domain = hostname
+                        self.scope.append(domain)
+                        print(f"Host {domain} added to the scope.\n======")
+                elif operation == "remove":
+                    for hostname in hostnames:
+                        domain = hostname
+                        try:
+                            self.scope.remove(domain)
+                            print(f"Host {domain} removed from scope.\n======")
+                        except ValueError:
+                            print(f"Attempted to remove {domain} from scope, but could not be found there.\n======")
+                elif operation == "clear":
+                    self.scope.clear()
+                    print("Scope cleared.\n======")
+                print(f"Current scope: {self.scope}\n======")
+            writer.close()
+            await writer.wait_closed()
+
         server = await asyncio.start_server(
-            self.handle_scope_update, RUNNING_CONFIG["proxy_host_address"], RUNNING_CONFIG["front_back_scope_update_port"]
+            scope_update, RUNNING_CONFIG["proxy_host_address"], RUNNING_CONFIG["front_back_scope_update_port"]
         )
         async with server:
             await server.serve_forever()
-
-    async def handle_scope_update(self, reader, writer):
-        """
-        Handles incoming scope updates.
-        """
-        data = await reader.read(4096)
-        if data:
-            operation, *hostnames = pickle.loads(data)
-            if operation == "add":
-                for hostname in hostnames:
-                    domain = extract_domain(hostname)
-                    self.scope.append(domain)
-                    print(f"Host {domain} added to the scope.")
-            elif operation == "remove":
-                for hostname in hostnames:
-                    domain = extract_domain(hostname)
-                    try:
-                        self.scope.remove(domain)
-                        print(f"Host {domain} removed from scope.")
-                    except ValueError:
-                        print(f"Attempted to remove {domain} from scope, but could not be found there.")
-            elif operation == "clear":
-                self.scope.clear()
-                print("Scope cleared.")
-        print(f"Current scope: {self.scope}")
-        writer.close()
-        await writer.wait_closed()
-
-    async def listen_for_kill_flow(self):
-        """
-        Asynchronously listens for flow kill requests.
-        """
-        server = await asyncio.start_server(
-            self.handle_kill_request, RUNNING_CONFIG["proxy_host_address"], RUNNING_CONFIG["front_back_drop_request_port"]
-        )
-        async with server:
-            await server.serve_forever()
-
-    async def handle_kill_request(self, reader, writer):
-        """
-        Handles incoming requests to kill a flow.
-        """
-        data = await reader.read(4096)
-        if data:
-            # TODO BACKEND: Fix flow kill
-            # bad_request = Request.make(
-            #     method="GET",
-            #     url="https://google.com",
-            #     content="",
-            #     headers={"Accept": "*/*"}
-            # )
-            self.current_flow.request.host = "google.com"
-            self.current_flow.request.url = "https://google.com"
-            self.current_flow.request.port = 443
-            self.current_flow.request.scheme = "https"
-            self.current_flow.resume()
-            if not self.current_flow.intercepted:
-                print(f"----\nReceived request to kill flow")
-        writer.close()
-        await writer.wait_closed()
 
 
 addons = [
