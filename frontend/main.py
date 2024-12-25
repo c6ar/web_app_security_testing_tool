@@ -80,6 +80,9 @@ class GUI(ctk.CTk):
             self.tab_nav_buttons[name] = NavButton(self.tab_nav, text=name.upper(), command=lambda t=name: self.show_tab(t))
             self.tab_nav_buttons[name].pack(side=tk.LEFT)
 
+        self.http_server_thread = None
+        self.start_http_server()
+
         self.show_tab("Proxy")
         print("[INFO] Starting the WASTT app.")
 
@@ -143,7 +146,6 @@ class GUI(ctk.CTk):
             self.settings_window = Settings(self)
             self.settings_window.focus_set()
 
-
     def open_browser(self):
         """
         Opening Selenium Chrome Browser
@@ -172,7 +174,6 @@ class GUI(ctk.CTk):
 
     def stop_proxy(self):
         """
-        Switch WASTT GUI to the Repeater tab.
         """
         if self.proxy_tab.process:
             try:
@@ -182,6 +183,46 @@ class GUI(ctk.CTk):
             except Exception as e:
                 print(f"[ERROR] Proxy process termination failed: {e}")
 
+    def start_http_server(self):
+        """
+        Starts an HTTP server in a separate thread, serving files from the http_files folder.
+        """
+
+        def _run_http_server():
+            """
+            Runs the HTTP server to serve files from the http_files directory.
+            """
+
+            try:
+                http_files_dir = os.path.join(os.getcwd(), "http_files")
+
+                if not os.path.exists(http_files_dir):
+                    os.makedirs(http_files_dir)
+
+                # noinspection PyTypeChecker
+                self.http_server = HTTPServer(
+                    ('localhost', 8080),
+                    lambda *args, **kwargs: SimpleHTTPRequestHandler(*args, directory=http_files_dir, **kwargs)
+                )
+
+                print(f"[HTTP SERVER] Serving files from: {http_files_dir}")
+                print(f"[HTTP SERVER] You can access the server at: http://localhost:8080")
+                self.http_server.serve_forever()
+            except Exception as e:
+                print(f"[HTTP SERVER ERROR] Error starting HTTP server: {e}")
+        self.http_server_thread = threading.Thread(target=_run_http_server, daemon=True)
+        self.http_server_thread.start()
+        print("[INFO] Starting HTTP server.")
+
+    def stop_http_server(self):
+        """
+        Stops the HTTP server gracefully.
+        """
+        if hasattr(self, "http_server"):
+            self.http_server.shutdown()
+            self.http_server.server_close()
+            print("[INFO] HTTP server stopped.")
+
     def on_close(self):
         """
         Instructions run on GUI closure.
@@ -190,6 +231,7 @@ class GUI(ctk.CTk):
         if self.browser is not None:
             self.browser.quit()
         self.stop_proxy()
+        self.stop_http_server()
         print("[INFO] Closing the WASTT app.")
         self.destroy()
 

@@ -21,10 +21,13 @@ class Settings(ctk.CTkToplevel):
         wrapper = ctk.CTkScrollableFrame(self, fg_color="transparent", bg_color="transparent")
         wrapper.pack(fill=tk.BOTH, expand=True, padx=0, pady=0)
         label_width = int(settings_width / 5)
+        big_info_icon = ctk.CTkImage(
+            light_image=Image.open(f"{ASSET_DIR}\\icon_info_light.png"),
+            dark_image=Image.open(f"{ASSET_DIR}\\icon_info.png"), size=(40, 40))
 
-        # TODO FRONTEND P1: Next to each label there will be an info icon, after clicking, opens a info window like About
+        # TODO FRONTEND P1: In the corner of each settings isle there will be an info icon, after clicking, opens a info window like About
         #  that can be dismissed with esc, space and enter
-        #  and it describes settings
+        #  and it describes settings.
         # ================================================
         # General settings isle
         # ================================================
@@ -32,6 +35,17 @@ class Settings(ctk.CTkToplevel):
         general_isle.pack(fill=tk.X, padx=10, pady=(10, 5))
         general_header = HeaderTitle(general_isle, "General settings")
         general_header.pack(fill=tk.X, padx=10, pady=(10, 5))
+        general_info_button = ActionButton(
+            general_isle,
+            text="",
+            image=big_info_icon,
+            anchor=tk.W,
+            width=20,
+            fg_color=color_bg,
+            hover_color=color_bg_br,
+            command=lambda: show_response_view(self, url="http://localhost:8080/en/settings.html#general-settings")
+        )
+        general_info_button.place(relx=1, rely=0, anchor=tk.NE, x=-5, y=15)
 
         theme_box = Box(general_isle)
         theme_box.pack(fill=tk.X, padx=10, pady=5)
@@ -68,6 +82,17 @@ class Settings(ctk.CTkToplevel):
 
         proxy_header = HeaderTitle(proxy_isle, "Proxy settings")
         proxy_header.pack(fill=tk.X, padx=10, pady=(10, 5))
+        proxy_info_button = ActionButton(
+            proxy_isle,
+            text="",
+            image=big_info_icon,
+            anchor=tk.W,
+            width=20,
+            fg_color=color_bg,
+            hover_color=color_bg_br,
+            command=lambda: show_response_view(self, url="http://localhost:8080/en/settings.html#proxy-settings")
+        )
+        proxy_info_button.place(relx=1, rely=0, anchor=tk.NE, x=-5, y=15)
 
         proxy_ip_port_box = Box(proxy_isle)
         proxy_ip_port_box.pack(fill=tk.X, padx=10, pady=5)

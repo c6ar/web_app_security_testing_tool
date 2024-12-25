@@ -16,7 +16,7 @@ from datetime import datetime
 # noinspection PyUnresolvedReferences
 from flask import request
 # noinspection PyUnresolvedReferences
-from http import HTTPStatus
+from http.server import HTTPServer, SimpleHTTPRequestHandler
 # noinspection PyUnresolvedReferences
 from idlelib.rpc import response_queue
 # noinspection PyUnresolvedReferences
@@ -204,27 +204,31 @@ def dprint(msg):
         print(msg)
 
 
-def show_response_view(gui, hostname, html_content):
+def show_response_view(gui, hostname=None, html_content=None, url=None):
     """
     Opens a separate CTk window to display the response HTML content.
     """
-    if len(html_content) > 0:
-        response_view = ctk.CTk()
-        width = int(gui.winfo_width() * 0.9)
-        height = int(gui.winfo_height() * 0.9)
-        response_view.geometry(f"{width}x{height}")
-        # self.response_view.attributes("-topmost", True)
-        response_view.focus_set()
-        center_window(gui, response_view, width, height)
+    response_view = ctk.CTk()
+    width = int(gui.winfo_width() * 0.9)
+    height = int(gui.winfo_height() * 0.9)
+    response_view.geometry(f"{width}x{height}")
+    response_view.focus_set()
+    center_window(gui, response_view, width, height)
+    response_view.title("WASTT")
 
+    response_webview = tkinterweb.HtmlFrame(response_view, messages_enabled=False)
+
+    if html_content is not None and len(html_content) > 0:
         html_content = html_content.replace("src=\"/", f"src=\"{hostname}/")
         html_content = html_content.replace("href=\"/", f"href=\"{hostname}/")
-
-        response_webview = tkinterweb.HtmlFrame(response_view, messages_enabled=False)
         response_webview.load_html(html_content)
         response_webview.current_url = hostname
-        response_webview.pack(pady=0, padx=0, fill="both", expand=True)
-        response_view.mainloop()
+
+    elif url is not None and len (url) > 0:
+        response_webview.load_url(url)
+
+    response_webview.pack(pady=0, padx=0, fill="both", expand=True)
+    response_view.mainloop()
 
 
 # ================================================

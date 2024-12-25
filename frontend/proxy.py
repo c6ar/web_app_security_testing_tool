@@ -250,6 +250,7 @@ class HTTPTrafficTab(ctk.CTkFrame):
         else:
             code = resp.status_code
             try:
+                from http import HTTPStatus
                 status = HTTPStatus(code).phrase
             except ValueError:
                 status = ""
@@ -773,24 +774,6 @@ class InterceptTab(ctk.CTkFrame):
                 self.remove_request()
         except Exception as e:
             print(f"[ERROR] FRONTEND/PROXY: Forwarding intercepted request failed: {e}")
-        # flag = "True"
-        # try:
-        #     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        #         s.connect((RUNNING_CONFIG["proxy_host_address"], RUNNING_CONFIG["front_back_drop_request_port"]))
-        #         serialized_flag = flag.encode("utf-8")
-        #         s.sendall(serialized_flag)
-        #         self.remove_request()
-        # except Exception as e:
-        #     print(f"[ERROR] FRONTEND/PROXY: Droping intercepted request failed: {e}")
-
-        try:
-            if self.gui.browser is not None:
-                # self.gui.browser.quit()
-                if len(self.gui.browser.window_handles) > 0:
-                    self.gui.browser.execute_script(
-                        "alert('WASTT: Request has been dropped by user. Please close this page.');")
-        except Exception as e:
-            print(f"[ERROR] Error while letting know about dropped request: {e}")
 
     def send_request(self, dest):
         request_content = self.request_textbox.get_text()
@@ -893,8 +876,26 @@ class GUIProxy(ctk.CTkFrame):
                 text=True,
                 bufsize=1
             )
-            threading.Thread(target=self.read_stdout, daemon=True).start()
-            threading.Thread(target=self.read_stderr, daemon=True).start()
+
+            def read_stdout():
+                """
+                Proxy GUI:
+                    Reads Standard Out lines from running mitmdump process.
+                """
+                for line in iter(self.process.stdout.readline, ''):
+                    print(f"[MITMDUMP] {line.strip()}")
+
+            def read_stderr():
+                """
+                Proxy GUI:
+                    Reads Standard Error lines from running mitmdump process.
+                """
+                for line in iter(self.process.stderr.readline, ''):
+                    print(f"[MITMDUMP ERROR] {line.strip()}")
+
+            threading.Thread(target=read_stdout, daemon=True).start()
+            threading.Thread(target=read_stderr, daemon=True).start()
+
             if init_scope is not None and len(init_scope) > 0:
                 try:
                     self.update_scope(
@@ -913,22 +914,6 @@ class GUIProxy(ctk.CTkFrame):
             print(f"[ERROR] While starting the HTTP(S) proxy process: {e}")
         finally:
             self.process = None
-
-    def read_stdout(self):
-        """
-        Proxy GUI:
-            Reads Standard Out lines from running mitmdump process.
-        """
-        for line in iter(self.process.stdout.readline, ''):
-            print(f"[MITMDUMP] {line.strip()}")
-
-    def read_stderr(self):
-        """
-        Proxy GUI:
-            Reads Standard Error lines from running mitmdump process.
-        """
-        for line in iter(self.process.stderr.readline, ''):
-            print(f"[MITMDUMP ERROR] {line.strip()}")
 
     def switch_tab(self, selected_tab):
         """
