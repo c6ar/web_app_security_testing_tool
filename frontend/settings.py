@@ -142,39 +142,16 @@ class Settings(ctk.CTkToplevel):
 
         proxy_logs_box = Box(proxy_isle)
         proxy_logs_box.pack(fill=tk.X, padx=10, pady=(10, 5))
-        proxy_logs_box.grid_columnconfigure(0, minsize=label_width + 10)
         proxy_logs_label = Label(proxy_logs_box, text="Proxy logging", width=label_width, anchor=tk.E)
-        proxy_logs_label.grid(row=0, column=0, sticky=tk.E, padx=(10, 5), pady=5)
+        proxy_logs_label.pack(side=tk.LEFT, padx=(10, 5), pady=5)
         self.proxy_logs_checkbox = ctk.CTkCheckBox(
             proxy_logs_box,
             text="Log Proxy output to a file.",
             command=self.change_proxy_logs_location_click
         )
-        self.proxy_logs_checkbox.grid(row=0, column=1, padx=5, pady=5, sticky=tk.W)
-        self.proxy_logs_location_input = TextEntry(
-            proxy_logs_box,
-            width=450
-        )
-        self.proxy_logs_location_input.insert(0, RUNNING_CONFIG['proxy_logs_location'])
-        self.proxy_logs_location_input.bind("<KeyRelease>", self.on_settings_change)
-        self.proxy_logs_location_input.grid(row=1, column=1, padx=5, pady=5, sticky=tk.W + tk.E)
-        self.proxy_logs_location_button = ActionButton(
-            proxy_logs_box,
-            text="",
-            image=icon_folder,
-            width=25,
-            corner_radius=5,
-            command=self.select_log_file_dir
-        )
-
-        self.proxy_logs_location_button.grid(row=1, column=2, padx=5, pady=5, sticky=tk.E)
+        self.proxy_logs_checkbox.pack(side=tk.LEFT, padx=5, pady=5)
         if RUNNING_CONFIG['proxy_logging']:
             self.proxy_logs_checkbox.select()
-            self.proxy_logs_location_input.configure(state=tk.NORMAL)
-            self.proxy_logs_location_button.configure(state=tk.NORMAL)
-        else:
-            self.proxy_logs_location_input.configure(state=tk.DISABLED)
-            self.proxy_logs_location_button.configure(state=tk.DISABLED)
 
         proxy_cmd_box = Box(proxy_isle)
         proxy_cmd_box.pack(fill=tk.X, padx=10, pady=10)
@@ -441,7 +418,7 @@ class Settings(ctk.CTkToplevel):
                 lambda: (self.destroy_window(), confirm.destroy()),
                 "Go back",
                 lambda: confirm.destroy(),
-                width=450
+                width=550
             )
         else:
             self.destroy_window()
@@ -471,12 +448,12 @@ class Settings(ctk.CTkToplevel):
     def select_log_file_dir(self):
         self.on_settings_change()
         file_path = filedialog.askdirectory(
-            initialdir=RUNNING_CONFIG['proxy_logs_location'],
-            title="Select directory for proxy logs"
+            initialdir=RUNNING_CONFIG['logs_location'],
+            title="Select main directory for logs"
         )
         if file_path:
-            self.proxy_logs_location_input.delete(0, tk.END)
-            self.proxy_logs_location_input.insert(0, file_path)
+            self.logs_location_input.delete(0, tk.END)
+            self.logs_location_input.insert(0, file_path)
 
     def read_new_settings(self):
         new_config = {

@@ -14,6 +14,10 @@ class RepeaterTab(ctk.CTkFrame):
         self.id = id_number
         self.is_empty = True
 
+        logs_path = Path(RUNNING_CONFIG["logs_location"]) / "repeater"
+        logs_path.mkdir(parents=True, exist_ok=True)
+        self.log_file = logs_path / f"repeater-{today}.log"
+
         self.top_bar = ctk.CTkFrame(self, fg_color="transparent")
         self.top_bar.grid(row=0, column=0, columnspan=2, padx=10, pady=10, sticky="ew")
 
@@ -50,6 +54,15 @@ class RepeaterTab(ctk.CTkFrame):
             width=200
         )
         self.iteration_dropdown.pack(side="left", padx=5, pady=10)
+
+        self.gen_button = ActionButton(
+            self.top_bar,
+            text="Generate a request",
+            image=icon_random,
+            command=self.generate_request,
+        )
+        if RUNNING_CONFIG["debug_mode"]:
+            self.gen_button.pack(padx=10, pady=10, side=tk.RIGHT)
 
         if self.id != 0:
             self.delete_tab_button = ActionButton(
@@ -128,6 +141,10 @@ class RepeaterTab(ctk.CTkFrame):
 
                 timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
+                with open(self.log_file, "a", encoding="utf-8", errors="replace") as file:
+                    file.write(f"\n[{timestamp}] Request to {request_host}:\n{request_text}")
+                    file.write(f"\n[{timestamp}] Response from {request_host}:\n{response_text}")
+
                 self.tab_iterations[timestamp] = [request_text, response_text]
                 self.tab_iteration_keys.insert(0, timestamp)
                 self.update_dropdown_menu()
@@ -160,6 +177,14 @@ class RepeaterTab(ctk.CTkFrame):
         self.response_textbox.insert_text(response_text)
         self.response_textbox.configure(state=tk.DISABLED)
         self.response_render_button.configure(state=tk.NORMAL)
+
+    def generate_request(self):
+        url = "https://www.example.com"
+        http_request = "GET / HTTP/2.0"
+
+        self.request_textbox.insert_text(http_request)
+        self.hosturl_entry.delete(0, tk.END)
+        self.hosturl_entry.insert(0, url)
 
 
 class GUIRepeater(ctk.CTkFrame):

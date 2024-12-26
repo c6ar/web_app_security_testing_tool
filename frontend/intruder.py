@@ -20,6 +20,14 @@ class IntruderResult(ctk.CTkToplevel):
 
         self.hostname = hostname
         self.timestamp = timestamp
+
+        logs_path = Path(RUNNING_CONFIG["logs_location"]) / "intruder"
+        logs_path.mkdir(parents=True, exist_ok=True)
+        self.log_file = logs_path / f"intruder-{today}.log"
+
+        with open(self.log_file, "a", encoding="utf-8", errors="replace") as file:
+            file.write(f"\n[{self.timestamp}] Started attack on {self.hostname}.")
+
         self.control_flags = control_flags
         self.attack_paused = False
         self.attack_ceased = False
@@ -262,13 +270,18 @@ class IntruderResult(ctk.CTkToplevel):
             status_code = data['status_code']
             error = data['error']
             timeout = data['timeout']
-            req_con = data['req_con']
-            res_con = data['res_con']
-            length = len(res_con)
-            values = [rn, pos, payload, status_code, error, timeout, length, req_con, res_con]
+            request_content = data['req_con']
+            response_content = data['res_con']
+            length = len(response_content)
+            values = [rn, pos, payload, status_code, error, timeout, length, request_content, response_content]
 
             if self.attack_request_list:
                 self.attack_request_list.insert("", tk.END, values=values)
+
+            with open(self.log_file, "a", encoding="utf-8", errors="replace") as file:
+                timestamp = datetime.now().strftime("%Y-%m-%d %H-%M-%S")
+                file.write(f"\n[{timestamp}] Payload [{payload}] at position #{pos}:\n{request_content}")
+                file.write(f"\n[{timestamp}] Response {status_code}:\n{response_content}")
 
         else:
             finish_timestamp = datetime.now().strftime("%H:%M:%S %d-%m-%Y")
@@ -277,8 +290,17 @@ class IntruderResult(ctk.CTkToplevel):
             self.pause_button.pack_forget()
             if data['status'] == 'completed':
                 self.attack_status_label.configure(text=f"Attack completed at {finish_timestamp}.")
+                op = "completed"
+
             elif data['status'] == 'aborted':
                 self.attack_status_label.configure(text=f"Attack aborted at {finish_timestamp}.")
+                op = "aborted"
+
+            else:
+                op = "error"
+
+            with open(self.log_file, "a", encoding="utf-8", errors="replace") as file:
+                file.write(f"\n[{finish_timestamp}] Attack {op}.")
 
     def check_queue(self):
         while not self.queue.empty():
@@ -290,7 +312,6 @@ class IntruderResult(ctk.CTkToplevel):
         self.root.after(100, self.check_queue)
 
     def pause_attack(self):
-        # Set the control_flags["pause"]
         if self.attack_paused:
             self.control_flags["pause"].clear()
             self.pause_button.configure(text="Pause", image=icon_pause)
@@ -893,19 +914,25 @@ class IntruderTab(ctk.CTkFrame):
 
     def clear_all_positions(self):
         for tag in self.positions_textbox.tag_names():
+
             if tag == "sel":
                 continue
+
             tag_ranges = self.positions_textbox.tag_ranges(tag)
+
             for i in range(0, len(tag_ranges), 2):
                 tag_start = self.positions_textbox.index(tag_ranges[i])
                 tag_end = self.positions_textbox.index(tag_ranges[i + 1])
+
                 self.positions_textbox.tag_remove(tag, tag_start, tag_end)
                 self.positions_textbox.tag_delete(tag)
                 self.positions_textbox.delete(tag_start, tag_end)
                 self.positions_textbox.insert(tag_start, tag)
+
                 if tag in self.payloads_textboxes:
                     self.payloads_textboxes[tag].pack_forget()
                     del self.payloads_textboxes[tag]
+
         self.switch_payloads_textbox()
         self.update_payloads_textbox_dropdown()
 
@@ -918,16 +945,20 @@ class IntruderTab(ctk.CTkFrame):
         if self.attack_type != 2:
             self.payloads_textbox_var.set("All positions")
             self.payloads_textbox_dropdown.configure(values=[], state=tk.DISABLED)
+
             for tag, textbox in self.payloads_textboxes.items():
                 if tag != 0:
                     textbox.pack_forget()
+
         elif self.attack_type == 2:
             keys_to_select = [k for k in self.payloads_textboxes.keys() if k != 0]
             self.payloads_textbox_dropdown.configure(values=keys_to_select, state=tk.NORMAL)
+
             if keys_to_select:
                 first_key = keys_to_select[0]
                 self.payloads_textbox_var.set(first_key)
                 self.switch_payloads_textbox(first_key)
+
             else:
                 self.payloads_textbox_var.set("No positions added")
                 self.switch_payloads_textbox()
@@ -939,17 +970,22 @@ class IntruderTab(ctk.CTkFrame):
         if self.attack_type != 2:
             self.current_payloads_textbox = self.payloads_textboxes[0]
             self.current_payloads_textbox.pack(fill=tk.BOTH, expand=True, padx=(0, 10), pady=(5, 10))
+
         elif choice is None:
             keys_to_select = [k for k in self.payloads_textboxes.keys() if k != 0]
+
             if keys_to_select:
                 first_key = keys_to_select[0]
                 self.switch_payloads_textbox(first_key)
+
             else:
                 self.current_payloads_textbox = None
                 self.payload_placeholder.pack(fill=tk.BOTH, padx=10, pady=0)
+
         elif choice in self.payloads_textboxes.keys():
             self.current_payloads_textbox = self.payloads_textboxes[choice]
             self.current_payloads_textbox.pack(fill=tk.BOTH, expand=True, padx=(0, 10), pady=(5, 10))
+
         else:
             self.current_payloads_textbox = None
             self.payload_placeholder.pack(fill=tk.BOTH, padx=10, pady=0)
@@ -964,7 +1000,9 @@ class IntruderTab(ctk.CTkFrame):
                 self.current_payloads_textbox.delete("1.0", tk.END)
                 self.current_payloads_textbox.insert("1.0", file_content)
             except Exception as e:
-                dprint(f"Error reading the file: {e}")
+                print(f"[ERROR] Error reading the file: {e}")
+        else:
+            print(f"[ERROR] Cannot add payloads from file: {file_path}")
 
     def clear_payloads(self):
         if self.current_payloads_textbox is not None:
