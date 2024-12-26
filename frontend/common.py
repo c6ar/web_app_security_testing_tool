@@ -95,6 +95,7 @@ color_red = "#c81800"
 color_red_dk = "#911100"
 color_highlight = "#72f24b"
 color_highlight_bg = "#9e0b69"
+today = datetime.now().strftime("%Y-%m-%d")
 
 # ================================================
 # Icon and image assets loading
@@ -196,12 +197,12 @@ def center_window(root_window, window, width, height):
     window.geometry(f"{width}x{height}+{position_right}+{position_down}")
 
 
-def dprint(msg):
+def dprint(*args):
     """
     Prints a message to the console if debug mode is enabled in the config.
     """
     if RUNNING_CONFIG["debug_mode"]:
-        print(msg)
+        print(*args)
 
 
 def show_response_view(gui, hostname=None, html_content=None, url=None):
@@ -224,7 +225,7 @@ def show_response_view(gui, hostname=None, html_content=None, url=None):
         response_webview.load_html(html_content)
         response_webview.current_url = hostname
 
-    elif url is not None and len (url) > 0:
+    elif url is not None and len(url) > 0:
         response_webview.load_url(url)
 
     response_webview.pack(pady=0, padx=0, fill="both", expand=True)

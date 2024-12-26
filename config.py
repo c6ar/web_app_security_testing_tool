@@ -9,7 +9,7 @@ CONFIG_PATH = Path.cwd().parent / "app.conf"
 
 def update_config(config):
     global RUNNING_CONFIG
-    RUNNING_CONFIG = config
+    RUNNING_CONFIG = config.copy()
 
 
 def load_config():
@@ -37,7 +37,10 @@ def load_config():
                             print("[ERROR] CONFIG: Incorrect value given, where int expected.")
                             continue
 
-                    if setting in ("debug_mode", "proxy_console"):
+                    if setting in ("proxy_console", "proxy_logging",
+                                   "browser_disable_infobars", "browser_disable_cert_errors",
+                                   "log_intercepted_requests", "log_http_traffic_flow",
+                                   "debug_mode", "debug_show_running_config"):
                         if val not in (1, 0, "1", "0", "true", "false"):
                             print("[ERROR] CONFIG: Incorrect value given, where bool expected (false, true, 0 or 1).")
                             continue
@@ -84,20 +87,31 @@ def save_config(config):
 
 
 DEFAULT_CONFIG = {
+    # GENERAL SETTINGS
     "theme": "system",
     "lang": "english",
+    # PROXY SETTINGS
     "proxy_host_address": "127.0.0.1",
     "proxy_port": 8082,
     "proxy_logging": 1,
-    "proxy_logs_location": f"{Path.cwd()}\\proxy_logs",
-    "proxy_console": False,
+    "proxy_console": 0,
+    # PROXY - FRONTEND-BACKEND PORTS
     "front_back_intercept_toggle_port": 65430,
     "back_front_request_to_traffic_port": 65432,
     "back_front_request_to_intercept_port": 65433,
     "front_back_data_port": 65434,
     "front_back_scope_update_port": 65436,
-    "debug_mode": False,
-    "debug_show_running_config": False
+    # BROSWER SETTINGS
+    "browser_type": "chrome",
+    "browser_disable_infobars": 1,
+    "browser_disable_cert_errors": 1,
+    # LOGS SETTINGS
+    "logs_location": f"{Path.cwd().parent}\\logs",
+    "log_http_traffic_flow": 1,
+    "log_intercepted_requests": 1,
+    # DEBUG SETTINGS
+    "debug_mode": 0,
+    "debug_show_running_config": 0
 }
 RUNNING_CONFIG = load_config()
 

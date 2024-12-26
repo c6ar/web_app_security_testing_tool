@@ -1,6 +1,42 @@
 from common import *
 
 
+# noinspection PyShadowingNames
+def log_flow(request, response=None) -> None:
+    """
+    HTTP Traffic Tab:
+        Logs the HTTP flow to a specific log file for tracking and analysis.
+    """
+    logs_path = Path(RUNNING_CONFIG["logs_location"]) / "http_traffic"
+    logs_path.mkdir(parents=True, exist_ok=True)
+    timestamp = datetime.now().strftime("%Y-%m-%d %H-%M-%S")
+    log_file = logs_path / f"traffic_flow-{today}.log"
+
+    host = request.host
+    port = request.port
+    scheme = request.scheme
+    request_content = request.return_http_message()
+
+    with log_file.open("a", encoding="utf-8", errors="replace") as file:
+        file.write(f"[{timestamp}] Intercepted request to {scheme}://{host}:{port}\n{request_content}")
+
+    if response is not None:
+        code = response.status_code
+        try:
+            from http import HTTPStatus
+            status = HTTPStatus(code).phrase
+        except ValueError:
+            status = ""
+
+        try:
+            response_content = response.content.decode("utf-8", errors="replace")
+        except (AttributeError, UnicodeDecodeError):
+            response_content = str(response.content)
+
+        with log_file.open("a", encoding="utf-8", errors="replace") as file:
+            file.write(f"[{timestamp}] Response from {scheme}://{host}:{port} : {code} - {status}\n{response_content}")
+
+
 class HTTPTrafficTab(ctk.CTkFrame):
     def __init__(self, master, root):
         super().__init__(master)
@@ -223,12 +259,20 @@ class HTTPTrafficTab(ctk.CTkFrame):
                             if isinstance(flow_tab, list) and len(flow_tab) == 2:
                                 request2 = Request2.from_request(flow_tab[0])
                                 response = flow_tab[1]
-                                # print(f"REQUEST AND RESPONSE\n\tRequest:\n\t\t{request2}\tResponse:\n\t\t{response}")
+
+                                if RUNNING_CONFIG["log_http_traffic_flow"]:
+                                    log_flow(request2, response)
+
                                 self.add_request_to_list(request2, response)
+
                             elif isinstance(flow_tab, Request):
-                                # print(f"REQUEST ONLY\n\tRequest:\n\t\t{request2}")
                                 request2 = Request2.from_request(flow_tab)
+
+                                if RUNNING_CONFIG["log_http_traffic_flow"]:
+                                    log_flow(request2)
+
                                 self.add_request_to_list(request2)
+
                         except Exception as e:
                             if str(e) != "pickle data was truncated":  # Cannot pickle "cryptography.hazmat.bindings._rust.x509.Certificate"
                                 print(f"[ERROR] Failure while deserialization request to http traffic: {e}")
@@ -255,7 +299,12 @@ class HTTPTrafficTab(ctk.CTkFrame):
                 status = HTTPStatus(code).phrase
             except ValueError:
                 status = ""
-            response_content = resp.content.decode('utf-8')
+
+            try:
+                response_content = resp.content.decode("utf-8", errors="replace")
+            except AttributeError:
+                response_content = str(resp.content)
+
             length = len(response_content)
         values = (host, url, method, request_content, code, status, length, response_content, real_url)
 
@@ -315,7 +364,7 @@ class HTTPTrafficTab(ctk.CTkFrame):
         # print(self.request_list.selection())
         for item in self.request_list.selection():
             self.request_list_backup.delete(item)
-            print(f"deleted {item} from backup list")
+            dprint(f"[DEBUG] FRONTEND/PROXY/HTTP TRAFFIC: Deleted {item} from backup list")
         self.request_list.delete_selected()
         if len(self.request_list.get_children()) == 0 and not self.request_list_empty:
             self.toggle_list_actions("disabled")
@@ -585,7 +634,7 @@ class InterceptTab(ctk.CTkFrame):
         self.request_textbox = TextBox(self.request_widget, "")
         self.request_textbox.pack(pady=(0, 20), padx=20, fill="both", expand=True)
 
-    def toggle_intercept(self):
+    def toggle_intercept(self) -> None:
         """
         Intercept Tab:
             Toggles intercepting on the frontend and sends flag to the backend.
@@ -620,7 +669,7 @@ class InterceptTab(ctk.CTkFrame):
         else:
             toggle()
 
-    def interceptor_status_update(self):
+    def interceptor_status_update(self) -> None:
         if self.intercepting:
             self.toggle_intercept_button.configure(text="Toggle Intercept off", image=icon_toggle_on,
                                                    fg_color=color_red, hover_color=color_red_dk)
@@ -646,7 +695,7 @@ class InterceptTab(ctk.CTkFrame):
                                                         "Web flow won't be intercepted.")
             self.interceptor_scope_label.configure(text="\n\n\n")
 
-    def receive_request(self):
+    def receive_request(self) -> None:
         """
         Intercept Tab:
             Receives request from flow.request and adds it to intercept tab.
@@ -667,18 +716,24 @@ class InterceptTab(ctk.CTkFrame):
                             request2 = Request2.from_request(deserialized_request)
 
                             self.intercepted_request = request2
+                            if RUNNING_CONFIG["log_intercepted_requests"]:
+                                self.log_request()
                             self.show_request()
 
                         except Exception as e:
                             print(f"[ERROR] FRONTEND/PROXY: Error while deserializing received in scope: {e}")
+                            data = ["resume", ]
+                            serialized_data = pickle.dumps(data)
                             try:
                                 with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s2:
                                     s2.connect((RUNNING_CONFIG["proxy_host_address"], RUNNING_CONFIG["front_back_data_port"]))
-                                    s2.sendall(serialized_reqeust)
+                                    s2.sendall(serialized_data)
+                                self.intercepted_request = None
+                                self.remove_request()
                             except Exception as e:
                                 print(f"[ERROR] FRONTEND/PROXY: Forwarding intercepted request failed: {e}")
 
-    def show_request(self):
+    def show_request(self) -> None:
         """
         Intercept Tab:
             Shows info and HTTP message of an intercepted request.
@@ -702,7 +757,25 @@ class InterceptTab(ctk.CTkFrame):
             if str(button.cget("state") != "normal"):
                 button.configure(state="normal")
 
-    def remove_request(self):
+    def log_request(self) -> None:
+        """
+        Request Interceptor Tab:
+            Logs the intercepted HTTP request to a specific log file for tracking and analysis.
+        """
+        logs_path = Path(RUNNING_CONFIG["logs_location"]) / "web_interceptor"
+        logs_path.mkdir(parents=True, exist_ok=True)
+        timestamp = datetime.now().strftime("%Y-%m-%d %H-%M-%S")
+        log_file = logs_path / f"interceptor_requests-{today}.log"
+
+        host = self.intercepted_request.host
+        port = self.intercepted_request.port
+        scheme = self.intercepted_request.scheme
+        request_content = self.intercepted_request.return_http_message()
+
+        with log_file.open("a") as file:
+            file.write(f"[{timestamp}] Intercepted request to {scheme}://{host}:{port}\n{request_content}")
+
+    def remove_request(self) -> None:
         """
         Intercept Tab:
             Hides request info and HTTP message after dropping, forwarding it.
@@ -755,7 +828,7 @@ class InterceptTab(ctk.CTkFrame):
             except Exception as e:
                 print(f"[ERROR] FRONTEND/PROXY: Forwarding intercepted request failed: {e}")
 
-    def drop_request(self):
+    def drop_request(self) -> None:
         """
         Intercept Tab:
             Removes a request from list in GUI, request is dropped, proxy sends "request dropped info".
@@ -775,7 +848,7 @@ class InterceptTab(ctk.CTkFrame):
         except Exception as e:
             print(f"[ERROR] FRONTEND/PROXY: Forwarding intercepted request failed: {e}")
 
-    def send_request(self, dest):
+    def send_request(self, dest) -> None:
         request_content = self.request_textbox.get_text()
         try:
             hostname_url = self.intercepted_request.host
@@ -786,7 +859,7 @@ class InterceptTab(ctk.CTkFrame):
         except Exception as e:
             print(f"[ERROR] Error while sending request from Intercept: {e}")
 
-    def update_scope(self, mode="remove"):
+    def update_scope(self, mode="remove") -> None:
         if mode == "remove":
             hostnames = set()
 
@@ -861,11 +934,17 @@ class GUIProxy(ctk.CTkFrame):
             proxy_script = backend_dir / "proxy.py"
             proxy_port = str(RUNNING_CONFIG["proxy_port"])
             command = ["mitmdump", "-s", proxy_script, "--listen-port", proxy_port]
+
             if RUNNING_CONFIG["proxy_console"]:
                 command = ["start", "cmd", "/k"] + command
                 print("[INFO] Starting the HTTP(S) proxy process in new shell terminal window.")
             else:
                 print("[INFO] Starting the HTTP(S) proxy process.")
+
+            if RUNNING_CONFIG["proxy_logging"]:
+                log_file = str(Path(RUNNING_CONFIG["logs_location"]) / "proxy" / f"mitmdump-{today}.log")
+                print(f"[INFO] Logging mitmdump process to the file: {log_file}.")
+                command = command + ["-w", log_file]
 
             self.process = subprocess.Popen(
                 command,

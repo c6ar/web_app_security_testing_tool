@@ -3,6 +3,7 @@ from common import *
 
 class Settings(ctk.CTkToplevel):
     def __init__(self, master):
+        from config import RUNNING_CONFIG
         super().__init__(master)
         self.root = master
         self.title("WASTT settings")
@@ -23,18 +24,23 @@ class Settings(ctk.CTkToplevel):
         label_width = int(settings_width / 5)
         big_info_icon = ctk.CTkImage(
             light_image=Image.open(f"{ASSET_DIR}\\icon_info_light.png"),
-            dark_image=Image.open(f"{ASSET_DIR}\\icon_info.png"), size=(40, 40))
+            dark_image=Image.open(f"{ASSET_DIR}\\icon_info.png"), size=(30, 30))
 
-        # TODO FRONTEND P1: In the corner of each settings isle there will be an info icon, after clicking, opens a info window like About
-        #  that can be dismissed with esc, space and enter
-        #  and it describes settings.
+        # TODO FRONTEND P1: Settings documentation/guidance in HTML.
         # ================================================
         # General settings isle
         # ================================================
         general_isle = DarkBox(wrapper)
         general_isle.pack(fill=tk.X, padx=10, pady=(10, 5))
         general_header = HeaderTitle(general_isle, "General settings")
-        general_header.pack(fill=tk.X, padx=10, pady=(10, 5))
+        general_header.pack(side=tk.TOP, fill=tk.X, padx=10, pady=(10, 5))
+        general_isle_label = Label(
+            general_isle,
+            text="Changes made in these settings will be applied after restarting the app.",
+            justify=tk.LEFT,
+            anchor=tk.W
+        )
+        general_isle_label.pack(side=tk.TOP, fill=tk.X, padx=15, pady=5)
         general_info_button = ActionButton(
             general_isle,
             text="",
@@ -60,7 +66,7 @@ class Settings(ctk.CTkToplevel):
         self.theme_options.set(RUNNING_CONFIG['theme'].capitalize())
         self.theme_options.pack(side=tk.LEFT, padx=(5, 10), pady=5)
 
-        # TODO FRONTEND P4: Language support.
+        # TODO FRONTEND P2: Language support.
         lang_box = Box(general_isle)
         lang_box.pack(fill=tk.X, padx=10, pady=(10, 15))
         lang_label = Label(lang_box, text="Language", width=label_width, anchor=tk.E)
@@ -160,9 +166,7 @@ class Settings(ctk.CTkToplevel):
             corner_radius=5,
             command=self.select_log_file_dir
         )
-        # TODO FRONTEND P1: Implementing Proxy logging.
-        #  If Proxy loggin disabled the respective placeholder with info displayed in logs tab on the Traffic widget.
-        #  Add additional option to log requests and response contents as they're added to the Proxy tab.
+
         self.proxy_logs_location_button.grid(row=1, column=2, padx=5, pady=5, sticky=tk.E)
         if RUNNING_CONFIG['proxy_logging']:
             self.proxy_logs_checkbox.select()
@@ -174,16 +178,16 @@ class Settings(ctk.CTkToplevel):
 
         proxy_cmd_box = Box(proxy_isle)
         proxy_cmd_box.pack(fill=tk.X, padx=10, pady=10)
-        proxy_cmd_box_label = Label(proxy_cmd_box, text="Proxy terminal", width=label_width, anchor=tk.E)
-        proxy_cmd_box_label.pack(side=tk.LEFT, padx=(10, 5), pady=5)
-        self.proxy_cmd_box_checkbox = ctk.CTkCheckBox(
+        proxy_cmd_label = Label(proxy_cmd_box, text="Proxy terminal", width=label_width, anchor=tk.E)
+        proxy_cmd_label.pack(side=tk.LEFT, padx=(10, 5), pady=5)
+        self.proxy_cmd_checkbox = ctk.CTkCheckBox(
             proxy_cmd_box,
             text="Show Proxy output in terminal window.",
-            command=self.change_proxy_logs_location_click
+            command=self.on_settings_change
         )
         if RUNNING_CONFIG['proxy_console']:
-            self.proxy_cmd_box_checkbox.select()
-        self.proxy_cmd_box_checkbox.pack(side=tk.LEFT, padx=5, pady=(5, 10))
+            self.proxy_cmd_checkbox.select()
+        self.proxy_cmd_checkbox.pack(side=tk.LEFT, padx=5, pady=(5, 10))
 
         # ================================================
         # Ports settings sub-isle
@@ -192,19 +196,22 @@ class Settings(ctk.CTkToplevel):
         ports_header.pack(fill=tk.X, padx=10, pady=5)
 
         configurations = {
-            'front_back_intercept_toggle_port': "Toggle Web Interceptor (Front >> Back)",
+            'front_back_intercept_toggle_port': "Toggle Request Interceptor (Front >> Back)",
             'back_front_request_to_traffic_port': "HTTP Traffic (Back >> Front)",
-            'back_front_request_to_intercept_port': "Intercept Traffic (Back >> Front)",
-            'front_back_data_port': "Send Data (Front >> Back)",
+            'back_front_request_to_intercept_port': "Interceptor Request (Back >> Front)",
+            'front_back_data_port': "Send Instructions (Front >> Back)",
             'front_back_scope_update_port': "Scope Update (Front >> Back)",
         }
         self.bf_port_inputs = {}
 
+        ports_wrapper = Box(proxy_isle)
+        ports_wrapper.pack(fill=tk.X, padx=0, pady=(0, 10))
+
         for config_key, text in configurations.items():
-            box = Box(proxy_isle)
+            box = Box(ports_wrapper)
             box.pack(fill=tk.X, padx=10, pady=5)
 
-            label = Label(box, text=text, width=label_width+80, anchor=tk.E)
+            label = Label(box, text=text, width=label_width+100, anchor=tk.E)
             label.pack(side=tk.LEFT, padx=(10, 5), pady=5)
 
             self.bf_port_inputs[config_key] = TextEntry(box, width=100)
@@ -219,9 +226,56 @@ class Settings(ctk.CTkToplevel):
         browser_isle.pack(fill=tk.X, padx=10, pady=5)
         browser_settings = HeaderTitle(browser_isle, "Browser settings")
         browser_settings.pack(fill=tk.X, padx=10, pady=(10, 5))
-        label1 = Label(browser_isle, text="Arguments for the Selenium browser will be here.")
-        label1.pack(side=tk.LEFT, padx=20, pady=20)
-        # TODO FRONTEND P2: Browser settings.
+        browser_info_button = ActionButton(
+            browser_isle,
+            text="",
+            image=big_info_icon,
+            anchor=tk.W,
+            width=20,
+            fg_color=color_bg,
+            hover_color=color_bg_br,
+            command=lambda: show_response_view(self, url="http://localhost:8080/en/settings.html#browser-settings")
+        )
+        browser_info_button.place(relx=1, rely=0, anchor=tk.NE, x=-5, y=15)
+
+        broswer_type_box = Box(browser_isle)
+        broswer_type_box.pack(fill=tk.X, padx=10, pady=5)
+        broswer_type_box_label = Label(broswer_type_box, text="Browser type", width=label_width, anchor=tk.E)
+        broswer_type_box_label.pack(side=tk.LEFT, padx=(10, 5), pady=5)
+        self.broswer_type_options = ctk.CTkOptionMenu(
+            broswer_type_box,
+            values=["Chrome", "Edge", "Firefox"],
+            width=200,
+            command=lambda option: self.on_settings_change()
+        )
+        self.broswer_type_options.set(RUNNING_CONFIG['browser_type'].capitalize())
+        self.broswer_type_options.pack(side=tk.LEFT, padx=(5, 10), pady=5)
+
+        broswer_disable_info_box = Box(browser_isle)
+        broswer_disable_info_box.pack(fill=tk.X, padx=10, pady=5)
+        broswer_disable_info_label = Label(broswer_disable_info_box, text="Disable infobars", width=label_width, anchor=tk.E)
+        broswer_disable_info_label.pack(side=tk.LEFT, padx=(10, 5), pady=5)
+        self.broswer_disable_info_checkbox = ctk.CTkCheckBox(
+            broswer_disable_info_box,
+            text="Disable all infobars and notifications in the browser.",
+            command=self.on_settings_change
+        )
+        if RUNNING_CONFIG['browser_disable_infobars']:
+            self.broswer_disable_info_checkbox.select()
+        self.broswer_disable_info_checkbox.pack(side=tk.LEFT, padx=5, pady=5)
+
+        broswer_disable_cert_errors_box = Box(browser_isle)
+        broswer_disable_cert_errors_box.pack(fill=tk.X, padx=10, pady=(5, 10))
+        broswer_disable_cert_errors_label = Label(broswer_disable_cert_errors_box, text="Disable certifacte errors", width=label_width, anchor=tk.E)
+        broswer_disable_cert_errors_label.pack(side=tk.LEFT, padx=(10, 5), pady=5)
+        self.broswer_disable_cert_errors_checkbox = ctk.CTkCheckBox(
+            broswer_disable_cert_errors_box,
+            text="Disable all certicate errors and warnings in the browser.",
+            command=self.on_settings_change
+        )
+        if RUNNING_CONFIG['browser_disable_cert_errors']:
+            self.broswer_disable_cert_errors_checkbox.select()
+        self.broswer_disable_cert_errors_checkbox.pack(side=tk.LEFT, padx=5, pady=(5, 10))
 
         # ================================================
         # Logs settings isle
@@ -229,10 +283,65 @@ class Settings(ctk.CTkToplevel):
         logs_isle = DarkBox(wrapper)
         logs_isle.pack(fill=tk.X, padx=10, pady=5)
         logs_settings = HeaderTitle(logs_isle, "Logs settings")
-        logs_settings.pack(fill=tk.X, padx=10, pady=(10, 5))
-        label2 = Label(logs_isle, text="Logs default saving locations will be here.")
-        label2.pack(side=tk.LEFT, padx=20, pady=20)
-        # TODO FRONTEND P3: Logs settings.
+        logs_settings.pack(fill=tk.X, padx=10, pady=5)
+        logs_info_button = ActionButton(
+            logs_isle,
+            text="",
+            image=big_info_icon,
+            anchor=tk.W,
+            width=20,
+            fg_color=color_bg,
+            hover_color=color_bg_br,
+            command=lambda: show_response_view(self, url="http://localhost:8080/en/settings.html#logs-settings")
+        )
+        logs_info_button.place(relx=1, rely=0, anchor=tk.NE, x=-5, y=15)
+
+        logs_location_box = Box(logs_isle)
+        logs_location_box.pack(fill=tk.X, padx=10, pady=(5, 15))
+        logs_location_label = Label(logs_location_box, text="Logs locations", width=label_width, anchor=tk.E)
+        logs_location_label.pack(side=tk.LEFT, padx=(10, 5), pady=5)
+        self.logs_location_input = TextEntry(
+            logs_location_box,
+            width=450
+        )
+        self.logs_location_input.insert(0, RUNNING_CONFIG['logs_location'])
+        self.logs_location_input.bind("<KeyRelease>", self.on_settings_change)
+        self.logs_location_input.pack(side=tk.LEFT, padx=5, pady=(5, 10))
+        self.logs_location_button = ActionButton(
+            logs_location_box,
+            text="",
+            image=icon_folder,
+            width=25,
+            corner_radius=5,
+            command=self.select_log_file_dir
+        )
+        self.logs_location_button.pack(side=tk.LEFT, padx=5, pady=(5, 10))
+
+        logs_http_traffic_box = Box(logs_isle)
+        logs_http_traffic_box.pack(fill=tk.X, padx=10, pady=5)
+        logs_http_traffic_label = Label(logs_http_traffic_box, text="Log HTTP traffic", width=label_width, anchor=tk.E)
+        logs_http_traffic_label.pack(side=tk.LEFT, padx=(10, 5), pady=5)
+        self.logs_http_traffic_checkbox = ctk.CTkCheckBox(
+            logs_http_traffic_box,
+            text="Log whole HTTP traffic flow - requests and responses.",
+            command=self.on_settings_change
+        )
+        if RUNNING_CONFIG['log_http_traffic_flow']:
+            self.logs_http_traffic_checkbox.select()
+        self.logs_http_traffic_checkbox.pack(side=tk.LEFT, padx=5, pady=5)
+
+        logs_intercepted_requests_box = Box(logs_isle)
+        logs_intercepted_requests_box.pack(fill=tk.X, padx=10, pady=(5, 15))
+        logs_intercepted_requests_label = Label(logs_intercepted_requests_box, text="Log intercepted requests", width=label_width, anchor=tk.E)
+        logs_intercepted_requests_label.pack(side=tk.LEFT, padx=(10, 5), pady=5)
+        self.logs_intercepted_requests_checkbox = ctk.CTkCheckBox(
+            logs_intercepted_requests_box,
+            text="Log requests intercepted by Web Request Interceptor.",
+            command=self.on_settings_change
+        )
+        if RUNNING_CONFIG['log_intercepted_requests']:
+            self.logs_intercepted_requests_checkbox.select()
+        self.logs_intercepted_requests_checkbox.pack(side=tk.LEFT, padx=5, pady=5)
 
         # ================================================
         # Debug settings isle
@@ -241,6 +350,24 @@ class Settings(ctk.CTkToplevel):
         debug_isle.pack(fill=tk.X, padx=10, pady=5)
         debug_settings = HeaderTitle(debug_isle, "Debug settings")
         debug_settings.pack(fill=tk.X, padx=10, pady=(10, 5))
+        debug_isle_label = Label(
+            debug_isle,
+            text="Changes made in these settings will be applied after restarting the app.",
+            justify=tk.LEFT,
+            anchor=tk.W
+        )
+        debug_isle_label.pack(side=tk.TOP, fill=tk.X, padx=15, pady=5)
+        debug_info_button = ActionButton(
+            debug_isle,
+            text="",
+            image=big_info_icon,
+            anchor=tk.W,
+            width=20,
+            fg_color=color_bg,
+            hover_color=color_bg_br,
+            command=lambda: show_response_view(self, url="http://localhost:8080/en/settings.html#debug-settings")
+        )
+        debug_info_button.place(relx=1, rely=0, anchor=tk.NE, x=-5, y=15)
 
         debug_mode_box = Box(debug_isle)
         debug_mode_box.pack(fill=tk.X, padx=10, pady=10)
@@ -313,7 +440,8 @@ class Settings(ctk.CTkToplevel):
                 "Discard new settings",
                 lambda: (self.destroy_window(), confirm.destroy()),
                 "Go back",
-                lambda: confirm.destroy()
+                lambda: confirm.destroy(),
+                width=450
             )
         else:
             self.destroy_window()
@@ -352,13 +480,18 @@ class Settings(ctk.CTkToplevel):
 
     def read_new_settings(self):
         new_config = {
-            "theme": self.theme_options.get().lower(),
-            "lang": self.lang_options.get().lower(),
+            "theme": self.theme_options.get().lower().strip(),
+            "lang": self.lang_options.get().lower().strip(),
             "proxy_host_address": self.proxy_ip_input.get(),
             "proxy_port": self.proxy_port_input.get(),
             "proxy_logging": self.proxy_logs_checkbox.get(),
-            "proxy_logs_location": self.proxy_logs_location_input.get(),
-            "proxy_console": self.proxy_cmd_box_checkbox.get(),
+            "proxy_console": self.proxy_cmd_checkbox.get(),
+            "browser_type": self.broswer_type_options.get().lower(),
+            "browser_disable_infobars": self.broswer_disable_info_checkbox.get(),
+            "browser_disable_cert_errors": self.broswer_disable_cert_errors_checkbox.get(),
+            "logs_location": self.logs_location_input.get(),
+            "log_http_traffic_flow": self.logs_http_traffic_checkbox.get(),
+            "log_intercepted_requests": self.logs_intercepted_requests_checkbox.get(),
             "debug_mode": self.debug_mode_checkbox.get(),
             "debug_show_running_config": self.debug_running_conf_checkbox.get()
         }
@@ -371,35 +504,41 @@ class Settings(ctk.CTkToplevel):
             dprint(f"\t{key}: {value}")
         dprint("================================================")
 
-        if (new_config["theme"] != RUNNING_CONFIG["theme"] or
-                new_config["lang"] != RUNNING_CONFIG["lang"] or
-                new_config["debug_mode"] != RUNNING_CONFIG["debug_mode"]):
+        proxy_restart = (new_config["proxy_host_address"] != RUNNING_CONFIG["proxy_host_address"] or
+                         new_config["proxy_port"] != RUNNING_CONFIG["proxy_port"] or
+                         new_config["proxy_logging"] != RUNNING_CONFIG["proxy_logging"] or
+                         new_config["proxy_console"] != RUNNING_CONFIG["proxy_console"])
+        dprint(f"[DEBUG] Proxy restart needed: {proxy_restart}")
+        browser_restart = (new_config["browser_type"] != RUNNING_CONFIG["browser_type"] or
+                           new_config["browser_disable_infobars"] != RUNNING_CONFIG["browser_disable_infobars"] or
+                           new_config["browser_disable_cert_errors"] != RUNNING_CONFIG["browser_disable_cert_errors"])
+        dprint(f"[DEBUG] Browser restart needed: {browser_restart}")
+
+        if proxy_restart and browser_restart:
             confirm = ConfirmDialog(
                 self.root,
                 self,
-                "To apply some changes you need to restart the application manually.",
-                "App restart needed",
+                "To apply some changes browser and proxy process will be restarted.",
+                "Proxy and browser restart needed",
                 "Ok",
-                lambda: (self.save_settings(new_config), confirm.destroy())
+                lambda: (self.save_settings(new_config, reload_proxy=proxy_restart, reload_browser=browser_restart), confirm.destroy()),
             )
-        elif (new_config["proxy_host_address"] != RUNNING_CONFIG["proxy_host_address"] or
-                new_config["proxy_port"] != RUNNING_CONFIG["proxy_port"]):
+        elif proxy_restart:
             confirm = ConfirmDialog(
                 self.root,
                 self,
-                "To apply some changes you need to restart the browser and proxy process.",
+                "To apply some changes mitmdump proxy process will be restarted.",
                 "Proxy restart needed",
                 "Ok",
-                lambda: (self.save_settings(new_config, reload_proxy=True, reload_browser=True), confirm.destroy()),
+                lambda: (self.save_settings(new_config, reload_proxy=proxy_restart, reload_browser=browser_restart), confirm.destroy()),
             )
-        elif new_config["proxy_console"] != RUNNING_CONFIG["proxy_console"]:
+        elif browser_restart:
             confirm = ConfirmDialog(
                 self.root,
                 self,
-                "To apply some changes you need to restart mitmdump proxy process.",
-                "Proxy restart needed",
-                "Ok",
-                lambda: (self.save_settings(new_config, reload_proxy=True), confirm.destroy()),
+                "To apply some changes the web browser process will be restarted.",
+                "Browser restart needed",
+                lambda: (self.save_settings(new_config, reload_proxy=proxy_restart, reload_browser=browser_restart), confirm.destroy()),
             )
         else:
             self.save_settings(new_config)

@@ -191,7 +191,7 @@ class Request2(Request):
             try:
                 content_length = str(len(self.content))
                 http_message += f"Content-Length: {content_length}\r\n\r\n"
-                http_message += self.content.decode('utf-8')
+                http_message += self.content.decode('utf-8', errors='ignore')
             except Exception as e:
                 print(f"Błąd w dekodowaniu: {e}, {self}")
         else:

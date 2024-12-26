@@ -5,36 +5,13 @@ from proxy import *
 from intruder import *
 from repeater import *
 from logs import *
-from selenium import webdriver
-# noinspection PyUnresolvedReferences
-from webdriver_manager.chrome import ChromeDriverManager
-from selenium.webdriver.chrome.options import Options
-
-
-def create_browser():
-    """
-    Creates a new Selenium Chrome Browser instance with custom preset config.
-    """
-    options = Options()
-    options.add_argument("--enable-logging")
-    options.add_argument("--log-level=0")
-    options.add_argument("--disable-infobars")
-    options.add_argument("--disable-notifications")
-    proxy_host = RUNNING_CONFIG["proxy_host_address"]
-    proxy_port = RUNNING_CONFIG["proxy_port"]
-    options.add_argument(f"--proxy-server={proxy_host}:{proxy_port}")
-    options.add_argument("--ignore-certificate-errors")
-    options.add_experimental_option("excludeSwitches", ["enable-logging"])
-    options.set_capability("goog:loggingPrefs", {"performance": "ALL"})
-
-    return webdriver.Chrome(options=options)
 
 
 class GUI(ctk.CTk):
     def __init__(self):
         super().__init__()
         self.title("WASTT | Web App Security Testing Tool")
-        # TODO FRONTEND P4: Adding screen responsiveness to this app.
+        # TODO FRONTEND P3: Adding screen responsiveness to this app.
         screen_width = self.winfo_screenwidth()
         screen_height = self.winfo_screenheight()
         self.initial_width = int(screen_width * 0.9)
@@ -146,11 +123,84 @@ class GUI(ctk.CTk):
             self.settings_window = Settings(self)
             self.settings_window.focus_set()
 
+    def create_browser(self):
+        """
+        Creates a new Selenium Chrome/Edge/Firefox Browser instance with custom preset config.
+        """
+        from config import RUNNING_CONFIG
+        dprint(f"[DEBUG] Creating {RUNNING_CONFIG['browser_type']} browser.")
+        drivers_path = Path.cwd().parent / "webdrivers"
+
+        from selenium import webdriver
+
+        proxy_host = RUNNING_CONFIG["proxy_host_address"]
+        proxy_port = RUNNING_CONFIG["proxy_port"]
+        try:
+            if RUNNING_CONFIG["browser_type"] == "edge":
+                options = webdriver.EdgeOptions()
+                if RUNNING_CONFIG["browser_disable_infobars"]:
+                    options.add_argument("--disable-infobars")
+                    options.add_argument("--disable-notifications")
+                if RUNNING_CONFIG["browser_disable_cert_errors"]:
+                    options.add_argument("--ignore-certificate-errors")
+                options.add_argument(f"--proxy-server={proxy_host}:{proxy_port}")
+
+                driver_path = os.path.join(drivers_path, "msedgedriver.exe")
+                driver = webdriver.Edge(
+                    service=webdriver.EdgeService(executable_path=driver_path),
+                    options=options
+                )
+
+            elif RUNNING_CONFIG["browser_type"] == "firefox":
+                options = webdriver.FirefoxOptions()
+                if RUNNING_CONFIG["browser_disable_infobars"]:
+                    options.set_preference("browser.chrome.favicons", False)
+                    options.set_preference("dom.webnotifications.enabled", False)
+                if RUNNING_CONFIG["browser_disable_cert_errors"]:
+                    options.accept_untrusted_certs = True
+                options.set_preference("network.proxy.type", 1)
+                options.set_preference("network.proxy.http", proxy_host)
+                options.set_preference("network.proxy.http_port", int(proxy_port))
+                options.set_preference("network.proxy.ssl", proxy_host)
+                options.set_preference("network.proxy.ssl_port", int(proxy_port))
+
+                driver_path = os.path.join(drivers_path, "geckodriver.exe")
+                driver = webdriver.Firefox(
+                    service=webdriver.FirefoxService(executable_path=driver_path),
+                    options=options
+                )
+
+            else:
+                options = webdriver.ChromeOptions()
+                if RUNNING_CONFIG["browser_disable_infobars"]:
+                    options.add_argument("--disable-infobars")
+                    options.add_argument("--disable-notifications")
+                if RUNNING_CONFIG["browser_disable_cert_errors"]:
+                    options.add_argument("--ignore-certificate-errors")
+                options.add_argument(f"--proxy-server={proxy_host}:{proxy_port}")
+
+                driver_path = os.path.join(drivers_path, "chromedriver.exe")
+                driver = webdriver.Chrome(
+                    service=webdriver.ChromeService(executable_path=driver_path),
+                    options=options
+                )
+
+            return driver
+        except Exception as e:
+            ErrorDialog(
+                self,
+                self,
+                "Error",
+                f"Failed to create browser: {e}"
+            )
+
     def open_browser(self):
         """
         Opening Selenium Chrome Browser
         """
-        self.browser = create_browser()
+        if self.browser is None:
+            self.browser = self.create_browser()
+
         self.browser.get("https://www.example.com")
 
         try:
@@ -234,14 +284,6 @@ class GUI(ctk.CTk):
         self.stop_http_server()
         print("[INFO] Closing the WASTT app.")
         self.destroy()
-
-
-def restart():
-    global wastt
-    wastt.on_close()
-    del wastt
-    wastt = GUI()
-
 
 wastt = GUI()
 wastt.protocol("WM_DELETE_WINDOW", wastt.on_close)
