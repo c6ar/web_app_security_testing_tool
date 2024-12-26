@@ -10,6 +10,48 @@ import threading
 from config import RUNNING_CONFIG
 
 
+def lprint(msg, h=False, i=False):
+    """
+    Logs a message to the console and to the log file if enabled.
+
+    Parameters:
+        msg: str, the message to be logged and displayed to the console / Proxy terminal.
+        h: bool, optional. If True, saves events to HTTP Traffic logs.
+        i: bool, optional. If True, saves events to WebInterceptor logs.
+    """
+    if RUNNING_CONFIG["proxy_logging"]:
+        from pathlib import Path
+        from datetime import datetime
+        log_path = Path(RUNNING_CONFIG["proxy_logs_location"])
+        date = datetime.now().strftime("%Y-%m-%d")
+        log_file = log_path / f"proxy-{date}.log"
+
+        log_path.mkdir(parents=True, exist_ok=True)
+        timestamp = datetime.now().strftime("%Y-%m-%d %H-%M-%S")
+        lines = msg.split('\n')
+
+        with log_file.open("a") as file:
+            for line in lines:
+                if "======" not in line:
+                    file.write(f"[{timestamp}] {line}\n")
+        if h:
+            log_file = log_path / "http_traffic" / f"traffic-{date}.log"
+            log_file.parent.mkdir(parents=True, exist_ok=True)
+            with log_file.open("a") as file:
+                for line in lines:
+                    if "======" not in line:
+                        file.write(f"[{timestamp}] {line}\n")
+        if i:
+            log_file = log_path / "web_interceptor" / f"interceptor-{date}.log"
+            log_file.parent.mkdir(parents=True, exist_ok=True)
+            with log_file.open("a") as file:
+                for line in lines:
+                    if "======" not in line:
+                        file.write(f"[{timestamp}] {line}\n")
+
+    print(msg)
+
+
 def send_flow_to_http_trafic_tab(flow):
     """
     Serializes tab = [flow.reqeust, flow.response] and sends to
@@ -20,19 +62,21 @@ def send_flow_to_http_trafic_tab(flow):
     """
     if flow.response is not None:
         flow_tab = [flow.request, flow.response]
+        lprint(f"======\nSending request with response to HTTP Traffic Tab:\n{flow_tab}\n======", h=True)
     else:
         flow_tab = flow.request
+        lprint(f"======\nSending sole request to HTTP Traffic Tab:\n{flow_tab}\n======", h=True)
     try:
         serialized_flow = pickle.dumps(flow_tab)
     except Exception as e:
-        print(f"\nError while serialization before sending to http traffic tab: {e}")
+        lprint(f"\nError while serialization before sending to http traffic tab: {e}")
         serialized_flow = pickle.dumps(flow.request)
     try:
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             s.connect((RUNNING_CONFIG["proxy_host_address"], RUNNING_CONFIG["back_front_request_to_traffic_port"]))
             s.sendall(serialized_flow)
     except Exception as e:
-        print(f"\nError while sending request to http tab: {e}")
+        lprint(f"\nError while sending request to http tab: {e}")
 
 
 def send_request_to_intercept_tab(request):
@@ -43,16 +87,16 @@ def send_request_to_intercept_tab(request):
         request: mitmproxy.http.Request object.
     """
     try:
-        print(f"======\nSending intercepted request to Frontend:\n{request.data}\n======")
+        lprint(f"======\nSending intercepted request to Web Interceptor Tab:\n{request.data}\n======", i=True)
         serialized_request2 = pickle.dumps(request)
         try:
             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
                 s.connect((RUNNING_CONFIG["proxy_host_address"], RUNNING_CONFIG["back_front_request_to_intercept_port"]))
                 s.sendall(serialized_request2)
         except Exception as e:
-            print(f"\nError while sending request to scope tab: {e}")
+            lprint(f"\nError while sending request to scope tab: {e}")
     except Exception as e:
-        print(f"\nError while serialization before sending to scope tab: {e}")
+        lprint(f"\nError while serialization before sending to scope tab: {e}")
 
 
 class WebRequestInterceptor:
@@ -72,7 +116,6 @@ class WebRequestInterceptor:
         self.current_flow = None
         self.intercept_state = False
         self.backup = []
-        self.kill_flow = False
 
     def request(self, flow: mitmproxy.http.HTTPFlow):
         """
@@ -86,7 +129,7 @@ class WebRequestInterceptor:
         request = flow.request
         self.current_flow = flow
         if self.intercept_state:
-            print(f"======\nProcessing request to {request.host}\n======")
+            lprint(f"======\nProcessing request to {request.host}\n======", i=True)
             flow.intercept()
 
             def extract_domain(full_string):
@@ -106,7 +149,7 @@ class WebRequestInterceptor:
                 return ""  # Return an empty string if the input is malformed
 
             if "mozilla.org" in request.host:
-                print(f"Received telemetry request to mozilla.org.\n======\nResuming HTTP(S) flow.\n======")
+                lprint(f"Received telemetry request to mozilla.org.\n======\nResuming HTTP(S) flow.\n======", i=True)
                 flow.request = Request.make(
                     method="GET",
                     url="https://google.com",
@@ -116,22 +159,19 @@ class WebRequestInterceptor:
                 flow.resume()
             elif not self.scope or request.host in self.scope or extract_domain(request.host) in self.scope:
                 if not self.scope:
-                    print("Request Interceptor's scope is currently empty.\n======")
+                    lprint("Request Interceptor's scope is currently empty.\n======", i=True)
                 else:
-                    print(f"Current Request Interceptor's scope: {self.scope}.\n======")
-                print(f"Request to {request.host} has been intercepted.")
+                    lprint(f"Current Request Interceptor's scope: {self.scope}.\n======", i=True)
+                lprint(f"Request to {request.host} has been intercepted.")
                 send_request_to_intercept_tab(request)
                 self.receive_data_from_frontend(flow)
-            elif self.kill_flow:
-                flow.kill()
-                self.kill_flow = False
             else:
-                print(f"Request to {request.host} has been passed throught.\n======")
+                lprint(f"Request to {request.host} has been passed throught.\n======", i=True)
                 if flow.intercepted:
                     flow.resume()
             send_flow_to_http_trafic_tab(flow)
         else:
-            print(f"======\nPassing through reqyest to {request.host}\n======")
+            lprint(f"======\nPassing through request to {request.host}\n======")
 
     # noinspection PyMethodMayBeStatic
     def response(self, flow: mitmproxy.http.HTTPFlow):
@@ -175,7 +215,7 @@ class WebRequestInterceptor:
             """
             data = await reader.read(4096)
             if data:
-                print(f"======\nReceived instruction to change Request Interceptor state.\n======")
+                lprint(f"======\nReceived instruction to change Request Interceptor state.\n======", i=True)
                 if data.decode('utf-8').lower() == 'false':
                     new_state = False
                 else:
@@ -183,7 +223,7 @@ class WebRequestInterceptor:
                 self.intercept_state = new_state
                 if not self.intercept_state and self.current_flow.intercepted:
                     self.current_flow.resume()
-            print(f"Current Request Interceptor state: {self.intercept_state}\n======")
+            lprint(f"Current Request Interceptor state: {self.intercept_state}\n======", i=True)
             writer.close()
             await writer.wait_closed()
 
@@ -207,25 +247,25 @@ class WebRequestInterceptor:
             """
             data = await reader.read(4096)
             if data:
-                print(f"======\nReceived instruction to update scope of Request Interceptor.\n======")
+                lprint(f"======\nReceived instruction to update scope of Request Interceptor.\n======", i=True)
                 operation, *hostnames = pickle.loads(data)
                 if operation == "add":
                     for hostname in hostnames:
                         domain = hostname
                         self.scope.append(domain)
-                        print(f"Host {domain} added to the scope.\n======")
+                        lprint(f"Host {domain} added to the scope.\n======", i=True)
                 elif operation == "remove":
                     for hostname in hostnames:
                         domain = hostname
                         try:
                             self.scope.remove(domain)
-                            print(f"Host {domain} removed from scope.\n======")
+                            lprint(f"Host {domain} removed from scope.\n======", i=True)
                         except ValueError:
-                            print(f"Attempted to remove {domain} from scope, but could not be found there.\n======")
+                            lprint(f"Attempted to remove {domain} from scope, but could not be found there.\n======", i=True)
                 elif operation == "clear":
                     self.scope.clear()
-                    print("Scope cleared.\n======")
-                print(f"Current scope: {self.scope}\n======")
+                    lprint("Scope cleared.\n======", i=True)
+                lprint(f"Current scope: {self.scope}\n======", i=True)
             writer.close()
             await writer.wait_closed()
 
@@ -250,43 +290,26 @@ class WebRequestInterceptor:
                 serialized_data = conn.recv(4096)
                 if serialized_data:
                     deserialized_data = pickle.loads(serialized_data)
-                    print(f"======\nReceived data from the frontend.\n======")
+                    lprint(f"======\nReceived data from the frontend.\n======", i=True)
                     if deserialized_data[0] == "forward":
-                        print("Received instruction to forward the last intercepted request.\n======")
+                        lprint("Received instruction to forward the last intercepted request.\n======", i=True)
                         if isinstance(deserialized_data[1], Request):
-                            print(f"Forwarding intercepted request:\n{flow.request.data}\n======")
+                            lprint(f"Forwarding intercepted request:\n{flow.request.data}\n======", i=True)
                             flow.request.data = deserialized_data[1].data
                     elif deserialized_data[0] == "drop":
-                        print("Received instruction to drop the last intercepted request.\n======")
+                        lprint("Received instruction to drop the last intercepted request.\n======", i=True)
 
-                        # drop_string = ("GET /en/drop.html HTTP/1.1\n"
-                        #                "host: localhost:8080)\n"
-                        #                "connection: keep-alive\n"
-                        #                "user-Agent: CustomClient/1.0\n"
-                        #                "accept: text/html")
-                        # from backend.Request import Request2
-                        # drop_request = Request2.from_http_message(drop_string)
-                        # drop_request.host = "localhost"
-                        # drop_request.port = 8080
-                        # drop_request.scheme = "http"
+                        target_url = "http://localhost:8080/en/dropped.html"
 
-                        # flow.request = drop_request
-
-                        target_url = "http://localhost:8080/en/drop.html"
-
-                        response = Response.make(
-                            302,  # HTTP status code for redirect
-                            b"",  # Empty content (no body needed for redirect)
-                            Headers(
-                                Location=target_url  # Redirect Location header
-                            )
-                        )
-
-                        flow.response = response
+                        flow.request.method = "GET"
+                        flow.request.url = target_url
+                        flow.request.version = "HTTP/1.1"
                         flow.resume()
-                        self.kill_flow = True
+
+                        self.intercept_state = False
+
                     else:
-                        print("Received unknown instruction.\n======\nResuming current flow.\n======")
+                        lprint("Received unknown instruction.\n======\nResuming current flow.\n======", i=True)
                 if flow.intercepted:
                     flow.resume()
 

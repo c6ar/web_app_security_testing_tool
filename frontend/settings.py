@@ -162,6 +162,7 @@ class Settings(ctk.CTkToplevel):
         )
         # TODO FRONTEND P1: Implementing Proxy logging.
         #  If Proxy loggin disabled the respective placeholder with info displayed in logs tab on the Traffic widget.
+        #  Add additional option to log requests and response contents as they're added to the Proxy tab.
         self.proxy_logs_location_button.grid(row=1, column=2, padx=5, pady=5, sticky=tk.E)
         if RUNNING_CONFIG['proxy_logging']:
             self.proxy_logs_checkbox.select()

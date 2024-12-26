@@ -40,8 +40,8 @@ class HTTPTrafficTab(ctk.CTkFrame):
             state=tk.DISABLED
         )
         self.filter_list_button = ActionButton(
-            self.top_bar, text=f"Filter the list with scope",
-            # image=icon_random,
+            self.top_bar, text=f"Scope filter",
+            # image=icon_list,
             command=self.filter_list_with_scope,
             state=tk.DISABLED)
         self.delete_requests_button = ActionButton(
@@ -225,8 +225,9 @@ class HTTPTrafficTab(ctk.CTkFrame):
                                 response = flow_tab[1]
                                 # print(f"REQUEST AND RESPONSE\n\tRequest:\n\t\t{request2}\tResponse:\n\t\t{response}")
                                 self.add_request_to_list(request2, response)
-                            else:
+                            elif isinstance(flow_tab, Request):
                                 # print(f"REQUEST ONLY\n\tRequest:\n\t\t{request2}")
+                                request2 = Request2.from_request(flow_tab)
                                 self.add_request_to_list(request2)
                         except Exception as e:
                             if str(e) != "pickle data was truncated":  # Cannot pickle "cryptography.hazmat.bindings._rust.x509.Certificate"
@@ -339,8 +340,6 @@ class HTTPTrafficTab(ctk.CTkFrame):
 
     def filter_list_with_scope(self):
         if self.request_list_filtered:
-            self.filter_list_button.configure(text="Filter the list with scope")
-
             self.request_list.delete_all()
 
             for item in self.request_list_backup.get_children():
@@ -349,8 +348,6 @@ class HTTPTrafficTab(ctk.CTkFrame):
 
             self.request_list_filtered = False
         elif len(self.proxy_gui.current_scope) > 0:
-            self.filter_list_button.configure(text="Remove filtering")
-
             for item in self.request_list.get_children():
                 if self.request_list.set(item, "Host") not in self.proxy_gui.current_scope:
                     self.request_list.detach(item)
@@ -772,6 +769,9 @@ class InterceptTab(ctk.CTkFrame):
                 s.connect((RUNNING_CONFIG["proxy_host_address"], RUNNING_CONFIG["front_back_data_port"]))
                 s.sendall(serialized_data)
                 self.remove_request()
+                self.intercepted_request = None
+                self.intercepting = False
+                self.interceptor_status_update()
         except Exception as e:
             print(f"[ERROR] FRONTEND/PROXY: Forwarding intercepted request failed: {e}")
 
