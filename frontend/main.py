@@ -11,7 +11,7 @@ class GUI(ctk.CTk):
     def __init__(self):
         super().__init__()
         self.title("WASTT | Web App Security Testing Tool")
-        # TODO FRONTEND P3: Adding screen responsiveness to this app.
+        # TODO FRONTEND P2: Adding screen responsiveness to this app.
         screen_width = self.winfo_screenwidth()
         screen_height = self.winfo_screenheight()
         self.initial_width = int(screen_width * 0.9)
@@ -41,6 +41,7 @@ class GUI(ctk.CTk):
         self.tab_content = Box(self)
         self.tab_content.pack(side="top", fill="both", expand=True)
 
+        # TODO P1: Adding HTML Documentation/About like in Settings
         self.proxy_tab = GUIProxy(self.tab_content, self)
         self.intruder_tab = GUIIntruder(self.tab_content, self)
         self.repeater_tab = GUIRepeater(self.tab_content, self)

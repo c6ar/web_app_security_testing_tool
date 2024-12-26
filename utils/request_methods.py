@@ -21,7 +21,7 @@ def parse_http_message(http_message):
     :param http_message: str, the raw HTTP message
     :return: tuple (method, path, headers)
     """
-    # TODO protection for bad input (eg. 'sdf')
+    # TODO P1: protection for bad input (eg. 'sdf')
     try:
         headers_body, body = http_message.split("\r\n\r\n")
     except ValueError:
@@ -57,7 +57,7 @@ def extract_base_url(http_message):
     for line in lines:
         if line.lower().startswith("host: "):
             host = line.split(": ", 1)[1]
-    # TODO http/https from http message? not necessary, would be nice
+    # TODO P1: http/https from http message? not necessary, would be nice
     # may not be needed if  all repeater tabs will have url from mitmproxy requests
             return f"http://{host}"  # Assume HTTPS by default
     raise ValueError("Host header not found in HTTP message.")
@@ -72,14 +72,14 @@ def send_http_message(http_message, real_url=None):
     """
     method, path, headers, data = parse_http_message(http_message)
 
-    # TODO backup url not working, may not be needed if  all repeater tabs will have url from mitmproxy requests
+    # TODO P1: backup url not working, may not be needed if  all repeater tabs will have url from mitmproxy requests
     if real_url is None:
         base_url = extract_base_url(http_message)
         url = f"{base_url}{path}"
     else:
         url = real_url
 
-    # TODO timeouts in request (for intruder list)
+    # TODO P1: timeouts in request (for intruder list)
     if method.upper() == "GET":
         response = requests.get(url, headers=headers)
     elif method.upper() == "POST":
