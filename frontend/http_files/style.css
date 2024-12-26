@@ -1,9 +1,15 @@
 body {
     color: white;
-    background: #222;
     font-family: 'Roboto', 'Calibri', sans-serif;
     padding: 0;
     margin: 0;
+    font-size: 14px;
+    background: #222;
+    background-image: url('wastt_bg.png');
+    background-position: top right;
+    background-repeat: no-repeat;
+    background-attachment: scroll;
+    background-size: 350px;
 }
 h1 {
     background: #1f538d;
@@ -19,6 +25,10 @@ h2 {
     border-bottom: 4px solid #1f538d;
 }
 p {
-    margin: 20px 30px;
-    padding: 10px;
+    margin: 20px 35px 10px;
+    padding: 0px;
+}
+ul {
+    margin: 0px 45px 10px;
+    padding: 0px;
 }

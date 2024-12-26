@@ -26,7 +26,6 @@ class Settings(ctk.CTkToplevel):
             light_image=Image.open(f"{ASSET_DIR}\\icon_info_light.png"),
             dark_image=Image.open(f"{ASSET_DIR}\\icon_info.png"), size=(30, 30))
 
-        # TODO FRONTEND P1: Settings documentation/guidance in HTML.
         # ================================================
         # General settings isle
         # ================================================
@@ -66,7 +65,7 @@ class Settings(ctk.CTkToplevel):
         self.theme_options.set(RUNNING_CONFIG['theme'].capitalize())
         self.theme_options.pack(side=tk.LEFT, padx=(5, 10), pady=5)
 
-        # TODO FRONTEND P2: Language support.
+        # TODO FRONTEND P1: Language support.
         lang_box = Box(general_isle)
         lang_box.pack(fill=tk.X, padx=10, pady=(10, 15))
         lang_label = Label(lang_box, text="Language", width=label_width, anchor=tk.E)
@@ -274,7 +273,7 @@ class Settings(ctk.CTkToplevel):
         logs_info_button.place(relx=1, rely=0, anchor=tk.NE, x=-5, y=15)
 
         logs_location_box = Box(logs_isle)
-        logs_location_box.pack(fill=tk.X, padx=10, pady=(5, 15))
+        logs_location_box.pack(fill=tk.X, padx=10, pady=5)
         logs_location_label = Label(logs_location_box, text="Logs locations", width=label_width, anchor=tk.E)
         logs_location_label.pack(side=tk.LEFT, padx=(10, 5), pady=5)
         self.logs_location_input = TextEntry(
@@ -347,7 +346,7 @@ class Settings(ctk.CTkToplevel):
         debug_info_button.place(relx=1, rely=0, anchor=tk.NE, x=-5, y=15)
 
         debug_mode_box = Box(debug_isle)
-        debug_mode_box.pack(fill=tk.X, padx=10, pady=10)
+        debug_mode_box.pack(fill=tk.X, padx=10, pady=5)
         debug_mode_label = Label(debug_mode_box, text="Debug mode", width=label_width, anchor=tk.E)
         debug_mode_label.pack(side=tk.LEFT, padx=(10, 5), pady=5)
         self.debug_mode_checkbox = ctk.CTkCheckBox(
@@ -360,7 +359,7 @@ class Settings(ctk.CTkToplevel):
         self.debug_mode_checkbox.pack(side=tk.LEFT, padx=5, pady=(5, 10))
 
         debug_running_conf_box = Box(debug_isle)
-        debug_running_conf_box.pack(fill=tk.X, padx=10, pady=10)
+        debug_running_conf_box.pack(fill=tk.X, padx=10, pady=(5, 10))
         debug_running_conf_label = Label(debug_running_conf_box, text="Show running conf", width=label_width, anchor=tk.E)
         debug_running_conf_label.pack(side=tk.LEFT, padx=(10, 5), pady=5)
         self.debug_running_conf_checkbox = ctk.CTkCheckBox(
