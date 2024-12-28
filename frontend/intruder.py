@@ -584,7 +584,8 @@ class IntruderTab(ctk.CTkFrame):
                     continue
                 payloads[var] = textbox.get_text()
         if len(payloads) == 0:
-            raise ValueError("No payloads")
+            ErrorDialog(self, self.gui, "No payloads")
+            return
         dprint(f"with payloads:\n{payloads}")
 
         if self.attack_type != 1:
@@ -600,7 +601,8 @@ class IntruderTab(ctk.CTkFrame):
                         positions[tag] = (str(start), str(end))
 
             if len(positions) == 0:
-                raise ValueError("No positions")
+                ErrorDialog(self, self.gui, "No positions")
+                return
             dprint(f"On positions:\n{positions}"
                    f"================================================\n")
 
