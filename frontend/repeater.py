@@ -140,23 +140,28 @@ class RepeaterTab(ctk.CTkFrame):
     def send_request_from_repeater(self):
         request_text = self.request_textbox.get_text()
         request_host = self.hosturl_entry.get()
-        if len(request_text) > 0 and len(request_host) > 0:
-            try:
-                response = send_http_message(request_text, real_url=request_host)
-                response_text = process_response(response)
-                self.add_response_to_repeater_tab(response_text)
+        if len(request_text) > 0:
+            if len(request_host) > 0:
+                try:
+                    response = send_http_message(request_host, request_text)
+                    response_text = process_response(response)
+                    self.add_response_to_repeater_tab(response_text)
 
-                timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-                with open(self.log_file, "a", encoding="utf-8", errors="replace") as file:
-                    file.write(f"\n[{timestamp}] Request to {request_host}:\n{request_text}")
-                    file.write(f"\n[{timestamp}] Response from {request_host}:\n{response_text}")
+                    with open(self.log_file, "a", encoding="utf-8", errors="replace") as file:
+                        file.write(f"\n[{timestamp}] Request to {request_host}:\n{request_text}")
+                        file.write(f"\n[{timestamp}] Response from {request_host}:\n{response_text}")
 
-                self.tab_iterations[timestamp] = [request_text, response_text]
-                self.tab_iteration_keys.insert(0, timestamp)
-                self.update_dropdown_menu()
-            except Exception as e:
-                ErrorDialog(self, self.gui, e)
+                    self.tab_iterations[timestamp] = [request_text, response_text]
+                    self.tab_iteration_keys.insert(0, timestamp)
+                    self.update_dropdown_menu()
+                except Exception as e:
+                    ErrorDialog(self, self.gui, e)
+            else:
+                ErrorDialog(self, self.gui, "Host URL is empty.")
+        else:
+            ErrorDialog(self, self.gui, "Request is empty.")
 
     def add_response_to_repeater_tab(self, response):
         self.response_textbox.configure(state=tk.NORMAL)

@@ -3,6 +3,8 @@ import requests
 from bs4 import BeautifulSoup
 import re
 
+# TODO OPTIONAL: Can we make static methods for mitmproxy Request instead of having Request2 class?
+
 
 def extract_key_value_pairs(data):
     """
@@ -21,7 +23,7 @@ def parse_http_message(http_message):
     :param http_message: str, the raw HTTP message
     :return: tuple (method, path, headers)
     """
-    # TODO P1: protection for bad input (eg. 'sdf')
+    # TODO P1: Protection for bad input (eg. 'sdf') - Partially implemented from the Frontend side.
     try:
         headers_body, body = http_message.split("\r\n\r\n")
     except ValueError:
@@ -38,52 +40,29 @@ def parse_http_message(http_message):
         raise ValueError("Invalid request line format.\nExpected 'method path http_version'.") from e
 
     headers = {}
-    for line in header_lines:
-        if ": " in line:
-            key, value = line.split(": ", 1)
-            headers[key.strip()] = value.strip()
+    if len(header_lines) > 0:
+        for line in header_lines:
+            if ": " in line:
+                key, value = line.split(": ", 1)
+                headers[key.strip()] = value.strip()
 
     return method, path, headers, data
 
 
-def extract_base_url(http_message):
-    """
-    Extract the base URL from the HTTP message.
-    :param http_message: str, the raw HTTP message
-    :return: str, the base URL
-    """
-    http_message = http_message.strip().replace("\r\n", "\n")
-    lines = http_message.split("\n")
-    for line in lines:
-        if line.lower().startswith("host: "):
-            host = line.split(": ", 1)[1]
-    # TODO P1: http/https from http message? not necessary, would be nice
-    # may not be needed if  all repeater tabs will have url from mitmproxy requests
-            return f"http://{host}"  # Assume HTTPS by default
-    raise ValueError("Host header not found in HTTP message.")
-
-
-def send_http_message(http_message, real_url=None):
+def send_http_message(host, http_message):
     """
     Send an HTTP request based on the provided HTTP message.
+    :param host: str, url of a request
     :param http_message: str, the raw HTTP message
-    :param real_url: str, url of a request
     :return: requests.Response, the response object
     """
     method, path, headers, data = parse_http_message(http_message)
 
-    # TODO P1: backup url not working, may not be needed if  all repeater tabs will have url from mitmproxy requests
-    if real_url is None:
-        base_url = extract_base_url(http_message)
-        url = f"{base_url}{path}"
-    else:
-        url = real_url
-
     # TODO P1: timeouts in request (for intruder list)
     if method.upper() == "GET":
-        response = requests.get(url, headers=headers)
+        response = requests.get(host, headers=headers)
     elif method.upper() == "POST":
-        response = requests.post(url, headers=headers, data=data)
+        response = requests.post(host, headers=headers, data=data)
     else:
         raise ValueError(f"HTTP method {method} is not supported.")
 

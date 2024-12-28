@@ -57,7 +57,7 @@ def sniper_attack(q, request, hostname, wordlist, positions, control_flags):
 
                 data = {}
                 modified_request = replace_word(request, word, position)
-                response = send_http_message(modified_request, hostname)
+                response = send_http_message(hostname, modified_request)
                 data['position'] = str(position_list.index(position) + 1)
                 data['payload'] = word
                 data['status_code'] = response.status_code
@@ -89,7 +89,7 @@ def ram_attack(q, request, hostname, wordlist, control_flags):
                 time.sleep(0.1)
             data = {}
             modified_request = replace_between_symbols(request, word)
-            response = send_http_message(modified_request, hostname)
+            response = send_http_message(hostname, modified_request)
 
             data['position'] = 'all'
             data['payload'] = word
@@ -131,7 +131,7 @@ def pitchfork_attack(q, request, hostname, wordlists, positions, control_flags):
                 position = f"{positions[var][0]}: {positions[var][1]}"
                 modified_request = replace_word(modified_request, payloads[var][i], position)
                 words = words + f"{payloads[var][i]} "
-            response = send_http_message(modified_request, hostname)
+            response = send_http_message(hostname, modified_request)
             data['position'] = 'respective'
             data['payload'] = words
             data['status_code'] = response.status_code
