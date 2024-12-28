@@ -40,12 +40,12 @@ class Settings(ctk.CTkToplevel):
         general_info_button = InfoButton(
             general_isle,
             self,
-            "http://localhost:8080/en/settings.html#general-settings"
+            "http://localhost:8080/settings.html#general-settings"
         )
         general_info_button.place(relx=1, rely=0, anchor=tk.NE, x=-5, y=15)
 
         theme_box = Box(general_isle)
-        theme_box.pack(fill=tk.X, padx=10, pady=5)
+        theme_box.pack(fill=tk.X, padx=10, pady=10)
         theme_label = Label(theme_box, text="Theme", width=label_width, anchor=tk.E)
         theme_label.pack(side=tk.LEFT, padx=(10, 5), pady=5)
         self.theme_options = ctk.CTkOptionMenu(
@@ -56,20 +56,6 @@ class Settings(ctk.CTkToplevel):
         )
         self.theme_options.set(RUNNING_CONFIG['theme'].capitalize())
         self.theme_options.pack(side=tk.LEFT, padx=(5, 10), pady=5)
-
-        # TODO FRONTEND P1: Language support.
-        lang_box = Box(general_isle)
-        lang_box.pack(fill=tk.X, padx=10, pady=(10, 15))
-        lang_label = Label(lang_box, text="Language", width=label_width, anchor=tk.E)
-        lang_label.pack(side=tk.LEFT, padx=(10, 5), pady=5)
-        self.lang_options = ctk.CTkOptionMenu(
-            lang_box,
-            values=["English", "Polish", "German", "Spanish"],
-            width=200,
-            command=lambda option: self.on_settings_change()
-        )
-        self.lang_options.set(RUNNING_CONFIG['lang'].capitalize())
-        self.lang_options.pack(side=tk.LEFT, padx=(5, 10), pady=5)
 
         # ================================================
         # Proxy settings isle
@@ -82,7 +68,7 @@ class Settings(ctk.CTkToplevel):
         proxy_info_button = InfoButton(
             proxy_isle,
             self,
-            "http://localhost:8080/en/settings.html#proxy-settings"
+            "http://localhost:8080/settings.html#proxy-settings"
         )
         proxy_info_button.place(relx=1, rely=0, anchor=tk.NE, x=-5, y=15)
 
@@ -192,7 +178,7 @@ class Settings(ctk.CTkToplevel):
         browser_info_button = InfoButton(
             browser_isle,
             self,
-            "http://localhost:8080/en/settings.html#browser-settings"
+            "http://localhost:8080/settings.html#browser-settings"
         )
         browser_info_button.place(relx=1, rely=0, anchor=tk.NE, x=-5, y=15)
 
@@ -245,7 +231,7 @@ class Settings(ctk.CTkToplevel):
         logs_info_button = InfoButton(
             logs_isle,
             self,
-            "http://localhost:8080/en/settings.html#logs-settings"
+            "http://localhost:8080/settings.html#logs-settings"
         )
         logs_info_button.place(relx=1, rely=0, anchor=tk.NE, x=-5, y=15)
 
@@ -313,7 +299,7 @@ class Settings(ctk.CTkToplevel):
         debug_info_button = InfoButton(
             debug_isle,
             self,
-            "http://localhost:8080/en/settings.html#debug-settings"
+            "http://localhost:8080/settings.html#debug-settings"
         )
         debug_info_button.place(relx=1, rely=0, anchor=tk.NE, x=-5, y=15)
 
@@ -420,7 +406,6 @@ class Settings(ctk.CTkToplevel):
     def read_new_settings(self):
         new_config = {
             "theme": self.theme_options.get().lower().strip(),
-            "lang": self.lang_options.get().lower().strip(),
             "proxy_host_address": self.proxy_ip_input.get(),
             "proxy_port": self.proxy_port_input.get(),
             "proxy_logging": self.proxy_logs_checkbox.get(),

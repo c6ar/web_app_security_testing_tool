@@ -408,7 +408,7 @@ class IntruderTab(ctk.CTkFrame):
         info_button = InfoButton(
             self.top_bar,
             self,
-            "http://localhost:8080/en/intruder.html"
+            "http://localhost:8080/intruder.html"
         )
         info_button.pack(side=tk.RIGHT, padx=5, pady=0)
 

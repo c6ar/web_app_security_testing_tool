@@ -124,7 +124,7 @@ class HTTPTrafficTab(ctk.CTkFrame):
         info_button = InfoButton(
             top_bar,
             self,
-            "http://localhost:8080/en/proxy.html#http_traffic"
+            "http://localhost:8080/proxy.html#http_traffic"
         )
         info_button.pack(side=tk.RIGHT, padx=5, pady=0)
 
@@ -585,7 +585,7 @@ class InterceptTab(ctk.CTkFrame):
         info_button = InfoButton(
             interceptor_widget,
             self,
-            "http://localhost:8080/en/proxy.html#web_request_interceptor"
+            "http://localhost:8080/proxy.html#web_request_interceptor"
         )
         info_button.place(relx=1, rely=0, anchor=tk.NE, x=-5, y=15)
 

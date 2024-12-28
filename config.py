@@ -89,7 +89,6 @@ def save_config(config):
 DEFAULT_CONFIG = {
     # GENERAL SETTINGS
     "theme": "system",
-    "lang": "english",
     # PROXY SETTINGS
     "proxy_host_address": "127.0.0.1",
     "proxy_port": 8082,
