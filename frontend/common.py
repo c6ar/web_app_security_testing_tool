@@ -468,7 +468,7 @@ class TextBox(ctk.CTkTextbox):
             command=self.copy_text
         )
         self.popup_menu.add_command(
-            label="Copy",
+            label="Cut",
             command=lambda: self.copy_text(cut=True)
         )
         self.popup_menu.add_command(

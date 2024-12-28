@@ -386,11 +386,11 @@ class Settings(ctk.CTkToplevel):
 
     def reload_proxy(self, retain_scope=False):
         if retain_scope or self.proxy_re_run_with_scope_checkbox.get():
-            current_scope = self.root.proxy_tab.current_scope
-            self.root.proxy_tab.run_mitmdump(current_scope)
+            current_scope = self.root.proxy.current_scope
+            self.root.proxy.run_mitmdump(current_scope)
             dprint("[DEBUG] Reloading with scope.")
         else:
-            self.root.proxy_tab.run_mitmdump()
+            self.root.proxy.run_mitmdump()
             dprint("[DEBUG] Reloading without scope.")
 
     def select_log_file_dir(self):

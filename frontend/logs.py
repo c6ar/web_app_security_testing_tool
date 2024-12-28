@@ -1,10 +1,10 @@
 from common import *
 
+
 class LogWidget(ctk.CTkFrame):
-    def __init__(self, master, root, title: str, logs_dir: str, file_naming: str):
+    def __init__(self, master, title: str, logs_dir: str, file_naming: str):
         super().__init__(master)
         self.configure(fg_color=color_bg, bg_color="transparent", corner_radius=10)
-        self.gui = root
 
         self.logs_directory = Path(RUNNING_CONFIG['logs_location']) / logs_dir
         self.file_naming = file_naming
@@ -57,16 +57,23 @@ class Logs(ctk.CTkFrame):
     def __init__(self, master, root):
         super().__init__(master)
         self.configure(fg_color=color_bg_br, bg_color="transparent", corner_radius=10)
-        self.gui = root
+        self.wastt = root
 
         self.rowconfigure(0, weight=1)
         self.rowconfigure(1, weight=1)
         self.columnconfigure(0, weight=1)
         self.columnconfigure(1, weight=1)
 
+        self.traffic_widget = None
+        self.intercept_widget = None
+        self.intruder_widget = None
+        self.repeater_widget = None
+
+        self.draw_logs()
+
+    def draw_logs(self):
         self.traffic_widget = LogWidget(
             self,
-            root,
             title="HTTP Traffic",
             logs_dir="http_traffic",
             file_naming="traffic-*.log"
@@ -75,7 +82,6 @@ class Logs(ctk.CTkFrame):
 
         self.intercept_widget = LogWidget(
             self,
-            root,
             title="Request Interceptor",
             logs_dir="web_interceptor",
             file_naming="interceptor-*.log"
@@ -84,7 +90,6 @@ class Logs(ctk.CTkFrame):
 
         self.intruder_widget = LogWidget(
             self,
-            root,
             title="Intruder",
             logs_dir="intruder",
             file_naming="intruder-*.log"
@@ -93,7 +98,6 @@ class Logs(ctk.CTkFrame):
 
         self.repeater_widget = LogWidget(
             self,
-            root,
             title="Repeater",
             logs_dir="repeater",
             file_naming="repeater-*.log"

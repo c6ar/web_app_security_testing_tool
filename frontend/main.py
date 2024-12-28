@@ -20,7 +20,7 @@ class WASTT(ctk.CTk):
     def __init__(self):
         super().__init__()
         self.title("WASTT | Web App Security Testing Tool")
-        # TODO FRONTEND P2: Adding screen responsiveness to this app.
+        # TODO P1: Adding screen responsiveness to this app.
         screen_width = self.winfo_screenwidth()
         screen_height = self.winfo_screenheight()
         self.initial_width = int(screen_width * 0.9)
@@ -49,17 +49,17 @@ class WASTT(ctk.CTk):
         tab_wrapper = Box(self)
         tab_wrapper.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
 
-        # TODO P1: Adding HTML Documentation/About like in Settings
-        self.proxy_tab = Proxy(tab_wrapper, self)
-        self.intruder_tab = Intruder(tab_wrapper, self)
-        self.repeater_tab = Repeater(tab_wrapper, self)
-        self.logs_tab = Logs(tab_wrapper, self)
+        # TODO P1: Finishing HTML doc files.
+        self.proxy = Proxy(tab_wrapper, self)
+        self.intruder = Intruder(tab_wrapper, self)
+        self.repeater = Repeater(tab_wrapper, self)
+        self.logs = Logs(tab_wrapper, self)
 
         self.tabs = {
-            "Proxy": self.proxy_tab,
-            "Intruder": self.intruder_tab,
-            "Repeater": self.repeater_tab,
-            "Logs": self.logs_tab
+            "Proxy": self.proxy,
+            "Intruder": self.intruder,
+            "Repeater": self.repeater,
+            "Logs": self.logs
         }
         self.tab_nav_buttons = {}
         for name in self.tabs.keys():
@@ -85,6 +85,8 @@ class WASTT(ctk.CTk):
         """
         for name, tab in self.tabs.items():
             if name == tab_name:
+                if name == "Logs":
+                    self.logs.draw_logs()
                 tab.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
                 self.tab_nav_buttons[name].select(True)
             else:
@@ -283,10 +285,10 @@ class WASTT(ctk.CTk):
         # ================================================
         # STOPPING MITMDUMP PROXY PROCESS
         # ================================================
-        if self.proxy_tab.process:
+        if self.proxy.process:
             try:
-                self.proxy_tab.process.terminate()
-                self.proxy_tab.process.wait()
+                self.proxy.process.terminate()
+                self.proxy.process.wait()
                 print("[INFO] Proxy process has been terminated succesfully.")
             except Exception as e:
                 print(f"[ERROR] Proxy process termination failed: {e}")

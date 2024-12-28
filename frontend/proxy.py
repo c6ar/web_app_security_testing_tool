@@ -412,9 +412,9 @@ class HTTPTrafficTab(ctk.CTkFrame):
             selected_item = self.request_list.selection()[0]
             hostname_url = self.request_list.item(selected_item)['values'][-1]
         if dest == "intruder":
-            self.wastt.intruder_tab.add_request_to_intruder_tab(request_content, host=hostname_url)
+            self.wastt.intruder.add_request_to_intruder_tab(content=request_content, host=hostname_url)
         elif dest == "repeater":
-            self.wastt.repeater_tab.add_request_to_repeater_tab(request_content, host=hostname_url)
+            self.wastt.repeater.add_request_to_repeater_tab(content=request_content, host=hostname_url)
 
     def remove_selected_request_from_list(self) -> None:
         """
@@ -1017,9 +1017,9 @@ class InterceptTab(ctk.CTkFrame):
         try:
             hostname_url = self.intercepted_request.host
             if dest == "intruder":
-                self.wastt.intruder_tab.add_request_to_intruder_tab(request_content, host=hostname_url)
+                self.wastt.intruder.add_request_to_intruder_tab(content=request_content, host=hostname_url)
             elif dest == "repeater":
-                self.wastt.repeater_tab.add_request_to_repeater_tab(request_content, host=hostname_url)
+                self.wastt.repeater.add_request_to_repeater_tab(content=request_content, host=hostname_url)
         except Exception as e:
             print(f"[ERROR] Error while sending request from Intercept: {e}")
 
@@ -1061,9 +1061,9 @@ class Proxy(ctk.CTkFrame):
 
     def __init__(self, master, root):
         super().__init__(master)
-        self.process = None
         self.configure(fg_color=color_bg_br, bg_color="transparent", corner_radius=10)
         self.wastt = root
+        self.process = None
 
         # ================================================
         # Web Request Interceptor scope
