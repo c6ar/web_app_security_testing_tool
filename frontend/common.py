@@ -22,6 +22,8 @@ from idlelib.rpc import response_queue
 # noinspection PyUnresolvedReferences
 import json
 # noinspection PyUnresolvedReferences
+from mitmproxy.http import Response
+# noinspection PyUnresolvedReferences
 from operator import truediv
 # noinspection PyUnresolvedReferences
 import os
@@ -457,6 +459,30 @@ class TextBox(ctk.CTkTextbox):
 
         self.popup_menu = tk.Menu(self, tearoff=0)
         self.bind("<Button-3>", self.popup)
+        self.popup_menu.add_command(
+            label="Select all",
+            command=self.select_all_text
+        )
+        self.popup_menu.add_command(
+            label="Copy",
+            command=self.copy_text
+        )
+        self.popup_menu.add_command(
+            label="Copy",
+            command=lambda: self.copy_text(cut=True)
+        )
+        self.popup_menu.add_command(
+            label="Paste",
+            command=self.paste_text
+        )
+        self.popup_menu.add_command(
+            label="Clear selected",
+            command=self.clear_selected_text
+        )
+        self.popup_menu.add_command(
+            label="Clear all",
+            command=self.clear_all_text
+        )
 
         self.insert_text(text)
 
@@ -476,7 +502,7 @@ class TextBox(ctk.CTkTextbox):
         Args:
             text (str): Text to be inserted into TextBox.
         """
-        self.delete("0.0", "end")
+        self.delete("0.0", tk.END)
         self.insert("1.0", text)
 
     def get_text(self):
@@ -487,6 +513,47 @@ class TextBox(ctk.CTkTextbox):
             str: content from the TextBox stripped from leading and trailing whitespace.
         """
         return self.get("1.0", "end").strip()  # Use `self.get` directly.
+
+    def select_all_text(self):
+        self.tag_add(tk.SEL, "1.0", tk.END)
+        self.mark_set(tk.INSERT, "1.0")
+        self.see(tk.INSERT)
+
+    def copy_text(self, cut=False):
+        try:
+            start_index, end_index = self.tag_ranges('sel')
+            selected_text = self.get(start_index, end_index)
+            if cut:
+                self.delete(start_index, end_index)
+        except ValueError:
+            selected_text = self.get("1.0", tk.END + "-1c")
+            if cut:
+                self.delete("1.0", tk.END)
+
+        pyperclip.copy(selected_text)
+
+    def paste_text(self):
+        clipboard_text = pyperclip.paste()
+        try:
+            start_index, end_index = self.tag_ranges(tk.SEL)
+            self.delete(start_index, end_index)
+            self.insert(start_index, clipboard_text)
+        except ValueError:
+            try:
+                cursor_index = self.index(tk.INSERT)
+                self.insert(cursor_index, clipboard_text)
+            except (ValueError, tk.TclError):
+                self.insert(tk.END, clipboard_text)
+
+    def clear_selected_text(self):
+        try:
+            start_index, end_index = self.tag_ranges(tk.SEL)
+            self.delete(start_index, end_index)
+        except (ValueError, tk.TclError):
+            pass
+
+    def clear_all_text(self):
+        self.delete("0.0", tk.END)
 
 
 class ItemList(ttk.Treeview):
@@ -535,7 +602,6 @@ class ItemList(ttk.Treeview):
         """
         for item in self.selection():
             self.delete(item)
-            print(f"deleted {item}")
 
         if len(self.get_children()) > 0 and len(self.selection()) == 0:
             self.selection_add(self.get_children()[-1])
@@ -599,23 +665,19 @@ class Box(ctk.CTkFrame):
                        bg_color="transparent")
 
 
-class DarkBox(ctk.CTkFrame):
+class DarkBox(Box):
     """
     Custom CTkFrame class with darker background.
     """
     def __init__(self, parent, *args, **kwargs):
         super().__init__(parent, *args, **kwargs)
-        self.configure(corner_radius=10,
-                       fg_color=color_bg,
-                       bg_color="transparent")
+        self.configure(fg_color=color_bg)
 
 
-class BrightBox(ctk.CTkFrame):
+class BrightBox(Box):
     """
     Custom CTkFrame class with brighter background.
     """
     def __init__(self, parent, *args, **kwargs):
         super().__init__(parent, *args, **kwargs)
-        self.configure(corner_radius=10,
-                       fg_color=color_bg_br,
-                       bg_color="transparent")
+        self.configure(fg_color=color_bg_br)

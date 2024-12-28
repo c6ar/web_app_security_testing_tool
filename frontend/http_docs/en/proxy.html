@@ -4,11 +4,46 @@
     <link rel="stylesheet" href="/style.css">
     <link rel="icon" href="/wastt.ico" type="image/x-icon">
     <meta charset="UTF-8">
-    <title>WASTT | Proxy module help</title>
+    <title>WASTT | Proxy Module Help</title>
 </head>
 <body>
-<h1>Proxy module</h1>
+<h1>Proxy Module</h1>
 <h2>HTTP Traffic</h2>
+<p>
+    Each request made through the running mitmdump proxy from both the built-in web browser and from any browser that uses
+    a proxy connection to the running mitmdump proxy will be added to the HTTP Traffic list on this page.
+</p>
+<p>
+    When selecting any request from the list, a bottom pane appears with the contents of the selected request and its
+    response.
+    <br><br>
+    The selected request can be modified in the textbox and sent as is to the intruder and repeater module.
+    <br><br>
+    Multiple requests can be selected, and their respective host domains and subdomains can be added and removed from
+    the scope, either by using a button above the list or from a right-click context menu.
+</p>
+<p>
+    The list can be sorted by the values of each column alphabetically.
+    <br><br>
+    If there are host domains and/or subdomains added to the scope, the HTTP Traffic list can also be filtered to include
+    only items from the scope.
+</p>
 <h2>Web Request Interceptor</h2>
+<p>
+    The Web Request Interceptor can be turned on or off at any time. When it is on, it intercepts web requests made through
+    the running proxy on the specified address and port—by default, <i>localhost:8082</i>.
+    The Web Request Interceptor intercepts requests to domains or their respective subdomains if these are included in
+    the scope. Flows with requests to other domains are resumed during intercepting. If the scope is empty, all requests are
+    intercepted.
+</p>
+<p>
+    Each intercepted request can be inspected and edited. It can be forwarded to resume the intercepted flow or dropped,
+    which results in finalizing the current web flow made from a specific tab in the browser.
+</p>
+<p>
+    If the Web Request Interceptor is turned off while having any request intercepted, a dialog will appear asking
+    to decide on further action—whether to forward the intercepted request as it is in the edited textbox or to forward the
+    original request.
+</p>
 </body>
 </html>
