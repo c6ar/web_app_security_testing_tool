@@ -457,6 +457,9 @@ class HTTPTrafficTab(ctk.CTkFrame):
         for button in self.top_bar_buttons:
             if str(button.cget("state") != state):
                 button.configure(state=state)
+            if button == self.filter_list_button and len(self.proxy_gui.current_scope) == 0:
+                button.configure(state=tk.DISABLED)
+
         dprint(f"[DEBUG] FRONTEND/PROXY: Toggling buttons to {state} state.")
 
 
@@ -1120,6 +1123,11 @@ class Proxy(ctk.CTkFrame):
                 elif mode == "clear":
                     self.current_scope.clear()
                     self.intercept_tab.scope_url_list.delete_all()
+
+            if len(self.current_scope) == 0:
+                self.http_traffic_tab.filter_list_button.toggle_state(tk.DISABLED)
+            elif not self.http_traffic_tab.request_list_empty:
+                self.http_traffic_tab.filter_list_button.toggle_state(tk.NORMAL)
 
         except Exception as e:
             print(f"ERROR FRONTEND PROXY: Error while updating ({mode}) WebInterceptor scope: {e}")
