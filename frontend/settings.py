@@ -10,21 +10,18 @@ class Settings(ctk.CTkToplevel):
         self.configure(fg_color=color_bg_br, bg_color=color_bg_br)
         self.protocol("WM_DELETE_WINDOW", self.on_settings_close)
         self.transient(master)
+        self.after(250, self.iconbitmap, f"{ASSET_DIR}\\wastt.ico", "")
 
         settings_width = int(master.winfo_width() * 0.5)
         settings_height = int(master.winfo_height() * 0.9)
         center_window(master, self, settings_width, settings_height)
 
-        self.withdraw()
         self.settings_changed = False
         self.settings_status_label = None
 
         wrapper = ctk.CTkScrollableFrame(self, fg_color="transparent", bg_color="transparent")
         wrapper.pack(fill=tk.BOTH, expand=True, padx=0, pady=0)
         label_width = int(settings_width / 5)
-        big_info_icon = ctk.CTkImage(
-            light_image=Image.open(f"{ASSET_DIR}\\icon_info_light.png"),
-            dark_image=Image.open(f"{ASSET_DIR}\\icon_info.png"), size=(30, 30))
 
         # ================================================
         # General settings isle
@@ -40,15 +37,10 @@ class Settings(ctk.CTkToplevel):
             anchor=tk.W
         )
         general_isle_label.pack(side=tk.TOP, fill=tk.X, padx=15, pady=5)
-        general_info_button = ActionButton(
+        general_info_button = InfoButton(
             general_isle,
-            text="",
-            image=big_info_icon,
-            anchor=tk.W,
-            width=20,
-            fg_color=color_bg,
-            hover_color=color_bg_br,
-            command=lambda: show_response_view(self, url="http://localhost:8080/en/settings.html#general-settings")
+            self,
+            "http://localhost:8080/en/settings.html#general-settings"
         )
         general_info_button.place(relx=1, rely=0, anchor=tk.NE, x=-5, y=15)
 
@@ -87,15 +79,10 @@ class Settings(ctk.CTkToplevel):
 
         proxy_header = HeaderTitle(proxy_isle, "Proxy settings")
         proxy_header.pack(fill=tk.X, padx=10, pady=(10, 5))
-        proxy_info_button = ActionButton(
+        proxy_info_button = InfoButton(
             proxy_isle,
-            text="",
-            image=big_info_icon,
-            anchor=tk.W,
-            width=20,
-            fg_color=color_bg,
-            hover_color=color_bg_br,
-            command=lambda: show_response_view(self, url="http://localhost:8080/en/settings.html#proxy-settings")
+            self,
+            "http://localhost:8080/en/settings.html#proxy-settings"
         )
         proxy_info_button.place(relx=1, rely=0, anchor=tk.NE, x=-5, y=15)
 
@@ -146,7 +133,7 @@ class Settings(ctk.CTkToplevel):
         self.proxy_logs_checkbox = ctk.CTkCheckBox(
             proxy_logs_box,
             text="Log Proxy output to a file.",
-            command=self.change_proxy_logs_location_click
+            command=self.on_settings_change
         )
         self.proxy_logs_checkbox.pack(side=tk.LEFT, padx=5, pady=5)
         if RUNNING_CONFIG['proxy_logging']:
@@ -202,15 +189,10 @@ class Settings(ctk.CTkToplevel):
         browser_isle.pack(fill=tk.X, padx=10, pady=5)
         browser_settings = HeaderTitle(browser_isle, "Browser settings")
         browser_settings.pack(fill=tk.X, padx=10, pady=(10, 5))
-        browser_info_button = ActionButton(
+        browser_info_button = InfoButton(
             browser_isle,
-            text="",
-            image=big_info_icon,
-            anchor=tk.W,
-            width=20,
-            fg_color=color_bg,
-            hover_color=color_bg_br,
-            command=lambda: show_response_view(self, url="http://localhost:8080/en/settings.html#browser-settings")
+            self,
+            "http://localhost:8080/en/settings.html#browser-settings"
         )
         browser_info_button.place(relx=1, rely=0, anchor=tk.NE, x=-5, y=15)
 
@@ -260,15 +242,10 @@ class Settings(ctk.CTkToplevel):
         logs_isle.pack(fill=tk.X, padx=10, pady=5)
         logs_settings = HeaderTitle(logs_isle, "Logs settings")
         logs_settings.pack(fill=tk.X, padx=10, pady=5)
-        logs_info_button = ActionButton(
+        logs_info_button = InfoButton(
             logs_isle,
-            text="",
-            image=big_info_icon,
-            anchor=tk.W,
-            width=20,
-            fg_color=color_bg,
-            hover_color=color_bg_br,
-            command=lambda: show_response_view(self, url="http://localhost:8080/en/settings.html#logs-settings")
+            self,
+            "http://localhost:8080/en/settings.html#logs-settings"
         )
         logs_info_button.place(relx=1, rely=0, anchor=tk.NE, x=-5, y=15)
 
@@ -333,15 +310,10 @@ class Settings(ctk.CTkToplevel):
             anchor=tk.W
         )
         debug_isle_label.pack(side=tk.TOP, fill=tk.X, padx=15, pady=5)
-        debug_info_button = ActionButton(
+        debug_info_button = InfoButton(
             debug_isle,
-            text="",
-            image=big_info_icon,
-            anchor=tk.W,
-            width=20,
-            fg_color=color_bg,
-            hover_color=color_bg_br,
-            command=lambda: show_response_view(self, url="http://localhost:8080/en/settings.html#debug-settings")
+            self,
+            "http://localhost:8080/en/settings.html#debug-settings"
         )
         debug_info_button.place(relx=1, rely=0, anchor=tk.NE, x=-5, y=15)
 
@@ -434,15 +406,6 @@ class Settings(ctk.CTkToplevel):
         else:
             self.root.proxy_tab.run_mitmdump()
             dprint("[DEBUG] Reloading without scope.")
-
-    def change_proxy_logs_location_click(self):
-        self.on_settings_change()
-        if self.proxy_logs_checkbox.get():
-            self.proxy_logs_location_input.configure(state=tk.NORMAL, text_color=color_text)
-            self.proxy_logs_location_button.configure(state=tk.NORMAL, fg_color=color_acc)
-        else:
-            self.proxy_logs_location_input.configure(state=tk.DISABLED, text_color="gray")
-            self.proxy_logs_location_button.configure(state=tk.DISABLED, fg_color="gray")
 
     def select_log_file_dir(self):
         self.on_settings_change()

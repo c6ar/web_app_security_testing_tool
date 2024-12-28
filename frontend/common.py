@@ -172,6 +172,11 @@ icon_folder = ctk.CTkImage(
 icon_reload = ctk.CTkImage(
     light_image=Image.open(f"{ASSET_DIR}\\icon_reload.png"),
     dark_image=Image.open(f"{ASSET_DIR}\\icon_reload.png"), size=(20, 20))
+
+big_icon_info = ctk.CTkImage(
+    light_image=Image.open(f"{ASSET_DIR}\\icon_info_light.png"),
+    dark_image=Image.open(f"{ASSET_DIR}\\icon_info.png"), size=(30, 30))
+
 intercept_off_image = ctk.CTkImage(light_image=Image.open(f"{ASSET_DIR}\\intercept_off_light.png"),
                                    dark_image=Image.open(f"{ASSET_DIR}\\intercept_off.png"),
                                    size=(87, 129))
@@ -214,6 +219,7 @@ def show_response_view(gui, hostname=None, html_content=None, url=None):
     height = int(gui.winfo_height() * 0.9)
     response_view.geometry(f"{width}x{height}")
     response_view.focus_set()
+    response_view.iconbitmap(f"{ASSET_DIR}\\wastt.ico")
     center_window(gui, response_view, width, height)
     response_view.title("WASTT")
 
@@ -248,6 +254,24 @@ class ActionButton(ctk.CTkButton):
 
     def toggle_state(self, state="normal"):
         self.configure(state=state)
+
+
+class InfoButton(ActionButton):
+    """
+    A preset info button based on ActionButton.
+    """
+    def __init__(self, parent, gui, link, fg_color=color_bg, hover_color=color_bg, *args, **kwargs):
+        super().__init__(
+            parent,
+            text="",
+            image=big_icon_info,
+            width=20,
+            fg_color=fg_color,
+            hover_color=hover_color,
+            command=lambda: show_response_view(gui, url=link),
+            *args,
+            **kwargs,
+        )
 
 
 class NavButton(ctk.CTkFrame):
@@ -304,7 +328,7 @@ class NavButton(ctk.CTkFrame):
         self.main_button.pack(side="left", padx=3, pady=(1, 5))
         self.selected = False
 
-    def set_selected(self, val):
+    def select(self, val=True):
         self.selected = val
         if self.selected:
             self.configure(
@@ -361,6 +385,7 @@ class ConfirmDialog(ctk.CTkToplevel):
         self.resizable(False, False)
         self.transient(master)
         self.attributes("-topmost", True)
+        self.after(250, self.iconbitmap, f"{ASSET_DIR}\\wastt.ico", "")
         center_window(root, self, width, height)
 
         label = ctk.CTkLabel(self, text=prompt, wraplength=(width - 20))

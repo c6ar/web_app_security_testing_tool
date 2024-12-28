@@ -55,6 +55,13 @@ class RepeaterTab(ctk.CTkFrame):
         )
         self.iteration_dropdown.pack(side="left", padx=5, pady=10)
 
+        info_button = InfoButton(
+            self.top_bar,
+            self,
+            "http://localhost:8080/en/repeater.html"
+        )
+        info_button.pack(side=tk.RIGHT, padx=5, pady=0)
+
         self.gen_button = ActionButton(
             self.top_bar,
             text="Generate a request",
@@ -187,7 +194,7 @@ class RepeaterTab(ctk.CTkFrame):
         self.hosturl_entry.insert(0, url)
 
 
-class GUIRepeater(ctk.CTkFrame):
+class Repeater(ctk.CTkFrame):
     def __init__(self, master, root):
         super().__init__(master)
         self.configure(fg_color=color_bg_br, bg_color="transparent", corner_radius=10)
@@ -232,10 +239,10 @@ class GUIRepeater(ctk.CTkFrame):
         self.current_tab = tab_id
         for i, tab in enumerate(self.tabs):
             if i == tab_id:
-                self.tab_nav_buttons[i].set_selected(True)
+                self.tab_nav_buttons[i].select(True)
                 tab.pack(side="top", fill="both", expand=True, padx=10, pady=(0, 10))
             else:
-                self.tab_nav_buttons[i].set_selected(False)
+                self.tab_nav_buttons[i].select(False)
                 tab.pack_forget()
 
     def delete_tab(self, tab_id):

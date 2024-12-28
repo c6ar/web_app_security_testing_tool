@@ -106,6 +106,12 @@ class HTTPTrafficTab(ctk.CTkFrame):
             image=icon_reload,
             command=self.proxy_gui.run_mitmdump
         )
+        info_button = InfoButton(
+            self.top_bar,
+            self,
+            "http://localhost:8080/en/proxy.html#http_traffic"
+        )
+        info_button.pack(side=tk.RIGHT, padx=5, pady=0)
 
         self.request_list_filtered = False
 
@@ -124,7 +130,9 @@ class HTTPTrafficTab(ctk.CTkFrame):
 
         if RUNNING_CONFIG["debug_mode"]:
             self.add_random_entry.pack(side=tk.LEFT, padx=5, pady=15)
+
         self.browser_button.pack(side=tk.RIGHT, padx=(5, 10), pady=15)
+
         if RUNNING_CONFIG["debug_mode"]:
             self.proxy_button.pack(side=tk.RIGHT, padx=5, pady=15)
 
@@ -470,9 +478,15 @@ class InterceptTab(ctk.CTkFrame):
                                                corner_radius=10)
         self.interceptor_widget.grid(row=0, column=0, padx=(10, 5), pady=(0, 10), sticky="nsew")
 
-        self.interceptor_header = HeaderTitle(self.interceptor_widget, "Web Interceptor")
+        self.interceptor_header = HeaderTitle(self.interceptor_widget, "Web Request Interceptor")
         self.interceptor_header.pack(fill=tk.X, padx=10, pady=10)
-        # self.interceptor_wrapper.pack(side=tk.TOP, fill=tk.X, padx=5, pady=(0, 10))
+
+        info_button = InfoButton(
+            self.interceptor_widget,
+            self,
+            "http://localhost:8080/en/proxy.html#web_request_interceptor"
+        )
+        info_button.place(relx=1, rely=0, anchor=tk.NE, x=-5, y=15)
 
         self.interceptor_icon = ctk.CTkLabel(self.interceptor_widget, text="", image=icon_intercept)
         self.interceptor_icon.pack(expand=True, padx=10, pady=(5, 0))
@@ -874,7 +888,7 @@ class InterceptTab(ctk.CTkFrame):
             self.proxy_gui.update_scope(mode)
 
 
-class GUIProxy(ctk.CTkFrame):
+class Proxy(ctk.CTkFrame):
     """
         GUI for Proxy Tab of WASTT.
         Constist of three sub tabs: HTTP Traffic, Intercept and Scope
@@ -1003,11 +1017,11 @@ class GUIProxy(ctk.CTkFrame):
             if tab_name == selected_tab:
                 dprint(f"[DEBUG] Proxy/Tabs: Switching to {tab_name} tab")
                 tab.pack(side="top", fill="both", expand=True)
-                self.tab_nav_buttons[tab_name].set_selected(True)
+                self.tab_nav_buttons[tab_name].select(True)
             else:
                 dprint(f"[DEBUG] Proxy/Tabs: Hiding {tab_name} tab")
                 tab.pack_forget()
-                self.tab_nav_buttons[tab_name].set_selected(False)
+                self.tab_nav_buttons[tab_name].select(False)
 
     def submit_new_scope_hostname_dialog(self):
         """

@@ -11,11 +11,11 @@ class IntruderResult(ctk.CTkToplevel):
         self.root = gui.gui_root
         self.focus_set()
         self.transient(gui.gui_root)
-        self.root.after(100, self.check_queue)
         self.configure(fg_color=color_bg, bg_color=color_bg)
+        self.root.after(100, self.check_queue)
+        self.after(250, self.iconbitmap, f"{ASSET_DIR}\\wastt.ico", "")
         width = int(int(self.root.winfo_width()) * 0.9)
         height = int(int(self.root.winfo_height()) * 0.9)
-        self.geometry(f"{width}x{height}")
         center_window(self.root, self, width, height)
 
         self.hostname = hostname
@@ -196,9 +196,9 @@ class IntruderResult(ctk.CTkToplevel):
                 "Cancel",
                 lambda: confirm.destroy(),
                 "Keep attack in the background",
-                lambda: (self.withdraw(), self.root.focus_set(), confirm.destroy()),
+                lambda: (self.withdraw(), self.root.focus_set(), confirm.destroy(), self.root.deiconify()),
                 "Abort the attack",
-                lambda: (self.abort_attack(), self.withdraw(), confirm.destroy()),
+                lambda: (self.abort_attack(), self.withdraw(), confirm.destroy(), self.root.deiconify()),
                 width=550,
                 height=100
             )
@@ -209,10 +209,10 @@ class IntruderResult(ctk.CTkToplevel):
         for name, tab in self.tabs.items():
             if name == tab_name:
                 tab.pack(side="top", fill="both", expand=True)
-                self.tab_nav_buttons[name].set_selected(True)
+                self.tab_nav_buttons[name].select(True)
             else:
                 tab.pack_forget()
-                self.tab_nav_buttons[name].set_selected(False)
+                self.tab_nav_buttons[name].select(False)
 
     def show_request_content(self, _event):
         if len(self.attack_request_list.selection()) > 0:
@@ -404,6 +404,13 @@ class IntruderTab(ctk.CTkFrame):
                 corner_radius=32
             )
             self.delete_frame_button.pack(padx=10, pady=10, side=tk.RIGHT)
+
+        info_button = InfoButton(
+            self.top_bar,
+            self,
+            "http://localhost:8080/en/intruder.html"
+        )
+        info_button.pack(side=tk.RIGHT, padx=5, pady=0)
 
         self.gen_button = ActionButton(
             self.top_bar,
@@ -1009,7 +1016,7 @@ class IntruderTab(ctk.CTkFrame):
             self.current_payloads_textbox.delete("1.0", tk.END)
 
 
-class GUIIntruder(ctk.CTkFrame):
+class Intruder(ctk.CTkFrame):
     def __init__(self, master, root):
         super().__init__(master)
         self.configure(fg_color=color_bg_br, bg_color="transparent", corner_radius=10)
@@ -1069,10 +1076,10 @@ class GUIIntruder(ctk.CTkFrame):
         self.current_tab = tab_id
         for i, tab in enumerate(self.tabs):
             if i == tab_id:
-                self.tab_nav_buttons[i].set_selected(True)
+                self.tab_nav_buttons[i].select(True)
                 tab.pack(side="top", fill="both", expand=True, padx=10, pady=(0, 10))
             else:
-                self.tab_nav_buttons[i].set_selected(False)
+                self.tab_nav_buttons[i].select(False)
                 tab.pack_forget()
 
     def delete_tab(self, visual_id):
