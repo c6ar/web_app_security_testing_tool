@@ -6,7 +6,13 @@ class LogWidget(ctk.CTkFrame):
         super().__init__(master)
         self.configure(fg_color=color_bg, bg_color="transparent", corner_radius=10)
 
-        self.logs_directory = Path(RUNNING_CONFIG['logs_location']) / logs_dir
+        logs_location = RUNNING_CONFIG.get("logs_location", "")
+        if not logs_location:
+            app_dir = Path(__file__).resolve().parent.parent
+            logs_location = app_dir / "logs"
+        logs_path = Path(logs_location)
+        logs_path.mkdir(parents=True, exist_ok=True)
+        self.logs_directory = Path(logs_path) / logs_dir
         self.file_naming = file_naming
 
         self.recent_log = self.find_most_recent_log_file()

@@ -26,7 +26,11 @@ class RepeaterTab(ctk.CTkFrame):
         self.id = id_number
         self.is_empty = True
 
-        logs_path = Path(RUNNING_CONFIG["logs_location"]) / "repeater"
+        logs_location = RUNNING_CONFIG.get("logs_location", "")
+        if not logs_location:
+            app_dir = Path(__file__).resolve().parent.parent
+            logs_location = app_dir / "logs"
+        logs_path = Path(logs_location / "repeater")
         logs_path.mkdir(parents=True, exist_ok=True)
         self.log_file = logs_path / f"repeater-{today}.log"
 

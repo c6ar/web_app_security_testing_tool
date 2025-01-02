@@ -32,7 +32,12 @@ class IntruderResult(ctk.CTkToplevel):
         self.hostname = hostname
         self.timestamp = timestamp
 
-        logs_path = Path(RUNNING_CONFIG["logs_location"]) / "intruder"
+        logs_location = RUNNING_CONFIG.get("logs_location", "")
+        if not logs_location:
+            app_dir = Path(__file__).resolve().parent.parent
+            logs_location = app_dir / "logs"
+        logs_path = Path(logs_location / "intruder")
+
         logs_path.mkdir(parents=True, exist_ok=True)
         self.log_file = logs_path / f"intruder-{today}.log"
 

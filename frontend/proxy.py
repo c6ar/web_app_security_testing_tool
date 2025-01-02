@@ -11,7 +11,11 @@ def log_flow(request: Request2, response: Response = None) -> None:
         request: Request2 - request
         response: Response - response, optional
     """
-    logs_path = Path(RUNNING_CONFIG["logs_location"]) / "http_traffic"
+    logs_location = RUNNING_CONFIG.get("logs_location", "")
+    if not logs_location:
+        app_dir = Path(__file__).resolve().parent.parent
+        logs_location = app_dir / "logs"
+    logs_path = Path(logs_location / "http_traffic")
     logs_path.mkdir(parents=True, exist_ok=True)
     timestamp = datetime.now().strftime("%Y-%m-%d %H-%M-%S")
     log_file = logs_path / f"traffic_flow-{today}.log"
@@ -938,7 +942,11 @@ class InterceptTab(ctk.CTkFrame):
         WASTT/Proxy/Interceptor:
             Logs the intercepted HTTP request to a specific log file for tracking and analysis.
         """
-        logs_path = Path(RUNNING_CONFIG["logs_location"]) / "web_interceptor"
+        logs_location = RUNNING_CONFIG.get("logs_location", "")
+        if not logs_location:
+            app_dir = Path(__file__).resolve().parent.parent
+            logs_location = app_dir / "logs"
+        logs_path = Path(logs_location / "web_interceptor")
         logs_path.mkdir(parents=True, exist_ok=True)
         timestamp = datetime.now().strftime("%Y-%m-%d %H-%M-%S")
         log_file = logs_path / f"interceptor_requests-{today}.log"
@@ -1128,7 +1136,11 @@ class Proxy(ctk.CTkFrame):
                 print("[INFO] Starting the HTTP(S) proxy process.")
 
             if RUNNING_CONFIG["proxy_logging"]:
-                log_file = str(Path(RUNNING_CONFIG["logs_location"]) / "proxy" / f"mitmdump-{today}.log")
+                logs_location = RUNNING_CONFIG.get("logs_location", "")
+                if not logs_location:
+                    app_dir = Path(__file__).resolve().parent.parent
+                    logs_location = app_dir / "logs"
+                log_file = str(Path(logs_location / "proxy" / f"mitmdump-{today}.log"))
                 print(f"[INFO] Logging mitmdump process to the file: {log_file}.")
                 command = command + ["-w", log_file]
 

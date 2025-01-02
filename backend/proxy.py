@@ -20,28 +20,41 @@ def lprint(msg, h=False, i=False) -> None:
     from pathlib import Path
     from datetime import datetime
 
-    logs_path = Path(RUNNING_CONFIG["logs_location"])
-    logs_path.mkdir(parents=True, exist_ok=True)
+    logs_location = RUNNING_CONFIG.get("logs_location", "")
+    if not logs_location:
+        app_dir = Path(__file__).resolve().parent.parent
+        logs_location = app_dir / "logs"
+
+    logs_path = Path(logs_location)
+
+    proxy_dir = logs_path / "proxy"
+    interceptor_dir = logs_path / "web_interceptor"
+    traffic_dir = logs_path / "http_traffic"
+
+    proxy_dir.mkdir(parents=True, exist_ok=True)
+    interceptor_dir.mkdir(parents=True, exist_ok=True)
+    traffic_dir.mkdir(parents=True, exist_ok=True)
+
     date = datetime.now().strftime("%Y-%m-%d")
     timestamp = datetime.now().strftime("%Y-%m-%d %H-%M-%S")
     lines = msg.split('\n')
 
     if h:
-        log_file = logs_path / "http_traffic" / f"traffic-{date}.log"
+        log_file = traffic_dir / f"traffic-{date}.log"
         with log_file.open("a") as file:
             for line in lines:
                 if "======" not in line and "******" not in line:
                     file.write(f"[{timestamp}] {line}\n")
 
     if i:
-        log_file = logs_path / "web_interceptor" / f"interceptor-{date}.log"
+        log_file = interceptor_dir / f"interceptor-{date}.log"
         with log_file.open("a") as file:
             for line in lines:
                 if "======" not in line and "******" not in line:
                     file.write(f"[{timestamp}] {line}\n")
 
     if RUNNING_CONFIG["proxy_logging"]:
-        log_file = logs_path / "proxy" / f"proxy-{date}.log"
+        log_file = proxy_dir / f"proxy-{date}.log"
 
         with log_file.open("a") as file:
             for line in lines:
