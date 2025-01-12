@@ -1,4 +1,4 @@
-from common import *
+from frontend.common import *
 
 
 class Settings(ctk.CTkToplevel):

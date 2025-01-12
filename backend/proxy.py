@@ -4,8 +4,14 @@ import socket
 from mitmproxy.http import Request
 import asyncio
 import threading
-from config import RUNNING_CONFIG
 import traceback
+import sys
+from pathlib import Path
+
+root_directory = Path(__file__).resolve().parent.parent
+sys.path.append(str(root_directory))
+
+from config import RUNNING_CONFIG
 
 
 def lprint(msg, h=False, i=False) -> None:
@@ -24,6 +30,8 @@ def lprint(msg, h=False, i=False) -> None:
     if not logs_location:
         app_dir = Path(__file__).resolve().parent.parent
         logs_location = app_dir / "logs"
+    else:
+        logs_location = Path(logs_location)
 
     logs_path = Path(logs_location)
 

@@ -72,7 +72,7 @@ from config import RUNNING_CONFIG
 # Global variables
 # ================================================
 CURRENT_DIR = f"{Path.cwd()}"
-ASSET_DIR = f"{Path.cwd()}\\assets"
+ASSET_DIR = f"{Path(__file__).parent.parent}\\assets"
 ctk.set_appearance_mode(RUNNING_CONFIG["theme"])
 ctk.set_default_color_theme("dark-blue")
 if ctk.get_appearance_mode() == "Light":

@@ -1,5 +1,5 @@
 from backend.intruder import *
-from common import *
+from frontend.common import *
 
 
 class IntruderResult(ctk.CTkToplevel):
@@ -36,6 +36,8 @@ class IntruderResult(ctk.CTkToplevel):
         if not logs_location:
             app_dir = Path(__file__).resolve().parent.parent
             logs_location = app_dir / "logs"
+        else:
+            logs_location = Path(logs_location)
         logs_path = Path(logs_location / "intruder")
 
         logs_path.mkdir(parents=True, exist_ok=True)

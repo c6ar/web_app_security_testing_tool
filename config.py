@@ -4,7 +4,7 @@ from pathlib import Path
 # ================================================
 # App configuration functionality
 # ================================================
-CONFIG_PATH = Path.cwd().parent / "app.conf"
+CONFIG_PATH = Path(__file__).parent / "app.conf"
 
 
 def update_config(config):
@@ -105,7 +105,7 @@ DEFAULT_CONFIG = {
     "browser_disable_infobars": 1,
     "browser_disable_cert_errors": 1,
     # LOGS SETTINGS
-    "logs_location": f"{Path.cwd().parent}\\logs",
+    "logs_location": f"{Path.cwd()}\\logs",
     "log_http_traffic_flow": 1,
     "log_intercepted_requests": 1,
     # DEBUG SETTINGS
@@ -114,15 +114,14 @@ DEFAULT_CONFIG = {
 }
 RUNNING_CONFIG = load_config()
 
-if Path.cwd().name == "frontend":
-    if RUNNING_CONFIG["debug_show_running_config"]:
-        print("================================================\n"
-              "[DEBUG] Running config: ")
-        for config_item, config_value in RUNNING_CONFIG.items():
-            print(f"\t{config_item} = {config_value}")
-        print("================================================\n")
+if RUNNING_CONFIG["debug_show_running_config"]:
+    print("================================================\n"
+          "[DEBUG] Running config: ")
+    for config_item, config_value in RUNNING_CONFIG.items():
+        print(f"\t{config_item} = {config_value}")
+    print("================================================\n")
 
-    if RUNNING_CONFIG["debug_mode"]:
-        print("[DEBUG] Debug mode is ON. App will print debug messages to the console.")
-    else:
-        print("[INFO] Debug mode is OFF. App will print only error and important info messages to the console.")
+if RUNNING_CONFIG["debug_mode"]:
+    print("[DEBUG] Debug mode is ON. App will print debug messages to the console.")
+else:
+    print("[INFO] Debug mode is OFF. App will print only error and important info messages to the console.")

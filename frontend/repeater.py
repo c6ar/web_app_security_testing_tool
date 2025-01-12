@@ -1,4 +1,4 @@
-from common import *
+from frontend.common import *
 
 
 class RepeaterTab(ctk.CTkFrame):
@@ -30,6 +30,8 @@ class RepeaterTab(ctk.CTkFrame):
         if not logs_location:
             app_dir = Path(__file__).resolve().parent.parent
             logs_location = app_dir / "logs"
+        else:
+            logs_location = Path(logs_location)
         logs_path = Path(logs_location / "repeater")
         logs_path.mkdir(parents=True, exist_ok=True)
         self.log_file = logs_path / f"repeater-{today}.log"

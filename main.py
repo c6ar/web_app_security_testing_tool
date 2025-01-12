@@ -1,10 +1,10 @@
 # noinspection PyUnresolvedReferences
-from common import *
-from proxy import Proxy
-from intruder import Intruder
-from repeater import Repeater
-from logs import Logs
-from settings import Settings
+from frontend.common import *
+from frontend.proxy import Proxy
+from frontend.intruder import Intruder
+from frontend.repeater import Repeater
+from frontend.logs import Logs
+from frontend.settings import Settings
 
 
 class WASTT(ctk.CTk):
