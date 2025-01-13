@@ -3,8 +3,6 @@ import requests
 from bs4 import BeautifulSoup
 import re
 
-# TODO OPTIONAL: Can we make static methods for mitmproxy Request instead of having Request2 class?
-
 
 def extract_key_value_pairs(data):
     """

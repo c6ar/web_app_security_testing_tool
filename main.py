@@ -20,7 +20,6 @@ class WASTT(ctk.CTk):
     def __init__(self):
         super().__init__()
         self.title("WASTT | Web App Security Testing Tool")
-        # TODO P1: Adding screen responsiveness to this app.
         screen_width = self.winfo_screenwidth()
         screen_height = self.winfo_screenheight()
         self.initial_width = int(screen_width * 0.9)
@@ -250,7 +249,8 @@ class WASTT(ctk.CTk):
         """
         def _run_http_server():
             try:
-                http_files_dir = os.path.join(os.getcwd(), "http_docs")
+                app_dir = Path(__file__).resolve().parent
+                http_files_dir = app_dir / "http_docs"
 
                 if not os.path.exists(http_files_dir):
                     os.makedirs(http_files_dir)
