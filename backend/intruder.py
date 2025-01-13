@@ -1,6 +1,6 @@
 import threading
 import time
-from utils.request_methods import *
+from backend.request_methods import *
 import re
 
 

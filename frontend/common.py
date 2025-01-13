@@ -62,7 +62,7 @@ from tkinter import filedialog
 # noinspection PyUnresolvedReferences
 from typing import Dict, Union
 # noinspection PyUnresolvedReferences
-from utils.request_methods import *
+from backend.request_methods import *
 # noinspection PyUnresolvedReferences
 import tkinterweb
 
