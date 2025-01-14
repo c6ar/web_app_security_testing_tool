@@ -138,35 +138,9 @@ class Settings(ctk.CTkToplevel):
             self.proxy_cmd_checkbox.select()
         self.proxy_cmd_checkbox.pack(side=tk.LEFT, padx=5, pady=(5, 10))
 
-        # ================================================
-        # Ports settings sub-isle
-        # ================================================
-        ports_header = HeaderTitle(proxy_isle, "Backend - Frontend ports", size=18)
-        ports_header.pack(fill=tk.X, padx=10, pady=5)
-
-        configurations = {
-            'front_back_intercept_toggle_port': "Toggle Request Interceptor (Front >> Back)",
-            'back_front_request_to_traffic_port': "HTTP Traffic (Back >> Front)",
-            'back_front_request_to_intercept_port': "Interceptor Request (Back >> Front)",
-            'front_back_data_port': "Send Instructions (Front >> Back)",
-            'front_back_scope_update_port': "Scope Update (Front >> Back)",
-        }
         self.bf_port_inputs = {}
 
-        ports_wrapper = Box(proxy_isle)
-        ports_wrapper.pack(fill=tk.X, padx=0, pady=(0, 10))
 
-        for config_key, text in configurations.items():
-            box = Box(ports_wrapper)
-            box.pack(fill=tk.X, padx=10, pady=5)
-
-            label = Label(box, text=text, width=label_width+100, anchor=tk.E)
-            label.pack(side=tk.LEFT, padx=(10, 5), pady=5)
-
-            self.bf_port_inputs[config_key] = TextEntry(box, width=100)
-            self.bf_port_inputs[config_key].insert(0, RUNNING_CONFIG[config_key])
-            self.bf_port_inputs[config_key].bind("<KeyRelease>", self.on_settings_change)
-            self.bf_port_inputs[config_key].pack(side=tk.LEFT, padx=(5, 0), pady=5)
 
         # ================================================
         # Browser settings isle
