@@ -152,7 +152,7 @@ class WASTT(ctk.CTk):
         """
         from config import RUNNING_CONFIG
         dprint(f"[DEBUG] Creating {RUNNING_CONFIG['browser_type']} browser.")
-        drivers_path = Path.cwd().parent / "webdrivers"
+        drivers_path = Path.cwd() / "webdrivers"
 
         from selenium import webdriver
 
