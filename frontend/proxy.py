@@ -780,10 +780,7 @@ class InterceptTab(ctk.CTkFrame):
         self.request_scheme_entry = TextEntry(request_fields, width=200)
         self.request_scheme_entry.pack(side=tk.LEFT, padx=(0, 10), pady=0)
 
-        request_authority_label = Label(request_fields, text="Authority")
-        request_authority_label.pack(side=tk.LEFT, padx=(10, 0), pady=0)
-        self.request_authority_entry = TextEntry(request_fields, width=200)
-        self.request_authority_entry.pack(side=tk.LEFT, padx=(0, 10), pady=0)
+        self.request_authority = None
 
         self.request_textbox = TextBox(self.request_widget, "")
         self.request_textbox.pack(pady=(0, 20), padx=20, fill=tk.BOTH, expand=True)
@@ -911,7 +908,7 @@ class InterceptTab(ctk.CTkFrame):
         self.request_host_entry.insert("0", host)
         self.request_port_entry.insert("0", port)
         self.request_scheme_entry.insert("0", scheme)
-        self.request_authority_entry.insert("0", authority)
+        self.request_authority = authority
         self.request_textbox.insert_text(request_content)
         self.placeholder_widget.grid_forget()
         self.request_widget.grid(row=1, column=0, columnspan=2, padx=10, pady=(0, 10), sticky="nsew")
@@ -930,7 +927,7 @@ class InterceptTab(ctk.CTkFrame):
         self.request_host_entry.delete("0", tk.END)
         self.request_port_entry.delete("0", tk.END)
         self.request_scheme_entry.delete("0", tk.END)
-        self.request_authority_entry.delete("0", tk.END)
+        # self.request_authority_entry.delete("0", tk.END)
         self.request_textbox.insert_text("")
         self.request_widget.grid_forget()
         self.placeholder_widget.grid(row=1, column=0, columnspan=2, padx=10, pady=(0, 10), sticky="nsew")
@@ -981,7 +978,7 @@ class InterceptTab(ctk.CTkFrame):
                     ErrorDialog(self, self.wastt, e)
                     return
                 request2.scheme = self.request_scheme_entry.get()
-                request2.authority = self.request_authority_entry.get()
+                request2.authority = self.request_authority
 
                 data = ["forward", request2.to_request()]
 
