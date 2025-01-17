@@ -152,7 +152,6 @@ class WASTT(ctk.CTk):
         """
         from config import RUNNING_CONFIG
         dprint(f"[DEBUG] Creating {RUNNING_CONFIG['browser_type']} browser.")
-        drivers_path = Path.cwd().parent / "webdrivers"
 
         from selenium import webdriver
 
@@ -168,9 +167,7 @@ class WASTT(ctk.CTk):
                     options.add_argument("--ignore-certificate-errors")
                 options.add_argument(f"--proxy-server={proxy_host}:{proxy_port}")
 
-                driver_path = os.path.join(drivers_path, "msedgedriver.exe")
                 driver = webdriver.Edge(
-                    service=webdriver.EdgeService(executable_path=driver_path),
                     options=options
                 )
 
@@ -187,9 +184,7 @@ class WASTT(ctk.CTk):
                 options.set_preference("network.proxy.ssl", proxy_host)
                 options.set_preference("network.proxy.ssl_port", int(proxy_port))
 
-                driver_path = os.path.join(drivers_path, "geckodriver.exe")
                 driver = webdriver.Firefox(
-                    service=webdriver.FirefoxService(executable_path=driver_path),
                     options=options
                 )
 
@@ -202,9 +197,7 @@ class WASTT(ctk.CTk):
                     options.add_argument("--ignore-certificate-errors")
                 options.add_argument(f"--proxy-server={proxy_host}:{proxy_port}")
 
-                driver_path = os.path.join(drivers_path, "chromedriver.exe")
                 driver = webdriver.Chrome(
-                    service=webdriver.ChromeService(executable_path=driver_path),
                     options=options
                 )
 

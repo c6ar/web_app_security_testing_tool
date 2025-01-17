@@ -1,5 +1,5 @@
 from pathlib import Path
-
+from typing import Dict, Any
 
 # ================================================
 # App configuration functionality
@@ -7,7 +7,7 @@ from pathlib import Path
 CONFIG_PATH = Path(__file__).parent / "app.conf"
 
 
-def update_config(config):
+def update_config(config: Dict[str, Any] = None):
     global RUNNING_CONFIG
     RUNNING_CONFIG = config.copy()
 
