@@ -11,6 +11,11 @@ body {
     background-attachment: scroll;
     background-size: 350px;
 }
+a {
+    color: #137cf0;
+    text-decoration: none;
+    font-weight: Bold;
+}
 h1 {
     background: #1f538d;
     padding: 20px;
@@ -27,6 +32,7 @@ h2 {
 p {
     margin: 20px 35px 10px;
     padding: 0px;
+    font-size: 12pt;
 }
 ul {
     margin: 0px 45px 10px;

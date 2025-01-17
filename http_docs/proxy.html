@@ -7,7 +7,22 @@
     <title>WASTT | Proxy Module Help</title>
 </head>
 <body>
-<h1>Proxy Module</h1>
+<h1>WASTT | Proxy Module</h1>
+<p>
+    The main module of the application is the Proxy server, which enables the operation of two submodules — HTTP Traffic
+    and Web Request Interceptor. The Proxy server uses the mitmdump library. Mitmdump is launched as a subprocess of the
+    application and, by default, operates on port 8082 of the localhost address.
+</p>
+<br>
+<p>
+    In the application settings, it is possible to change the address and port on which the proxy server is to be
+    launched, as well as the option to open the process in a separate terminal window where all output
+    information is displayed instead of the console in which the application is launched.
+</p>
+<br>
+<p>
+    Additionally, proxy server can be restarted from app settings level without need of restarting WASTT app itself.
+</p>
 <h2>HTTP Traffic</h2>
 <p>
     Each request made through the running mitmdump proxy from both the built-in web browser and from any browser that uses
@@ -16,9 +31,9 @@
 <p>
     When selecting any request from the list, a bottom pane appears with the contents of the selected request and its
     response.
-    <br><br>
+    <br>
     The selected request can be modified in the textbox and sent as is to the intruder and repeater module.
-    <br><br>
+    <br>
     Multiple requests can be selected, and their respective host domains and subdomains can be added and removed from
     the scope, either by using a button above the list or from a right-click context menu.
 </p>
@@ -44,6 +59,18 @@
     If the Web Request Interceptor is turned off while having any request intercepted, a dialog will appear asking
     to decide on further action—whether to forward the intercepted request as it is in the edited textbox or to forward the
     original request.
+</p><h2>Other docs</h2>
+<p>
+    <a href="/index.html">About WASTT</a> |
+    <a href="/intruder.html">Intruder help</a> |
+    <a href="/repeater.html">Repeater help</a> |
+    <a href="/logs.html">Logs help</a> |
+    <a href="/settings.html">Settings help</a>
+</p>
+
+<h2>Authors</h2>
+<p>
+    Baran Cezary, Falisz Lukasz, Gargas Kacper<br/><br/>UKEN © 2024 - 2025
 </p>
 </body>
 </html>

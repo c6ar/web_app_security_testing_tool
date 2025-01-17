@@ -125,8 +125,8 @@ class WASTT(ctk.CTk):
                                      "a repeater for custom request testing, an intruder for automated attacks, "
                                      "comprehensive logging and reporting, and fuzzing tests to identify potential security vulnerabilities. "
                                      "It's designed to help ensure web applications are secure.\n\n"
-                                     "The tool was developed for a graduate project."
-                                     "\n\nAuthors:\n Baran Cezary, Falisz Lukasz, Gargas Kacper\n\nUKEN © 2024",
+                                     "The tool was developed as an engineering project."
+                                     "\n\nAuthors:\n Baran Cezary, Falisz Lukasz, Gargas Kacper\n\nUKEN © 2024 - 2025",
                                 font=ctk.CTkFont(family="Calibri", size=12, weight="normal"),
                                 wraplength=350)
             desc.pack(fill=tk.X, pady=(5, 10), padx=10)
