@@ -1,5 +1,5 @@
 from backend.intruder import *
-from common import *
+from frontend.common import *
 
 
 class IntruderResult(ctk.CTkToplevel):
@@ -36,6 +36,8 @@ class IntruderResult(ctk.CTkToplevel):
         if not logs_location:
             app_dir = Path(__file__).resolve().parent.parent
             logs_location = app_dir / "logs"
+        else:
+            logs_location = Path(logs_location)
         logs_path = Path(logs_location / "intruder")
 
         logs_path.mkdir(parents=True, exist_ok=True)
@@ -121,7 +123,7 @@ class IntruderResult(ctk.CTkToplevel):
                 self.attack_request_list.heading(col, text=col)
                 self.attack_request_list.column(col, width=0, stretch=tk.NO)
             else:
-                self.attack_request_list.heading(col, text=col)
+                self.attack_request_list.heading(col, text=col, command=lambda c=col: self.sort_by_column(c, False))
                 self.attack_request_list.column(col, width=100)
         self.attack_request_list.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
 
@@ -422,6 +424,23 @@ class IntruderResult(ctk.CTkToplevel):
             halting of processes.
         """
         self.control_flags["abort"].set()
+
+    def sort_by_column(self, col: str, reverse: bool) -> None:
+        """
+        WASTT/Intruder:
+            Sorts the list by column which header was clicked.
+
+        Parametetrs:
+            col: str - column header name
+            reverse: bool - reverse order
+        """
+        index_list = [(self.attack_request_list.set(k, col), k) for k in self.attack_request_list.get_children('')]
+        index_list.sort(reverse=reverse)
+
+        for index, (val, k) in enumerate(index_list):
+            self.attack_request_list.move(k, '', index)
+
+        self.attack_request_list.heading(col, command=lambda: self.sort_by_column(col, not reverse))
 
 
 class IntruderTab(ctk.CTkFrame):

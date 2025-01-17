@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <link rel="stylesheet" href="/style.css">
+    <link rel="icon" href="/wastt.ico" type="image/x-icon">
+    <meta charset="UTF-8">
+    <title>WASTT | Intruder module help</title>
+</head>
+<body>
+<h1>WASTT | Intruder module</h1>
+<p>
+    Intruder module provides a user interface for configuring and executing three different types of attack.
+    It is designed to facilitate the user’s interaction with payload-based attacks
+    by offering visual elements to configure requests, manage payloads, execute attacks, and monitor the results.
+</p>
+<h2>Functionality</h2>
+<p>
+    The user can add up to 10 tabs to conduct and manage attacks simultaneously. In each Intruder tab, the user can.
+</p>
+<ul>
+    <li>Select the type of attack from the dropdown menu in the top bar of the tab,</li>
+    <li>Set positions in the request where the words from the provided payload should be placed during the attack,</li>
+    <li>Provide the address of the service, application, or website (Target),</li>
+    <li>Add payloads, one payload per line, with the option to load text files and quickly clear the list,</li>
+    <li>Start the attack, retry the attack, and display the attack results.</li>
+</ul>
+<h2>Attack types</h2>
+<p>
+    Intruder allows for following attack types:
+</p>
+<ul>
+    <li>Sniper attack - it uses a single set of payloads and one or more payload positions.
+        It places each payload in the first position, then each payload in the second position, and so on.</li>
+    <li>Batterin ram attack - it uses a single set of payloads. It iterates through the user-provided
+        payloads and places the same payload in all defined positions in the request simultaneously.</li>
+    <li>Pitchfork attack - it uses multiple sets of payloads, each for defined position.
+        The attack iterates through all sets of payloads simultaneously, using first the first payload from each set,
+        then the second payload from each set, and so on. The attack ends after using the last payload from the shortest
+        of the provided payload lists.</li>
+</ul>
+<h2>Other docs</h2>
+<p>
+    <a href="/index.html">About WASTT</a> |
+    <a href="/proxy.html">Proxy help</a> |
+    <a href="/repeater.html">Repeater help</a> |
+    <a href="/logs.html">Logs help</a> |
+    <a href="/settings.html">Settings help</a>
+</p>
+
+<h2>Authors</h2>
+<p>
+    Baran Cezary, Falisz Lukasz, Gargas Kacper<br/><br/>UKEN © 2024 - 2025
+</p>
+</body>
+</html>

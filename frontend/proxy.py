@@ -1,4 +1,4 @@
-from common import *
+from frontend.common import *
 
 
 # noinspection PyShadowingNames
@@ -15,6 +15,8 @@ def log_flow(request: Request2, response: Response = None) -> None:
     if not logs_location:
         app_dir = Path(__file__).resolve().parent.parent
         logs_location = app_dir / "logs"
+    else:
+        logs_location = Path(logs_location)
     logs_path = Path(logs_location / "http_traffic")
     logs_path.mkdir(parents=True, exist_ok=True)
     timestamp = datetime.now().strftime("%Y-%m-%d %H-%M-%S")
@@ -1121,7 +1123,9 @@ class Proxy(ctk.CTkFrame):
             print(f"[ERROR] Terminating previously run mitmdump process failed: {e}")
 
         try:
-            backend_dir = Path.cwd().parent / "backend"
+            from config import RUNNING_CONFIG
+
+            backend_dir = Path(__file__).parent.parent / "backend"
             proxy_script = backend_dir / "proxy.py"
             proxy_port = str(RUNNING_CONFIG["proxy_port"])
             command = ["mitmdump", "-s", proxy_script, "--listen-port", proxy_port]
@@ -1137,6 +1141,8 @@ class Proxy(ctk.CTkFrame):
                 if not logs_location:
                     app_dir = Path(__file__).resolve().parent.parent
                     logs_location = app_dir / "logs"
+                else:
+                    logs_location(logs_location)
                 log_file = str(Path(logs_location / "proxy" / f"mitmdump-{today}.log"))
                 print(f"[INFO] Logging mitmdump process to the file: {log_file}.")
                 command = command + ["-w", log_file]

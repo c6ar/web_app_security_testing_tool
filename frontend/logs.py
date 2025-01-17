@@ -1,16 +1,18 @@
-from common import *
+from frontend.common import *
+
+logs_location = RUNNING_CONFIG.get("logs_location", "")
+if not logs_location:
+    app_dir = Path(__file__).resolve().parent.parent
+    logs_location = app_dir / "logs"
+else:
+    logs_location = Path(logs_location)
+logs_path = Path(logs_location)
 
 
 class LogWidget(ctk.CTkFrame):
     def __init__(self, master, title: str, logs_dir: str, file_naming: str):
         super().__init__(master)
         self.configure(fg_color=color_bg, bg_color="transparent", corner_radius=10)
-
-        logs_location = RUNNING_CONFIG.get("logs_location", "")
-        if not logs_location:
-            app_dir = Path(__file__).resolve().parent.parent
-            logs_location = app_dir / "logs"
-        logs_path = Path(logs_location)
         logs_path.mkdir(parents=True, exist_ok=True)
         self.logs_directory = Path(logs_path) / logs_dir
         self.file_naming = file_naming
@@ -24,7 +26,7 @@ class LogWidget(ctk.CTkFrame):
 
         self.traffic_logs_folder_button = ActionButton(
             self.header,
-            text="Open logs folder",
+            text="Open module logs folder",
             image=icon_folder,
             command=lambda: os.startfile(self.logs_directory)
         )
@@ -32,7 +34,7 @@ class LogWidget(ctk.CTkFrame):
         if len(self.recent_log) > 0:
             self.traffic_logs_button = ActionButton(
                 self.header,
-                text="Open recent logs files",
+                text="Open recent logs file",
                 image=icon_load_file,
                 command=lambda: os.startfile(self.recent_log)
             )
@@ -65,8 +67,9 @@ class Logs(ctk.CTkFrame):
         self.configure(fg_color=color_bg_br, bg_color="transparent", corner_radius=10)
         self.wastt = root
 
-        self.rowconfigure(0, weight=1)
+        self.rowconfigure(0, weight=0)
         self.rowconfigure(1, weight=1)
+        self.rowconfigure(2, weight=1)
         self.columnconfigure(0, weight=1)
         self.columnconfigure(1, weight=1)
 
@@ -74,6 +77,25 @@ class Logs(ctk.CTkFrame):
         self.intercept_widget = None
         self.intruder_widget = None
         self.repeater_widget = None
+
+        top_bar = DarkBox(self)
+        top_bar.grid(row=0, column=0, columnspan=2, padx=10, pady=(10, 5), sticky=tk.EW)
+        header_title = HeaderTitle(top_bar, text="Logs")
+        header_title.pack(side=tk.LEFT, padx=5, pady=5)
+        info_button = InfoButton(
+            top_bar,
+            self,
+            "http://localhost:8080/logs.html"
+        )
+        info_button.pack(side=tk.RIGHT, padx=5, pady=0)
+
+        logs_folder_button = ActionButton(
+            top_bar,
+            text="Open logs directory",
+            image=icon_folder,
+            command=lambda: os.startfile(logs_path)
+        )
+        logs_folder_button.pack(side=tk.RIGHT, padx=5, pady=0)
 
         self.draw_logs()
 
@@ -84,7 +106,7 @@ class Logs(ctk.CTkFrame):
             logs_dir="http_traffic",
             file_naming="traffic-*.log"
         )
-        self.traffic_widget.grid(row=0, column=0, padx=(10, 5), pady=(10, 5), sticky="nsew")
+        self.traffic_widget.grid(row=1, column=0, padx=(10, 5), pady=5, sticky="nsew")
 
         self.intercept_widget = LogWidget(
             self,
@@ -92,7 +114,7 @@ class Logs(ctk.CTkFrame):
             logs_dir="web_interceptor",
             file_naming="interceptor-*.log"
         )
-        self.intercept_widget.grid(row=0, column=1, padx=(5, 10), pady=(10, 5), sticky="nsew")
+        self.intercept_widget.grid(row=1, column=1, padx=(5, 10), pady=5, sticky="nsew")
 
         self.intruder_widget = LogWidget(
             self,
@@ -100,7 +122,7 @@ class Logs(ctk.CTkFrame):
             logs_dir="intruder",
             file_naming="intruder-*.log"
         )
-        self.intruder_widget.grid(row=1, column=0, padx=(10, 5), pady=(5, 10), sticky="nsew")
+        self.intruder_widget.grid(row=2, column=0, padx=(10, 5), pady=(5, 10), sticky="nsew")
 
         self.repeater_widget = LogWidget(
             self,
@@ -108,4 +130,4 @@ class Logs(ctk.CTkFrame):
             logs_dir="repeater",
             file_naming="repeater-*.log"
         )
-        self.repeater_widget.grid(row=1, column=1, padx=(5, 10), pady=(5, 10), sticky="nsew")
+        self.repeater_widget.grid(row=2, column=1, padx=(5, 10), pady=(5, 10), sticky="nsew")

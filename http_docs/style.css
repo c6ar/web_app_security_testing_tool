@@ -1,0 +1,40 @@
+body {
+    color: white;
+    font-family: 'Roboto', 'Calibri', sans-serif;
+    padding: 0;
+    margin: 0;
+    font-size: 14px;
+    background: #222;
+    background-image: url('wastt_bg.png');
+    background-position: top right;
+    background-repeat: no-repeat;
+    background-attachment: scroll;
+    background-size: 350px;
+}
+a {
+    color: #137cf0;
+    text-decoration: none;
+    font-weight: Bold;
+}
+h1 {
+    background: #1f538d;
+    padding: 20px;
+    margin: 0;
+    font-family: 'Roboto Light', 'Roboto', 'Calibri Light', 'Calibri', sans-serif;
+    font-weight: 200;
+    color: white;
+}
+h2 {
+    margin: 10px 15px;
+    padding: 10px;
+    border-bottom: 4px solid #1f538d;
+}
+p {
+    margin: 20px 35px 10px;
+    padding: 0px;
+    font-size: 12pt;
+}
+ul {
+    margin: 0px 45px 10px;
+    padding: 0px;
+}

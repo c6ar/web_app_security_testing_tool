@@ -1,4 +1,4 @@
-from common import *
+from frontend.common import *
 
 
 class Settings(ctk.CTkToplevel):
@@ -137,10 +137,6 @@ class Settings(ctk.CTkToplevel):
         if RUNNING_CONFIG['proxy_console']:
             self.proxy_cmd_checkbox.select()
         self.proxy_cmd_checkbox.pack(side=tk.LEFT, padx=5, pady=(5, 10))
-
-        self.bf_port_inputs = {}
-
-
 
         # ================================================
         # Browser settings isle
@@ -393,8 +389,6 @@ class Settings(ctk.CTkToplevel):
             "debug_mode": self.debug_mode_checkbox.get(),
             "debug_show_running_config": self.debug_running_conf_checkbox.get()
         }
-        for port_key, port_input in self.bf_port_inputs.items():
-            new_config[port_key] = port_input.get()
 
         dprint("================================================\n"
                "[DEBUG] New config:")
