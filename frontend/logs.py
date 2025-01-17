@@ -10,6 +10,16 @@ logs_path = Path(logs_location)
 
 
 class LogWidget(ctk.CTkFrame):
+    """
+    WASTT/Logs:
+        Represents a widget for displaying and managing log files.
+
+        This class provides a graphical user interface widget that manages log files
+        for a specific purpose. It initializes with a title, allows loading the most
+        recently updated log file from the specified directory, and provides buttons
+        to open the logs directory or the most recent log file. It is designed to
+        display the content of log files in a text box, marking it as read-only.
+    """
     def __init__(self, master, title: str, logs_dir: str, file_naming: str):
         super().__init__(master)
         self.configure(fg_color=color_bg, bg_color="transparent", corner_radius=10)
@@ -62,6 +72,16 @@ class LogWidget(ctk.CTkFrame):
 
 
 class Logs(ctk.CTkFrame):
+    """
+    WASTT/Logs:
+        A user interface component for managing and displaying log-related widgets.
+
+        This class creates a logged-themed user interface frame composed of various widgets
+        for viewing and accessing different categories of logs. The frame features sections
+        for HTTP Traffic logs, Request Interceptor logs, Intruder logs, and Repeater logs.
+        It includes buttons for opening a logs directory and accessing online log details,
+        providing a clean and user-friendly design with advanced layout handling.
+    """
     def __init__(self, master, root):
         super().__init__(master)
         self.configure(fg_color=color_bg_br, bg_color="transparent", corner_radius=10)
@@ -99,7 +119,13 @@ class Logs(ctk.CTkFrame):
 
         self.draw_logs()
 
-    def draw_logs(self):
+    def draw_logs(self) -> None:
+        """
+        Initializes and arranges the log widgets for displaying various logs
+        in the interface. Each widget is configured with a specific title,
+        logs directory, and file naming pattern, and is placed in the grid
+        layout with appropriate padding and positioning.
+        """
         self.traffic_widget = LogWidget(
             self,
             title="HTTP Traffic",

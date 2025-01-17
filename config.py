@@ -7,12 +7,20 @@ from typing import Dict, Any
 CONFIG_PATH = Path(__file__).parent / "app.conf"
 
 
-def update_config(config: Dict[str, Any] = None):
+def update_config(config: Dict[str, Any] = None) -> None:
+    """
+    Updates the global RUNNING_CONFIG with the provided config after saving the changed settings in GUI.
+    """
     global RUNNING_CONFIG
     RUNNING_CONFIG = config.copy()
 
 
-def load_config():
+def load_config() -> Dict[str, Any]:
+    """
+    Loads the app configuration from the config file on the application startup and after saving the changed settings.
+
+    :Returns: Dict[str, Any] - a dictionary containing the loaded configuration settings.
+    """
     config = DEFAULT_CONFIG.copy()
     try:
         with open(CONFIG_PATH, "r") as file:
@@ -56,7 +64,10 @@ def load_config():
     return config
 
 
-def save_config(config):
+def save_config(config: dict[str, Any]) -> None:
+    """
+    Saves the provided configuration settings to the config file.
+    """
     try:
         with open(CONFIG_PATH, "r") as file:
             lines = file.readlines()

@@ -2,9 +2,10 @@ import threading
 import time
 from backend.request_methods import *
 import re
+import queue
 
 
-def replace_between_symbols(input_string, new_substring):
+def replace_between_symbols(input_string: str, new_substring: str) -> str:
     """
     Replaces substing of input string between § symbols.
     """
@@ -12,7 +13,7 @@ def replace_between_symbols(input_string, new_substring):
     return re.sub(pattern, new_substring, input_string)
 
 
-def replace_word(request, word, position):
+def replace_word(request: str, word: str, position: str) -> str:
     """
     Replaces characters between position parameters
     (start_line.start_column:end_line.end_column) with word
@@ -38,7 +39,13 @@ def replace_word(request, word, position):
     return request.replace('§', '')
 
 
-def sniper_attack(q, request, hostname, wordlist, positions, control_flags):
+def sniper_attack(
+        q: queue.Queue,
+        request: str,
+        hostname: str,
+        wordlist: str,
+        positions: dict,
+        control_flags: dict) -> None:
     """
     Performs a Sniper attack with an interval of 1 seconds between requests.
     The results are sent sequentially to the GUI.
@@ -74,7 +81,12 @@ def sniper_attack(q, request, hostname, wordlist, positions, control_flags):
     attack_thread.start()
 
 
-def ram_attack(q, request, hostname, wordlist, control_flags):
+def ram_attack(
+        q: queue.Queue,
+        request: str,
+        hostname: str,
+        wordlist: str,
+        control_flags: dict) -> None:
     """
     Performs a Ram attack with an interval of 1 seconds between requests.
     The results are sent sequentially to the GUI.
@@ -108,7 +120,13 @@ def ram_attack(q, request, hostname, wordlist, control_flags):
     attack_thread.start()
 
 
-def pitchfork_attack(q, request, hostname, wordlists, positions, control_flags):
+def pitchfork_attack(
+        q: queue.Queue,
+        request: str,
+        hostname: str,
+        wordlists: dict,
+        positions: dict,
+        control_flags: dict) -> None:
     """
     Performs a Pitchfork attack with an interval of 1 seconds between requests.
     The results are sent sequentially to the GUI.

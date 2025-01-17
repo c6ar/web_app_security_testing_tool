@@ -4,21 +4,23 @@
 # noinspection PyUnresolvedReferences
 from backend.Request import *
 # noinspection PyUnresolvedReferences
+from backend.request_methods import *
 from collections.abc import Iterable
-# noinspection PyUnresolvedReferences
-import ctypes
-# noinspection PyUnresolvedReferences
 import customtkinter as ctk
 # noinspection PyUnresolvedReferences
 from customtkinter import ThemeManager, AppearanceModeTracker
 # noinspection PyUnresolvedReferences
+import tkinter as tk
+# noinspection PyUnresolvedReferences
+from tkinter import ttk
+# noinspection PyUnresolvedReferences
+from tkinter import filedialog
+import tkinterweb
+# noinspection PyUnresolvedReferences
+from typing import Dict, Union
 from datetime import datetime
 # noinspection PyUnresolvedReferences
-from flask import request
-# noinspection PyUnresolvedReferences
 from http.server import HTTPServer, SimpleHTTPRequestHandler
-# noinspection PyUnresolvedReferences
-from idlelib.rpc import response_queue
 # noinspection PyUnresolvedReferences
 import json
 # noinspection PyUnresolvedReferences
@@ -27,13 +29,11 @@ from mitmproxy.http import Response
 from operator import truediv
 # noinspection PyUnresolvedReferences
 import os
-# noinspection PyUnresolvedReferences
 from pathlib import Path
 # noinspection PyUnresolvedReferences
 import pickle
 # noinspection PyUnresolvedReferences
 from PIL import Image, ImageTk
-# noinspection PyUnresolvedReferences
 import pyperclip
 # noinspection PyUnresolvedReferences
 import queue
@@ -53,28 +53,13 @@ import threading
 from threading import Thread, Event
 # noinspection PyUnresolvedReferences
 import time
-# noinspection PyUnresolvedReferences
-import tkinter as tk
-# noinspection PyUnresolvedReferences
-from tkinter import ttk
-# noinspection PyUnresolvedReferences
-from tkinter import filedialog
-# noinspection PyUnresolvedReferences
-from typing import Dict, Union
-# noinspection PyUnresolvedReferences
-from backend.request_methods import *
-# noinspection PyUnresolvedReferences
-import tkinterweb
 
 from config import RUNNING_CONFIG
 
 # ================================================
 # Global variables
 # ================================================
-if getattr(sys, 'frozen', False):
-    ASSET_DIR = Path(sys._MEIPASS) / "assets"
-else:
-    ASSET_DIR = f"{Path(__file__).parent.parent}\\assets"
+ASSET_DIR = f"{Path(__file__).parent.parent}\\assets"
 ctk.set_appearance_mode(RUNNING_CONFIG["theme"])
 ctk.set_default_color_theme("dark-blue")
 if ctk.get_appearance_mode() == "Light":
@@ -247,7 +232,7 @@ def show_response_view(gui, hostname=None, html_content=None, url=None):
 # ================================================
 class ActionButton(ctk.CTkButton):
     """
-    A preset action button based on CTkButton.
+    A preset action button class based on CTkButton.
     """
     def __init__(self, parent, *args, **kwargs):
         super().__init__(parent, *args, **kwargs)
@@ -262,7 +247,7 @@ class ActionButton(ctk.CTkButton):
 
 class InfoButton(ActionButton):
     """
-    A preset info button based on ActionButton.
+    A preset info button class based on ActionButton.
     """
     def __init__(self, parent, gui, link, fg_color=color_bg, hover_color=color_bg, *args, **kwargs):
         super().__init__(
@@ -280,7 +265,7 @@ class InfoButton(ActionButton):
 
 class NavButton(ctk.CTkFrame):
     """
-    A preset tab navigation button based on CTkButton.
+    A preset tab navigation button class based on CTkButton.
     """
 
     def __init__(self, master, text, command, icon=None, compound="left", font=None, background=color_bg,
@@ -354,7 +339,7 @@ class NavButton(ctk.CTkFrame):
 
 class HeaderTitle(ctk.CTkLabel):
     """
-    A preset title for section / module headers.
+    A preset title for section and module headers class.
     """
 
     def __init__(self, master, text, size=24, padx=10, pady=10, height=20):
@@ -490,7 +475,7 @@ class TextBox(ctk.CTkTextbox):
 
     def popup(self, event):
         """
-            Show right-click menu.
+        Show right-click menu.
         """
         try:
             self.popup_menu.tk_popup(event.x_root, event.y_root, 0)

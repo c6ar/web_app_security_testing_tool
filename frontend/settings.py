@@ -2,6 +2,9 @@ from frontend.common import *
 
 
 class Settings(ctk.CTkToplevel):
+    """
+    A WASTT settings window class with all functionality implemented with its methods.
+    """
     def __init__(self, master):
         from config import RUNNING_CONFIG
         super().__init__(master)
@@ -327,12 +330,21 @@ class Settings(ctk.CTkToplevel):
         self.cancel_button.pack(side=tk.RIGHT, padx=10, pady=10)
         self.save_button.pack(side=tk.RIGHT, padx=10, pady=10)
 
-    def on_settings_change(self, _event=None):
+    def on_settings_change(self, _event=None) -> None:
+        """
+        Marks settings as changed, updates the settings status label text, and enables the save button.
+        """
         self.settings_status_label.configure(text="Settings has been changed. Save to apply changes.")
         self.save_button.configure(state=tk.NORMAL)
         self.settings_changed = True
 
-    def on_settings_close(self):
+    def on_settings_close(self) -> None:
+        """
+        Handles the closing procedure of an application settings window.
+        This method checks for unsaved changes and prompts the user with options to either save,
+        discard, or go back to the settings. If no changes are detected, the settings window
+        closes without additional prompts.
+        """
         if self.settings_changed:
             confirm = ConfirmDialog(
                 self.root,
@@ -350,11 +362,24 @@ class Settings(ctk.CTkToplevel):
         else:
             self.destroy_window()
 
-    def destroy_window(self):
+    def destroy_window(self) -> None:
+        """
+        Destroy a settings window.
+
+        This method is responsible for destroying the current settings window and
+        removes its reference in the parent `root` object to allow the system to
+        clear up resources.
+        """
         self.root.settings_window = None
         self.destroy()
 
-    def reload_proxy(self, retain_scope=False):
+    def reload_proxy(self, retain_scope: bool = False) -> None:
+        """
+        Reloads the proxy configuration and optionally retains the current scope.
+        Utilizes the given state of scope retention to determine the scope behavior
+        during the proxy reload process. Debug messages provide feedback on the
+        reload process and the applied scope status.
+        """
         if retain_scope or self.proxy_re_run_with_scope_checkbox.get():
             current_scope = self.root.proxy.current_scope
             self.root.proxy.run_mitmdump(current_scope)
@@ -363,7 +388,11 @@ class Settings(ctk.CTkToplevel):
             self.root.proxy.run_mitmdump()
             dprint("[DEBUG] Reloading without scope.")
 
-    def select_log_file_dir(self):
+    def select_log_file_dir(self) -> None:
+        """
+        Selects a directory for log files and updates the input field with the selected path.
+        Triggers settings change callback after directory selection.
+        """
         self.on_settings_change()
         file_path = filedialog.askdirectory(
             initialdir=RUNNING_CONFIG['logs_location'],
@@ -373,7 +402,12 @@ class Settings(ctk.CTkToplevel):
             self.logs_location_input.delete(0, tk.END)
             self.logs_location_input.insert(0, file_path)
 
-    def read_new_settings(self):
+    def read_new_settings(self) -> None:
+        """
+        Reads and processes new settings for the application, updates the configuration, and determines if
+        restarts are needed for proxy or browser components. If any restart is necessary, prompts the user
+        for confirmation before applying changes.
+        """
         new_config = {
             "theme": self.theme_options.get().lower().strip(),
             "proxy_host_address": self.proxy_ip_input.get(),
@@ -435,7 +469,20 @@ class Settings(ctk.CTkToplevel):
         else:
             self.save_settings(new_config)
 
-    def save_settings(self, new_config, reload_proxy=False, reload_browser=False):
+    def save_settings(self, new_config: dict, reload_proxy: bool = False, reload_browser: bool = False) -> None:
+        """
+        Saves the provided configurations and optionally reloads proxy and/or browser.
+
+        This method updates the application settings by saving the new configuration
+        provided through its arguments. If specified, it also reloads the network
+        proxy settings and reinitializes the browser state. After performing these
+        actions, the method ensures that any related settings window is destroyed.
+
+        Parameters:
+            new_config (dict): A dictionary containing the new configuration settings.
+            reload_proxy (bool): Indicates whether to reload the proxy settings.
+            reload_browser (bool): Indicates whether to reload and reinitialize the browser.
+        """
         dprint("[DEBUG] Saving settings.")
         from config import save_config, update_config
         update_config(new_config)

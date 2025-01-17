@@ -7,14 +7,13 @@ import threading
 import traceback
 import sys
 from pathlib import Path
-
 root_directory = Path(__file__).resolve().parent.parent
 sys.path.append(str(root_directory))
 
 from config import RUNNING_CONFIG
 
 
-def lprint(msg, h=False, i=False) -> None:
+def lprint(msg: str, h: bool = False, i: bool = False) -> None:
     """
     Logs a message to the console and to the log file if proxy_logging setting enabled.
 

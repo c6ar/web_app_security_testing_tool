@@ -79,26 +79,3 @@ def process_response(response):
         return response.content
     return "Bad Request"
 
-
-def replace_values(values, http_message=str):
-    """
-       Replaces placeholder variables in the HTTP message marked with §var_name§ with values from the `values` list.
-
-       Args:
-           values (list): List of strings to replace the placeholders.
-           http_message (str): HTTP request message with placeholders.
-
-       Returns:
-           str: The modified HTTP message with placeholders replaced.
-    """
-
-    placeholders = re.findall(r'§(.*?)§', http_message)
-
-    if len(placeholders) > len(values):
-        raise ValueError("Not enough values provided to replace all placeholders.")
-
-    for i, placeholder in enumerate(placeholders):
-        if i < len(values):
-            http_message = http_message.replace(f'\u00a7{placeholder}\u00a7', values[i], 1)
-
-    return http_message
