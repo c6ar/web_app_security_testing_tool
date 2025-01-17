@@ -48,7 +48,6 @@ class WASTT(ctk.CTk):
         tab_wrapper = Box(self)
         tab_wrapper.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
 
-        # TODO P1: Finishing HTML doc files.
         self.proxy = Proxy(tab_wrapper, self)
         self.intruder = Intruder(tab_wrapper, self)
         self.repeater = Repeater(tab_wrapper, self)
