@@ -345,7 +345,7 @@ class WebRequestInterceptor:
                     elif deserialized_data[0] == "drop":
                         lprint("[INFO] Handling an instruction to drop the last intercepted request.", i=True)
 
-                        target_url = "http://localhost:8080/en/dropped.html"
+                        target_url = "http://localhost:8080/dropped.html"
 
                         flow.request.host = "localhost"
                         flow.request.port = 8080
