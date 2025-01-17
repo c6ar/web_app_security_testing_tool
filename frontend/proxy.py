@@ -1126,6 +1126,8 @@ class Proxy(ctk.CTkFrame):
             print(f"[ERROR] Terminating previously run mitmdump process failed: {e}")
 
         try:
+            from config import RUNNING_CONFIG
+
             backend_dir = Path(__file__).parent.parent / "backend"
             proxy_script = backend_dir / "proxy.py"
             proxy_port = str(RUNNING_CONFIG["proxy_port"])
