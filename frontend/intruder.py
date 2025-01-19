@@ -509,7 +509,7 @@ class IntruderTab(ctk.CTkFrame):
         self.results_button = ActionButton(
             top_bar,
             text="Show attack results",
-            image=icon_logs,
+            image=icon_results,
             command=self.show_attack,
             state=tk.DISABLED
         )

@@ -89,21 +89,9 @@ today = datetime.now().strftime("%Y-%m-%d")
 # ================================================
 # Icon and image assets loading
 # ================================================
-icon_proxy = ctk.CTkImage(
-    light_image=Image.open(f"{ASSET_DIR}\\icon_proxy_light.png"),
-    dark_image=Image.open(f"{ASSET_DIR}\\icon_proxy.png"), size=(20, 20))
 icon_intercept = ctk.CTkImage(
     light_image=Image.open(f"{ASSET_DIR}\\icon_traffic_light.png"),
     dark_image=Image.open(f"{ASSET_DIR}\\icon_traffic.png"), size=(60, 60))
-icon_intruder = ctk.CTkImage(
-    light_image=Image.open(f"{ASSET_DIR}\\icon_intruder_light.png"),
-    dark_image=Image.open(f"{ASSET_DIR}\\icon_intruder.png"), size=(20, 20))
-icon_repeater = ctk.CTkImage(
-    light_image=Image.open(f"{ASSET_DIR}\\icon_repeater_light.png"),
-    dark_image=Image.open(f"{ASSET_DIR}\\icon_repeater.png"), size=(20, 20))
-icon_logs = ctk.CTkImage(
-    light_image=Image.open(f"{ASSET_DIR}\\icon_logs_light.png"),
-    dark_image=Image.open(f"{ASSET_DIR}\\icon_logs.png"), size=(20, 20))
 icon_settings = ctk.CTkImage(
     light_image=Image.open(f"{ASSET_DIR}\\icon_settings_light.png"),
     dark_image=Image.open(f"{ASSET_DIR}\\icon_settings.png"), size=(20, 20))
@@ -122,12 +110,6 @@ icon_arrow_up = ctk.CTkImage(
 icon_arrow_down = ctk.CTkImage(
     light_image=Image.open(f"{ASSET_DIR}\\icon_arrow_down.png"),
     dark_image=Image.open(f"{ASSET_DIR}\\icon_arrow_down.png"), size=(20, 20))
-icon_arrow_left = ctk.CTkImage(
-    light_image=Image.open(f"{ASSET_DIR}\\icon_arrow_left.png"),
-    dark_image=Image.open(f"{ASSET_DIR}\\icon_arrow_left.png"), size=(20, 20))
-icon_arrow_right = ctk.CTkImage(
-    light_image=Image.open(f"{ASSET_DIR}\\icon_arrow_right.png"),
-    dark_image=Image.open(f"{ASSET_DIR}\\icon_arrow_right.png"), size=(20, 20))
 icon_random = ctk.CTkImage(
     light_image=Image.open(f"{ASSET_DIR}\\icon_random.png"),
     dark_image=Image.open(f"{ASSET_DIR}\\icon_random.png"), size=(20, 20))
@@ -155,6 +137,9 @@ icon_add = ctk.CTkImage(
 icon_attack = ctk.CTkImage(
     light_image=Image.open(f"{ASSET_DIR}\\icon_attack.png"),
     dark_image=Image.open(f"{ASSET_DIR}\\icon_attack.png"), size=(20, 20))
+icon_results = ctk.CTkImage(
+    light_image=Image.open(f"{ASSET_DIR}\\icon_logs.png"),
+    dark_image=Image.open(f"{ASSET_DIR}\\icon_logs.png"), size=(20, 20))
 icon_folder = ctk.CTkImage(
     light_image=Image.open(f"{ASSET_DIR}\\icon_folder.png"),
     dark_image=Image.open(f"{ASSET_DIR}\\icon_folder.png"), size=(20, 20))
